@@ -15,10 +15,12 @@ pub fn scan_directory(
         .build()
         .map_err(|e| ScanError::InvalidPattern(e.to_string()))?;
 
+    let root_path = path.to_path_buf(); // Capture for closure
+
     let walker = WalkDir::new(path)
         .follow_links(false)
         .into_iter()
-        .filter_entry(|e| {
+        .filter_entry(move |e| {
             if e.depth() == 0 {
                 return true;
             }
@@ -40,7 +42,10 @@ pub fn scan_directory(
             // globset matches against paths. We should match relative path if possible, or name.
             // Usually exclusions are like "node_modules/**".
             // Let's assume patterns match against the path.
-            !glob_set.is_match(path)
+            
+            // Strip root prefix to match against relative patterns
+            let relative_path = path.strip_prefix(&root_path).unwrap_or(path);
+            !glob_set.is_match(relative_path)
         });
 
     let mut files = Vec::new();

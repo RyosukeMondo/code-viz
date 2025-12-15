@@ -1,0 +1,8 @@
+---
+source: crates/code-viz-core/tests/integration_test.rs
+expression: normalized_files
+---
+[
+    "src/index.ts (3 LOC, 1 funcs)",
+    "src/utils.js (1 LOC, 0 funcs)",
+]
