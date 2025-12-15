@@ -107,14 +107,14 @@ After completing Phase 0 tasks:
 
 ### 1.3 Metrics Calculation
 
-- [ ] 1.3.1 Implement LOC calculation (metrics.rs)
+- [x] 1.3.1 Implement LOC calculation (metrics.rs)
   - Files: `crates/code-viz-core/src/metrics.rs`
   - Purpose: Implement Lines of Code calculation excluding comments and blank lines
   - _Leverage: Tree-sitter comment node detection, design.md metrics algorithm_
   - _Requirements: Req 2.1 (LOC calculation), Req 4.2 (Comment exclusion)_
   - _Prompt: Implement the task for spec mvp, first run spec-workflow-guide to get the workflow guide then implement the task: | Role: Static Analysis Engineer specializing in code metrics | Task: Replace todo!() in calculate_metrics() with implementation: parse source using LanguageParser::parse(), get comment nodes from AST (use query for comment/line_comment/block_comment nodes depending on language), calculate line ranges covered by comments using node.start_position().row and node.end_position().row, split source into lines (source.lines()), count non-empty lines (line.trim().is_empty() == false) that don't overlap with comment line ranges, set FileMetrics.loc to this count, also populate function_count using parser.count_functions(), size_bytes from source.len(), last_modified from fs::metadata(path).modified(), handle MetricsError for parse failures or filesystem errors | Restrictions: Mixed-line comments (code + comment on same line) count as 1 LOC (code takes precedence), blank lines in multiline comments don't count, must handle edge case of file with only comments (LOC = 0), use HashSet<usize> to track comment line numbers for O(1) lookup | Leverage: design.md "Component 3: Metrics Calculator" algorithm, requirements.md Req 4.2 comment syntax per language | Requirements: Req 2.1 (LOC), Req 4.2 (exclude comments), Req 2.3 (file metadata) | Success: calculate_metrics() returns correct LOC for test files (create fixtures with known LOC counts), handles comment-only files, handles mixed-line comments correctly, populates all FileMetrics fields, cargo test metrics::tests passes | Instructions: Mark in-progress [-]. Create test fixtures (e.g., test_file_10loc.rs with exactly 10 LOC). Log metrics implementation + test results with LOC accuracy. Mark complete [x]._
 
-- [ ] 1.3.2 Add metrics unit tests with known LOC values
+- [x] 1.3.2 Add metrics unit tests with known LOC values
   - Files: `crates/code-viz-core/src/metrics.rs` (#[cfg(test)] mod tests)
   - Purpose: Test metrics calculation accuracy with various code samples
   - _Leverage: Test fixtures with manually counted LOC_

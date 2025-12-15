@@ -7,6 +7,7 @@ pub trait LanguageParser: Send + Sync {
     fn language(&self) -> &str;
     fn parse(&self, source: &str) -> Result<Tree, ParseError>;
     fn count_functions(&self, tree: &Tree) -> usize;
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range>;
 }
 
 thread_local! {
@@ -43,6 +44,20 @@ impl LanguageParser for TypeScriptParser {
         let mut cursor = QueryCursor::new();
         cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
     }
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_typescript::language_typescript(),
+                "(comment) @c"
+            ).expect("Invalid TypeScript comment query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8])
+            .map(|m| m.captures[0].node.range())
+            .collect()
+    }
 }
 
 pub struct TsxParser;
@@ -65,6 +80,20 @@ impl LanguageParser for TsxParser {
         let mut cursor = QueryCursor::new();
         cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
     }
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_typescript::language_tsx(),
+                "(comment) @c"
+            ).expect("Invalid TSX comment query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8])
+            .map(|m| m.captures[0].node.range())
+            .collect()
+    }
 }
 
 pub struct JavaScriptParser;
@@ -86,6 +115,20 @@ impl LanguageParser for JavaScriptParser {
         
         let mut cursor = QueryCursor::new();
         cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+    }
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_javascript::language(),
+                "(comment) @c"
+            ).expect("Invalid JavaScript comment query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8])
+            .map(|m| m.captures[0].node.range())
+            .collect()
     }
 }
 
