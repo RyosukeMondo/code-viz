@@ -16,7 +16,7 @@
   - _Requirements: NFR - Performance (Build Speed), NFR - Code Architecture_
   - _Prompt: Implement the task for spec mvp, first run spec-workflow-guide to get the workflow guide then implement the task: | Role: DevOps Engineer specializing in Rust build systems and tooling | Task: Create Cargo workspace root configuration including workspace member declarations (code-viz-core, code-viz-cli), shared dependency definitions (serde, tree-sitter), .cargo/config.toml with mold linker for Linux and appropriate linker for macOS/Windows, Justfile with placeholder recipes (dev, test, check, release), and comprehensive .gitignore for Rust projects | Restrictions: Follow exact linker configuration from tech.md, use workspace dependencies feature for DRY, do not add implementation-specific flags yet, ensure cross-platform compatibility | Leverage: .spec-workflow/steering/tech.md section "Rust Compilation Acceleration", .spec-workflow/steering/structure.md for workspace layout | Requirements: NFR - Build Speed (<3s incremental builds), NFR - Code Architecture (workspace separation) | Success: cargo check passes on workspace root, Justfile recipes are defined (can run just --list), .cargo/config.toml uses correct linker per platform, all paths follow structure.md conventions | Instructions: Edit tasks.md and mark this task as in-progress [-] before starting. After completion, use log-implementation tool with detailed artifacts (all config files created with their purposes), then mark task as complete [x] in tasks.md_
 
-- [ ] 0.1.2 Create core library crate skeleton (code-viz-core)
+- [x] 0.1.2 Create core library crate skeleton (code-viz-core)
   - Files:
     - `crates/code-viz-core/Cargo.toml`
     - `crates/code-viz-core/src/lib.rs`
