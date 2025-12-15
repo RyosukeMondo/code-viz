@@ -1,5 +1,7 @@
+use std::cell::RefCell;
+use std::sync::OnceLock;
 use thiserror::Error;
-use tree_sitter::Tree;
+use tree_sitter::{Language, Parser, Query, QueryCursor, Tree};
 
 pub trait LanguageParser: Send + Sync {
     fn language(&self) -> &str;
@@ -7,30 +9,93 @@ pub trait LanguageParser: Send + Sync {
     fn count_functions(&self, tree: &Tree) -> usize;
 }
 
+thread_local! {
+    static PARSER: RefCell<Parser> = RefCell::new(Parser::new());
+}
+
+fn parse_with_language(language: Language, source: &str) -> Result<Tree, ParseError> {
+    PARSER.with(|p| {
+        let mut p = p.borrow_mut();
+        p.set_language(language)
+            .map_err(|e| ParseError::TreeSitterError(e.to_string()))?;
+        p.parse(source, None)
+            .ok_or_else(|| ParseError::TreeSitterError("Failed to parse source".to_string()))
+    })
+}
+
 pub struct TypeScriptParser;
 impl LanguageParser for TypeScriptParser {
-    fn language(&self) -> &str { "typescript" }
-    fn parse(&self, _source: &str) -> Result<Tree, ParseError> {
-        todo!("Implement Tree-sitter parsing")
+    fn language(&self) -> &str {
+        "typescript"
     }
-    fn count_functions(&self, _tree: &Tree) -> usize {
-        todo!("Implement function counting via queries")
+    fn parse(&self, source: &str) -> Result<Tree, ParseError> {
+        parse_with_language(tree_sitter_typescript::language_typescript(), source)
+    }
+    fn count_functions(&self, tree: &Tree) -> usize {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_typescript::language_typescript(),
+                "(function_declaration) @f (arrow_function) @f (method_definition) @f"
+            ).expect("Invalid TypeScript query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+    }
+}
+
+pub struct TsxParser;
+impl LanguageParser for TsxParser {
+    fn language(&self) -> &str {
+        "tsx"
+    }
+    fn parse(&self, source: &str) -> Result<Tree, ParseError> {
+        parse_with_language(tree_sitter_typescript::language_tsx(), source)
+    }
+    fn count_functions(&self, tree: &Tree) -> usize {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_typescript::language_tsx(),
+                "(function_declaration) @f (arrow_function) @f (method_definition) @f"
+            ).expect("Invalid TSX query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
     }
 }
 
 pub struct JavaScriptParser;
 impl LanguageParser for JavaScriptParser {
-    fn language(&self) -> &str { "javascript" }
-    fn parse(&self, _source: &str) -> Result<Tree, ParseError> {
-        todo!("Implement Tree-sitter parsing")
+    fn language(&self) -> &str {
+        "javascript"
     }
-    fn count_functions(&self, _tree: &Tree) -> usize {
-        todo!("Implement function counting via queries")
+    fn parse(&self, source: &str) -> Result<Tree, ParseError> {
+        parse_with_language(tree_sitter_javascript::language(), source)
+    }
+    fn count_functions(&self, tree: &Tree) -> usize {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_javascript::language(),
+                "(function_declaration) @f (arrow_function) @f (method_definition) @f"
+            ).expect("Invalid JavaScript query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
     }
 }
 
-pub fn get_parser(_language: &str) -> Result<Box<dyn LanguageParser>, ParseError> {
-    todo!("Return correct parser for language")
+pub fn get_parser(language: &str) -> Result<Box<dyn LanguageParser>, ParseError> {
+    match language {
+        "typescript" | "ts" => Ok(Box::new(TypeScriptParser)),
+        "javascript" | "js" | "jsx" => Ok(Box::new(JavaScriptParser)),
+        "tsx" => Ok(Box::new(TsxParser)),
+        _ => Err(ParseError::UnsupportedLanguage(language.to_string())),
+    }
 }
 
 #[derive(Debug, Error)]
@@ -40,4 +105,68 @@ pub enum ParseError {
 
     #[error("Tree-sitter parse failed: {0}")]
     TreeSitterError(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_valid_typescript() {
+        let parser = get_parser("typescript").unwrap();
+        let source = "function hello() { console.log('world'); }";
+        let tree = parser.parse(source).unwrap();
+        assert!(tree.root_node().has_error() == false);
+    }
+
+    #[test]
+    fn test_parse_syntax_error() {
+        let parser = get_parser("typescript").unwrap();
+        let source = "function hello() { return "; // Missing brace
+        let tree = parser.parse(source).unwrap();
+        // tree-sitter usually produces a tree even with errors, but has_error() should be true
+        assert!(tree.root_node().has_error());
+    }
+
+    #[test]
+    fn test_count_functions_typescript() {
+        let parser = get_parser("typescript").unwrap();
+        let source = r#"
+            function a() {}
+            const b = () => {};
+            class C {
+                m() {}
+            }
+        "#;
+        let tree = parser.parse(source).unwrap();
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_count_functions_javascript() {
+        let parser = get_parser("javascript").unwrap();
+        let source = r#"
+            function a() {}
+            const b = () => {};
+            class C {
+                m() {}
+            }
+        "#;
+        let tree = parser.parse(source).unwrap();
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 3);
+    }
+    
+    #[test]
+    fn test_count_functions_tsx() {
+        let parser = get_parser("tsx").unwrap();
+        let source = r#"
+            const Component = () => <div></div>;
+            function helper() {}
+        "#;
+        let tree = parser.parse(source).unwrap();
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 2);
+    }
 }

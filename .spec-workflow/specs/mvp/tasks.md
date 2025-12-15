@@ -91,7 +91,7 @@ After completing Phase 0 tasks:
 
 ### 1.2 Tree-sitter Parser Integration
 
-- [ ] 1.2.1 Implement TypeScript/JavaScript parser (parser.rs)
+- [x] 1.2.1 Implement TypeScript/JavaScript parser (parser.rs)
   - Files: `crates/code-viz-core/src/parser.rs`
   - Purpose: Implement LanguageParser trait for TypeScript and JavaScript using Tree-sitter
   - _Leverage: `tree-sitter` crate, `tree-sitter-typescript` grammar, design.md parser component_
