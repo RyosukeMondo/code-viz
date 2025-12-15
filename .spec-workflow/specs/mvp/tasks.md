@@ -123,7 +123,7 @@ After completing Phase 0 tasks:
 
 ### 1.4 Analysis Orchestrator
 
-- [ ] 1.4.1 Implement analyze() orchestrator function (analyzer.rs)
+- [x] 1.4.1 Implement analyze() orchestrator function (analyzer.rs)
   - Files: `crates/code-viz-core/src/analyzer.rs`
   - Purpose: Orchestrate scan → parse → metrics pipeline with parallelization
   - _Leverage: `rayon` for parallelism, scanner/parser/metrics modules, design.md analyzer flow_
