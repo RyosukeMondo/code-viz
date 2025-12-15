@@ -1,6 +1,54 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
 use predicates::prelude::*;
+use std::io::{BufRead, BufReader};
+use std::process::Stdio;
+use std::time::Duration;
+use std::thread;
+
+#[test]
+#[ignore]
+fn test_e2e_watch_mode() {
+    // Watch mode test - verify it starts and performs initial analysis
+    // Full change detection is skipped to avoid CI flakiness
+    let temp = assert_fs::TempDir::new().unwrap();
+    let file = temp.child("src/main.ts");
+    file.write_str("function a() {}").unwrap();
+
+    let bin = assert_cmd::cargo::cargo_bin("code-viz-cli");
+    let mut cmd = std::process::Command::new(bin);
+    let mut child = cmd
+        .arg("watch")
+        .arg(temp.path())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let stdout = child.stdout.take().unwrap();
+    let mut reader = BufReader::new(stdout);
+    let mut line = String::new();
+
+    // Verify initial analysis output
+    let start = std::time::Instant::now();
+    let mut saw_initial = false;
+    
+    while start.elapsed() < Duration::from_secs(5) {
+        line.clear();
+        if reader.read_line(&mut line).unwrap() > 0 {
+            if line.contains("src/main.ts") && line.contains("1 funcs") {
+                saw_initial = true;
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    
+    child.kill().unwrap();
+    child.wait().unwrap();
+    
+    assert!(saw_initial, "Did not see initial analysis output");
+}
 
 #[test]
 fn test_e2e_analyze_json_output() {
