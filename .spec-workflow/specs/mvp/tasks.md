@@ -202,7 +202,7 @@ After completing Phase 0 tasks:
 
 ### 4.1 Diff Command
 
-- [ ] 4.1.1 Implement diff command for comparing reports (commands/diff.rs)
+- [x] 4.1.1 Implement diff command for comparing reports (commands/diff.rs)
   - Files: `crates/code-viz-cli/src/commands/diff.rs`
   - Purpose: Compare two JSON analysis reports and show differences
   - _Leverage: `serde_json` for parsing reports, design.md diff algorithm_
