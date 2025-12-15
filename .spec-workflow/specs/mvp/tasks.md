@@ -157,7 +157,7 @@ After completing Phase 0 tasks:
 
 ### 2.2 Configuration Loading
 
-- [ ] 2.2.1 Implement .code-viz.toml config parser (config_loader.rs)
+- [x] 2.2.1 Implement .code-viz.toml config parser (config_loader.rs)
   - Files: `crates/code-viz-cli/src/config_loader.rs`
   - Purpose: Load and parse .code-viz.toml configuration file
   - _Leverage: `toml` crate, design.md config file format_
