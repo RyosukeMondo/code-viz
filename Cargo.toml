@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/code-viz-core",
+    "crates/code-viz-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["CodeViz Team"]
+license = "MIT"
+repository = "https://github.com/rmondo/code-viz"
+
+[workspace.dependencies]
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+tree-sitter = "0.20"
+rayon = "1.8"
+thiserror = "1.0"
+walkdir = "2.4"
+globset = "0.4"
+anyhow = "1.0"
+tracing = "0.1"
+
+# CLI dependencies
+clap = { version = "4.0", features = ["derive"] }
+serde_json = "1.0"
+csv = "1.3"
+notify = "6.0"
+env_logger = "0.10"
+log = "0.4"
+toml = "0.8"
+colored = "2.0"
+
+# Dev dependencies
+assert_cmd = "2.0"
+assert_fs = "1.0"
+predicates = "3.0"
+insta = "1.0"
+tempfile = "3.8"

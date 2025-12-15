@@ -1,0 +1,30 @@
+{
+  "filePath": ".spec-workflow/specs/mvp/requirements.md",
+  "currentVersion": 3,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-12-15T14:48:52.911Z",
+      "trigger": "initial",
+      "approvalId": "approval_1765810132909_m77wqh45j",
+      "approvalTitle": "MVP Requirements Document"
+    },
+    {
+      "version": 2,
+      "filename": "snapshot-002.json",
+      "timestamp": "2025-12-15T14:54:10.199Z",
+      "trigger": "revision_requested",
+      "approvalId": "approval_1765810132909_m77wqh45j",
+      "approvalTitle": "MVP Requirements Document"
+    },
+    {
+      "version": 3,
+      "filename": "snapshot-003.json",
+      "timestamp": "2025-12-15T15:05:44.478Z",
+      "trigger": "approved",
+      "approvalId": "approval_1765810798915_mf4dbcvzq",
+      "approvalTitle": "MVP Requirements Document (CLI-First Revision)"
+    }
+  ]
+}

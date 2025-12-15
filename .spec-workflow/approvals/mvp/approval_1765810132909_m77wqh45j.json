@@ -1,0 +1,21 @@
+{
+  "id": "approval_1765810132909_m77wqh45j",
+  "title": "MVP Requirements Document",
+  "filePath": ".spec-workflow/specs/mvp/requirements.md",
+  "type": "document",
+  "status": "needs-revision",
+  "createdAt": "2025-12-15T14:48:52.909Z",
+  "category": "spec",
+  "categoryName": "mvp",
+  "response": "Feedback Summary (1 comments):\n\nGeneral Comments:\n1. cli centric\n\n",
+  "annotations": "{\n  \"decision\": \"needs-revision\",\n  \"comments\": [\n    {\n      \"type\": \"general\",\n      \"comment\": \"cli centric\",\n      \"timestamp\": \"2025-12-15T14:54:09.477Z\",\n      \"id\": \"comment_1765810449477_4zxw9vvmr\"\n    }\n  ],\n  \"summary\": \"Feedback Summary (1 comments):\\n\\nGeneral Comments:\\n1. cli centric\\n\\n\",\n  \"timestamp\": \"2025-12-15T14:54:10.196Z\"\n}",
+  "respondedAt": "2025-12-15T14:54:10.200Z",
+  "comments": [
+    {
+      "type": "general",
+      "comment": "cli centric",
+      "timestamp": "2025-12-15T14:54:09.477Z",
+      "id": "comment_1765810449477_4zxw9vvmr"
+    }
+  ]
+}
