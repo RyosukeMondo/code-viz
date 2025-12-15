@@ -141,7 +141,7 @@ After completing Phase 0 tasks:
 
 ### 2.1 Analyze Command Implementation
 
-- [ ] 2.1.1 Implement analyze command logic (commands/analyze.rs)
+- [x] 2.1.1 Implement analyze command logic (commands/analyze.rs)
   - Files: `crates/code-viz-cli/src/commands/analyze.rs`
   - Purpose: Implement analyze command that calls core library and formats output
   - _Leverage: `code-viz-core::analyze`, output formatters, design.md CLI flow_
