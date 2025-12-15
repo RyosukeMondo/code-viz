@@ -75,7 +75,7 @@ After completing Phase 0 tasks:
 
 ### 1.1 File Scanner Implementation
 
-- [ ] 1.1.1 Implement file discovery with exclusions (scanner.rs)
+- [x] 1.1.1 Implement file discovery with exclusions (scanner.rs)
   - Files: `crates/code-viz-core/src/scanner.rs`
   - Purpose: Implement recursive directory traversal with glob pattern exclusions
   - _Leverage: `walkdir` crate, `globset` crate, design.md scanner algorithm_
