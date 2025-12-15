@@ -210,4 +210,33 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].file_name().unwrap().to_str().unwrap(), "visible.rs");
     }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_scan_permission_denied() {
+        use std::os::unix::fs::PermissionsExt;
+        
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        
+        let locked_dir = root.join("locked");
+        fs::create_dir(&locked_dir).unwrap();
+        File::create(locked_dir.join("secret.ts")).unwrap();
+        
+        // Remove read permissions
+        let mut perms = fs::metadata(&locked_dir).unwrap().permissions();
+        perms.set_mode(0o000);
+        fs::set_permissions(&locked_dir, perms).unwrap();
+        
+        let result = scan_directory(root, &[]);
+        
+        // Restore permissions so tempdir cleanup works
+        let mut perms = fs::metadata(&locked_dir).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&locked_dir, perms).unwrap();
+        
+        // It should not fail, just return empty list (or list without secret.ts)
+        let files = result.unwrap();
+        assert!(files.is_empty());
+    }
 }
