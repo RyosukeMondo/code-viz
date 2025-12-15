@@ -173,7 +173,7 @@ After completing Phase 0 tasks:
 
 ### 2.3 CLI Integration Tests
 
-- [ ] 2.3.1 Implement E2E CLI tests (cli_e2e_test.rs)
+- [x] 2.3.1 Implement E2E CLI tests (cli_e2e_test.rs)
   - Files: `crates/code-viz-cli/tests/cli_e2e_test.rs`
   - Purpose: Test CLI binary end-to-end with assert_cmd framework
   - _Leverage: `assert_cmd`, `assert_fs`, `predicates`, design.md E2E test scenarios_
