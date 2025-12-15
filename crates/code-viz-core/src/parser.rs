@@ -169,4 +169,30 @@ mod tests {
         let count = parser.count_functions(&tree);
         assert_eq!(count, 2);
     }
+
+    #[test]
+    fn test_snapshot_typescript_ast() {
+        let parser = get_parser("typescript").unwrap();
+        let source = r#"
+            function greet(name: string) {
+                console.log(`Hello, ${name}`);
+            }
+        "#;
+        let tree = parser.parse(source).unwrap();
+        insta::assert_debug_snapshot!(tree.root_node());
+    }
+
+    #[test]
+    fn test_snapshot_javascript_ast() {
+        let parser = get_parser("javascript").unwrap();
+        let source = r#"
+            class Person {
+                constructor(name) {
+                    this.name = name;
+                }
+            }
+        "#;
+        let tree = parser.parse(source).unwrap();
+        insta::assert_debug_snapshot!(tree.root_node());
+    }
 }

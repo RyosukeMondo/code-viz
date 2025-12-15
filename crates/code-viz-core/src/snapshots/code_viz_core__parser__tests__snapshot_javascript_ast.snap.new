@@ -1,0 +1,6 @@
+---
+source: crates/code-viz-core/src/parser.rs
+assertion_line: 196
+expression: tree.root_node()
+---
+{Node program (1, 12) - (6, 8)}
