@@ -41,7 +41,7 @@ pub fn analyze(
     })
 }
 
-fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
+pub fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
     let extension = path.extension()
         .and_then(|e| e.to_str())
         .ok_or_else(|| AnalysisError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No extension")))?;
@@ -71,7 +71,7 @@ fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
     Ok(metrics)
 }
 
-fn calculate_summary(files: &[FileMetrics]) -> Summary {
+pub fn calculate_summary(files: &[FileMetrics]) -> Summary {
     let total_files = files.len();
     let total_loc = files.iter().map(|f| f.loc).sum();
     let total_functions = files.iter().map(|f| f.function_count).sum();

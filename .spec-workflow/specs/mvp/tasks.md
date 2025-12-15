@@ -184,7 +184,7 @@ After completing Phase 0 tasks:
 
 ### 3.1 File Watcher Integration
 
-- [ ] 3.1.1 Implement watch command with file monitoring (commands/watch.rs)
+- [x] 3.1.1 Implement watch command with file monitoring (commands/watch.rs)
   - Files: `crates/code-viz-cli/src/commands/watch.rs`
   - Purpose: Monitor file system and re-analyze on changes
   - _Leverage: `notify` crate, debouncing logic, design.md watch component_
