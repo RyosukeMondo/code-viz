@@ -10,10 +10,17 @@
  * - Hover handlers for tooltips and selection
  * - Smooth animations for transitions
  * - Responsive to window resize
- * - Performance optimized with React.memo
+ *
+ * Performance optimizations:
+ * - React.memo with custom comparison to prevent unnecessary re-renders
+ * - useMemo for expensive filtering and transformation operations
+ * - useCallback for stable event handler references
+ * - Progressive/lazy rendering for large datasets (>50K files)
+ * - WeakMap-based caching in transformation utilities
+ * - Optimized ECharts rendering settings for large trees
  */
 
-import React, { useEffect, useRef, memo } from 'react';
+import React, { useEffect, useRef, memo, useMemo, useCallback } from 'react';
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
 import { TreemapChart } from 'echarts/charts';
@@ -24,7 +31,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { TreemapProps } from '../../types';
-import { treeNodeToECharts, filterByPath } from '../../utils/treeTransform';
+import { treeNodeToECharts, filterByPath, getFileCount } from '../../utils/treeTransform';
 import { getComplexityLabel } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
 
@@ -51,8 +58,72 @@ const TreemapComponent: React.FC<TreemapProps> = ({
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
 
+  // Memoize filtered data to avoid re-filtering on every render
+  const filteredData = useMemo(() => {
+    if (!data) return null;
+
+    return drillDownPath.length > 0
+      ? filterByPath(data, drillDownPath)
+      : data;
+  }, [data, drillDownPath]);
+
+  // Memoize ECharts transformation (expensive for large datasets)
+  const echartsData = useMemo(() => {
+    if (!filteredData) return null;
+    return treeNodeToECharts(filteredData);
+  }, [filteredData]);
+
+  // Calculate file count to determine if we need lazy rendering
+  const fileCount = useMemo(() => {
+    if (!filteredData) return 0;
+    return getFileCount(filteredData);
+  }, [filteredData]);
+
+  // Determine if we should use lazy rendering (for datasets > 50K files)
+  const shouldUseLazyRendering = fileCount > 50000;
+
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handleClick = useCallback((params: any) => {
+    if (params.data && onNodeClick) {
+      // Convert ECharts data back to TreeNode format for the callback
+      const clickedNode = {
+        id: params.data.path,
+        name: params.data.name,
+        path: params.data.path,
+        loc: params.data.value,
+        complexity: params.data.complexity,
+        type: params.data.type,
+        children: params.data.children || [],
+        lastModified: '', // Not available in ECharts data
+      };
+      onNodeClick(clickedNode);
+    }
+  }, [onNodeClick]);
+
+  const handleMouseOver = useCallback((params: any) => {
+    if (params.data && onNodeHover) {
+      const hoveredNode = {
+        id: params.data.path,
+        name: params.data.name,
+        path: params.data.path,
+        loc: params.data.value,
+        complexity: params.data.complexity,
+        type: params.data.type,
+        children: params.data.children || [],
+        lastModified: '',
+      };
+      onNodeHover(hoveredNode);
+    }
+  }, [onNodeHover]);
+
+  const handleMouseOut = useCallback(() => {
+    if (onNodeHover) {
+      onNodeHover(null);
+    }
+  }, [onNodeHover]);
+
   useEffect(() => {
-    if (!chartRef.current || !data) {
+    if (!chartRef.current || !data || !echartsData) {
       return;
     }
 
@@ -63,21 +134,18 @@ const TreemapComponent: React.FC<TreemapProps> = ({
 
     const chart = chartInstanceRef.current;
 
-    // Filter data based on drill-down path
-    const filteredData = drillDownPath.length > 0
-      ? filterByPath(data, drillDownPath)
-      : data;
-
     if (!filteredData) {
       console.warn('Filtered data is null, path not found:', drillDownPath);
       return;
     }
 
-    // Transform TreeNode to ECharts format
-    const echartsData = treeNodeToECharts(filteredData);
-
     // Configure ECharts treemap options
     const option: EChartsCoreOption = {
+      // Enable progressive rendering for large datasets
+      progressive: shouldUseLazyRendering ? 500 : undefined,
+      progressiveThreshold: shouldUseLazyRendering ? 1000 : undefined,
+      progressiveChunkMode: shouldUseLazyRendering ? 'mod' : undefined,
+
       tooltip: {
         formatter: (info: any) => {
           const { name, value, complexity, path, type } = info.data;
@@ -185,48 +253,8 @@ const TreemapComponent: React.FC<TreemapProps> = ({
     };
 
     // Set options with merge to preserve animation state
-    chart.setOption(option, true);
-
-    // Handle click events
-    const handleClick = (params: any) => {
-      if (params.data && onNodeClick) {
-        // Convert ECharts data back to TreeNode format for the callback
-        const clickedNode = {
-          id: params.data.path,
-          name: params.data.name,
-          path: params.data.path,
-          loc: params.data.value,
-          complexity: params.data.complexity,
-          type: params.data.type,
-          children: params.data.children || [],
-          lastModified: '', // Not available in ECharts data
-        };
-        onNodeClick(clickedNode);
-      }
-    };
-
-    // Handle hover events
-    const handleMouseOver = (params: any) => {
-      if (params.data && onNodeHover) {
-        const hoveredNode = {
-          id: params.data.path,
-          name: params.data.name,
-          path: params.data.path,
-          loc: params.data.value,
-          complexity: params.data.complexity,
-          type: params.data.type,
-          children: params.data.children || [],
-          lastModified: '',
-        };
-        onNodeHover(hoveredNode);
-      }
-    };
-
-    const handleMouseOut = () => {
-      if (onNodeHover) {
-        onNodeHover(null);
-      }
-    };
+    // For large datasets, use notMerge=true to improve performance
+    chart.setOption(option, shouldUseLazyRendering ? false : true);
 
     // Register event handlers
     chart.on('click', handleClick);
@@ -247,7 +275,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       chart.off('mouseout', handleMouseOut);
       window.removeEventListener('resize', handleResize);
     };
-  }, [data, drillDownPath, onNodeClick, onNodeHover]);
+  }, [data, echartsData, filteredData, drillDownPath, shouldUseLazyRendering, handleClick, handleMouseOver, handleMouseOut]);
 
   // Dispose chart instance on unmount
   useEffect(() => {
