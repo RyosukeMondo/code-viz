@@ -248,7 +248,7 @@
   - _Requirements: 1, 2, 3, 6_
   - _Prompt: Implement the task for spec treemap-visualization, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Frontend Testing Engineer with expertise in React Testing Library and component testing | Task: Create component tests following requirements 1-3 and 6, testing rendering and user interactions with mock data | Restrictions: Must test user interactions (click, hover, keyboard), mock ECharts for Treemap, ensure accessibility | Success: All components tested, interactions verified, accessibility tested, snapshot tests included, coverage >80%. After completion, log implementation with log-implementation tool. Mark task as complete in tasks.md._
 
-- [ ] 6.4. Create Rust unit tests for transformation
+- [x] 6.4. Create Rust unit tests for transformation
   - Files: `crates/code-viz-tauri/src/transform.rs` (add #[cfg(test)] mod tests)
   - Test flat_to_hierarchy with various file structures
   - Test edge cases (empty, single file, deep nesting)
