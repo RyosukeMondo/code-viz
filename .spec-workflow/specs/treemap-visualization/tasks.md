@@ -230,7 +230,7 @@
   - _Requirements: All_
   - _Prompt: Implement the task for spec treemap-visualization, first run spec-workflow-guide to get the workflow guide then implement the task: Role: QA Engineer with expertise in unit testing and Vitest | Task: Create comprehensive unit tests for all utility functions covering edge cases, using Vitest as test runner | Restrictions: Must test success and failure paths, achieve 80%+ coverage, tests must be isolated and fast | Success: All utility functions tested, edge cases covered, tests pass consistently, coverage >80%. After completion, log implementation with log-implementation tool documenting the test coverage. Mark task as complete in tasks.md._
 
-- [ ] 6.2. Create unit tests for hooks
+- [x] 6.2. Create unit tests for hooks
   - Files: `src/hooks/useTauriCommand.test.ts`, `src/hooks/useAnalysis.test.ts`
   - Test hooks with mocked Tauri commands
   - Use @testing-library/react-hooks
