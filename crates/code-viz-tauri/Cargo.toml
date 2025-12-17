@@ -1,0 +1,26 @@
+[package]
+name = "code-viz-tauri"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Tauri wrapper library for code-viz analysis engine"
+
+[dependencies]
+# Core analysis engine
+code-viz-core = { path = "../code-viz-core" }
+
+# Tauri and IPC
+tauri = { version = "2.0", features = [] }
+tauri-specta = "2.0.0-rc.20"
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Type generation
+specta = "2.0.0-rc.20"
+
+[lib]
+crate-type = ["lib"]

@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/code-viz-core",
     "crates/code-viz-cli",
+    "crates/code-viz-tauri",
     "src-tauri",
 ]
 
