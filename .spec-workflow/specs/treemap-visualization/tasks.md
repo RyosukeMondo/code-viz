@@ -277,7 +277,7 @@
   - _Requirements: 7_
   - _Prompt: Implement the task for spec treemap-visualization, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Integration Testing Engineer with expertise in cross-interface validation | Task: Create parity tests following requirement 7, running CLI and GUI analysis on same repository and comparing outputs | Restrictions: Must use identical AnalysisConfig, compare all metrics exactly, test on multiple repository sizes | Success: CLI and GUI produce identical results (LOC, file counts, largest files), test passes on small and large repos, parity validated. After completion, log implementation with log-implementation tool. Mark task as complete in tasks.md._
 
-- [ ] 7.2. Add loading states and error boundaries
+- [x] 7.2. Add loading states and error boundaries
   - Files: `src/App.tsx`, `src/features/analysis/AnalysisView.tsx`
   - Add React error boundaries wrapping components
   - Implement loading skeletons and error messages

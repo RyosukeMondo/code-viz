@@ -19,6 +19,8 @@ import { useState, useCallback, useMemo } from 'react';
 import { Treemap } from '@/components/visualizations/Treemap';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { DetailPanel } from '@/components/common/DetailPanel';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { AnalysisLoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import {
   useSelectedFile,
@@ -233,23 +235,18 @@ export function AnalysisView() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        {/* Loading State */}
+        {/* Loading State - Enhanced Skeleton */}
         {loading && (
-          <div data-testid="loading-state" className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-400">
-                Analyzing repository...
-              </p>
-            </div>
+          <div data-testid="loading-state">
+            <AnalysisLoadingSkeleton />
           </div>
         )}
 
-        {/* Error State */}
+        {/* Error State - Enhanced with Retry */}
         {error && !loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900">
-            <div className="max-w-md text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+          <div data-testid="error-state" className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 p-4">
+            <div className="max-w-lg w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
                 <svg
                   className="w-8 h-8 text-red-600 dark:text-red-400"
                   fill="none"
@@ -264,19 +261,49 @@ export function AnalysisView() {
                   />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center mb-3">
                 Analysis Failed
               </h2>
-              <p data-testid="error-message" className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
-              <button
-                onClick={handleReset}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium
-                         hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                         dark:focus:ring-offset-gray-900
-                         transition-colors"
-              >
-                Try Again
-              </button>
+              <p data-testid="error-message" className="text-gray-600 dark:text-gray-400 text-center mb-6">
+                {error}
+              </p>
+
+              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Troubleshooting Tips:
+                </h3>
+                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                  <li>Verify the repository path exists and is accessible</li>
+                  <li>Ensure you have read permissions for the directory</li>
+                  <li>Check that the path contains valid source code files</li>
+                  <li>Try using an absolute path instead of a relative one</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAnalyze}
+                  disabled={!repoPath.trim()}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium
+                           hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                           dark:focus:ring-offset-gray-800
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           transition-colors"
+                >
+                  Retry Analysis
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+                           border border-gray-300 dark:border-gray-600 rounded-lg
+                           hover:bg-gray-200 dark:hover:bg-gray-600
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                           dark:focus:ring-offset-gray-800
+                           transition-colors"
+                >
+                  Start Over
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -315,20 +342,66 @@ export function AnalysisView() {
           </div>
         )}
 
-        {/* Treemap Visualization */}
+        {/* Treemap Visualization - Wrapped in Error Boundary */}
         {currentTreeNode && !loading && !error && (
-          <div data-testid="treemap-container" className="h-full p-6">
-            <div className="h-full max-w-7xl mx-auto">
-              <Treemap
-                data={currentTreeNode}
-                drillDownPath={drillDownPath}
-                onNodeClick={handleNodeClick}
-                onNodeHover={handleNodeHover}
-                width="100%"
-                height="100%"
-              />
+          <ErrorBoundary
+            fallback={(error, reset) => (
+              <div className="h-full flex items-center justify-center p-6">
+                <div className="max-w-md text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                    <svg
+                      className="w-8 h-8 text-red-600 dark:text-red-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Visualization Error
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    The treemap visualization encountered an error.
+                  </p>
+                  <details className="mb-4 text-left">
+                    <summary className="text-sm text-gray-500 dark:text-gray-500 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">
+                      Error Details
+                    </summary>
+                    <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-3 rounded mt-2 overflow-auto max-h-32 text-red-600 dark:text-red-400">
+                      {error.message}
+                    </pre>
+                  </details>
+                  <button
+                    onClick={reset}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium
+                             hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500
+                             transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            )}
+          >
+            <div data-testid="treemap-container" className="h-full p-6">
+              <div className="h-full max-w-7xl mx-auto">
+                <Treemap
+                  data={currentTreeNode}
+                  drillDownPath={drillDownPath}
+                  onNodeClick={handleNodeClick}
+                  onNodeHover={handleNodeHover}
+                  width="100%"
+                  height="100%"
+                />
+              </div>
             </div>
-          </div>
+          </ErrorBoundary>
         )}
 
         {/* Detail Panel */}
