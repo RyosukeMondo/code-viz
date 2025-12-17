@@ -5,10 +5,12 @@
 
 // Public modules
 pub mod commands;
+pub mod logging;
 pub mod models;
 pub mod transform;
 
 // Re-export commonly used types
 pub use commands::*;
+pub use logging::*;
 pub use models::*;
 pub use transform::*;

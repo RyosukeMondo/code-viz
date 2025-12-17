@@ -24,6 +24,7 @@ walkdir = "2.4"
 globset = "0.4"
 anyhow = "1.0"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 
 # CLI dependencies
 clap = { version = "4.0", features = ["derive"] }
