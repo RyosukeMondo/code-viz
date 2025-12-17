@@ -39,3 +39,8 @@ dist-ssr/
 src-tauri/target/
 src-tauri/WixTools/
 coverage/
+
+# Test artifacts
+playwright-report/
+test-results/
+.last-run.json
