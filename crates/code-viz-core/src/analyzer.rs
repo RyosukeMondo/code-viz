@@ -9,30 +9,39 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use thiserror::Error;
 
+#[tracing::instrument(skip(config), fields(root = %root.display(), exclude_patterns = config.exclude_patterns.len()))]
 pub fn analyze(
     root: &Path,
     config: &AnalysisConfig,
 ) -> Result<AnalysisResult, AnalysisError> {
+    tracing::info!("Starting repository analysis");
+
     let files = scanner::scan_directory(root, &config.exclude_patterns)?;
+    tracing::info!(file_count = files.len(), "Directory scan completed");
 
     // Process files in parallel
     let mut results: Vec<FileMetrics> = files
         .par_iter()
         .filter_map(|path| {
             process_file(path).map_err(|e| {
-                // Log warning and skip file
-                // In a real app we might use tracing::warn!, here we use eprintln! or ignore
-                // The prompt says "handle errors by logging warnings and continuing"
-                eprintln!("Warning: Failed to analyze {:?}: {}", path, e);
+                tracing::warn!(path = %path.display(), error = %e, "Failed to analyze file, skipping");
                 e
             }).ok()
         })
         .collect();
 
+    tracing::debug!(processed_files = results.len(), "File processing completed");
+
     // Sort results by path for deterministic output
     results.sort_by(|a, b| a.path.cmp(&b.path));
 
     let summary = calculate_summary(&results);
+    tracing::info!(
+        total_files = summary.total_files,
+        total_loc = summary.total_loc,
+        total_functions = summary.total_functions,
+        "Analysis completed successfully"
+    );
 
     Ok(AnalysisResult {
         summary,
@@ -41,7 +50,10 @@ pub fn analyze(
     })
 }
 
+#[tracing::instrument(fields(path = %path.display()))]
 pub fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
+    tracing::debug!("Processing file");
+
     let extension = path.extension()
         .and_then(|e| e.to_str())
         .ok_or_else(|| AnalysisError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No extension")))?;
@@ -62,31 +74,48 @@ pub fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
         ext => ext,
     };
 
+    tracing::debug!(extension = %extension, language = %language_key, "Language detected");
+
     let parser = parser::get_parser(language_key)
         .map_err(|e| AnalysisError::ParseFailed { path: path.to_path_buf(), source: e })?;
 
     let source = fs::read_to_string(path)?;
+    tracing::debug!(source_size = source.len(), "File read successfully");
 
     let metrics = metrics::calculate_metrics(path, &source, parser.as_ref())
         .map_err(AnalysisError::MetricsFailed)?;
 
+    tracing::debug!(loc = metrics.loc, functions = metrics.function_count, "Metrics calculated");
+
     Ok(metrics)
 }
 
+#[tracing::instrument(skip(files), fields(file_count = files.len()))]
 pub fn calculate_summary(files: &[FileMetrics]) -> Summary {
+    tracing::debug!("Calculating summary statistics");
+
     let total_files = files.len();
     let total_loc = files.iter().map(|f| f.loc).sum();
     let total_functions = files.iter().map(|f| f.function_count).sum();
+
+    tracing::debug!(
+        total_files = total_files,
+        total_loc = total_loc,
+        total_functions = total_functions,
+        "Basic statistics calculated"
+    );
 
     // Find top 10 largest files by LOC
     let mut sorted_files: Vec<&FileMetrics> = files.iter().collect();
     sorted_files.sort_by(|a, b| b.loc.cmp(&a.loc)); // Descending LOC
 
-    let largest_files = sorted_files
+    let largest_files: Vec<PathBuf> = sorted_files
         .iter()
         .take(10)
         .map(|f| f.path.clone())
         .collect();
+
+    tracing::debug!(largest_files_count = largest_files.len(), "Identified largest files");
 
     Summary {
         total_files,

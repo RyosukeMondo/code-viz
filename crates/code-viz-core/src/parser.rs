@@ -14,13 +14,25 @@ thread_local! {
     static PARSER: RefCell<Parser> = RefCell::new(Parser::new());
 }
 
+#[tracing::instrument(skip(language, source), fields(source_len = source.len()))]
 fn parse_with_language(language: Language, source: &str) -> Result<Tree, ParseError> {
+    tracing::debug!("Parsing source code with tree-sitter");
+
     PARSER.with(|p| {
         let mut p = p.borrow_mut();
         p.set_language(language)
-            .map_err(|e| ParseError::TreeSitterError(e.to_string()))?;
-        p.parse(source, None)
-            .ok_or_else(|| ParseError::TreeSitterError("Failed to parse source".to_string()))
+            .map_err(|e| {
+                tracing::error!(error = %e, "Failed to set language");
+                ParseError::TreeSitterError(e.to_string())
+            })?;
+        let tree = p.parse(source, None)
+            .ok_or_else(|| {
+                tracing::error!("Failed to parse source");
+                ParseError::TreeSitterError("Failed to parse source".to_string())
+            })?;
+
+        tracing::debug!(has_error = tree.root_node().has_error(), "Parse completed");
+        Ok(tree)
     })
 }
 
@@ -276,17 +288,26 @@ impl LanguageParser for CppParser {
     }
 }
 
+#[tracing::instrument]
 pub fn get_parser(language: &str) -> Result<Box<dyn LanguageParser>, ParseError> {
-    match language {
-        "typescript" | "ts" => Ok(Box::new(TypeScriptParser)),
-        "javascript" | "js" | "jsx" => Ok(Box::new(JavaScriptParser)),
-        "tsx" => Ok(Box::new(TsxParser)),
-        "rust" | "rs" => Ok(Box::new(RustParser)),
-        "python" | "py" => Ok(Box::new(PythonParser)),
-        "go" => Ok(Box::new(GoParser)),
-        "cpp" | "cxx" | "cc" | "hpp" | "h" => Ok(Box::new(CppParser)),
-        _ => Err(ParseError::UnsupportedLanguage(language.to_string())),
-    }
+    tracing::debug!("Creating parser for language");
+
+    let parser: Box<dyn LanguageParser> = match language {
+        "typescript" | "ts" => Box::new(TypeScriptParser),
+        "javascript" | "js" | "jsx" => Box::new(JavaScriptParser),
+        "tsx" => Box::new(TsxParser),
+        "rust" | "rs" => Box::new(RustParser),
+        "python" | "py" => Box::new(PythonParser),
+        "go" => Box::new(GoParser),
+        "cpp" | "cxx" | "cc" | "hpp" | "h" => Box::new(CppParser),
+        _ => {
+            tracing::warn!(language = %language, "Unsupported language requested");
+            return Err(ParseError::UnsupportedLanguage(language.to_string()));
+        }
+    };
+
+    tracing::debug!(parser_language = parser.language(), "Parser created successfully");
+    Ok(parser)
 }
 
 #[derive(Debug, Error)]

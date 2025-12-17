@@ -3,17 +3,28 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 use walkdir::{DirEntry, WalkDir};
 
+#[tracing::instrument(skip(exclude_patterns), fields(path = %path.display(), pattern_count = exclude_patterns.len()))]
 pub fn scan_directory(
     path: &Path,
     exclude_patterns: &[String],
 ) -> Result<Vec<PathBuf>, ScanError> {
+    tracing::info!("Starting directory scan");
+
     let mut builder = GlobSetBuilder::new();
     for pattern in exclude_patterns {
-        builder.add(Glob::new(pattern).map_err(|e| ScanError::InvalidPattern(e.to_string()))?);
+        builder.add(Glob::new(pattern).map_err(|e| {
+            tracing::error!(pattern = %pattern, error = %e, "Invalid glob pattern");
+            ScanError::InvalidPattern(e.to_string())
+        })?);
     }
     let glob_set = builder
         .build()
-        .map_err(|e| ScanError::InvalidPattern(e.to_string()))?;
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to build glob set");
+            ScanError::InvalidPattern(e.to_string())
+        })?;
+
+    tracing::debug!("Glob patterns configured");
 
     let root_path = path.to_path_buf(); // Capture for closure
 
@@ -37,18 +48,20 @@ pub fn scan_directory(
                  }
                  return false; // Skip hidden
             }
-            
+
             // Check exclusions
             // globset matches against paths. We should match relative path if possible, or name.
             // Usually exclusions are like "node_modules/**".
             // Let's assume patterns match against the path.
-            
+
             // Strip root prefix to match against relative patterns
             let relative_path = path.strip_prefix(&root_path).unwrap_or(path);
             !glob_set.is_match(relative_path)
         });
 
     let mut files = Vec::new();
+    let mut skipped_large = 0;
+    let mut skipped_permission = 0;
 
     for entry in walker {
         match entry {
@@ -62,12 +75,13 @@ pub fn scan_directory(
                 match entry.metadata() {
                     Ok(metadata) => {
                         if metadata.len() > 10 * 1024 * 1024 {
-                            eprintln!("Skipping large file: {:?} (>10MB)", path);
+                            tracing::warn!(path = %path.display(), size_mb = metadata.len() / (1024 * 1024), "Skipping large file (>10MB)");
+                            skipped_large += 1;
                             continue;
                         }
                     }
                     Err(e) => {
-                         eprintln!("Failed to get metadata for {:?}: {}", path, e);
+                         tracing::warn!(path = %path.display(), error = %e, "Failed to get metadata, skipping");
                          continue;
                     }
                 }
@@ -87,17 +101,26 @@ pub fn scan_directory(
                 // Handle permission errors gracefully
                 if let Some(io_err) = e.io_error() {
                     if io_err.kind() == std::io::ErrorKind::PermissionDenied {
-                        eprintln!("Permission denied: {}", e);
+                        tracing::warn!(error = %e, "Permission denied while scanning");
+                        skipped_permission += 1;
                         continue;
                     }
                 }
                 // Other errors might be strictly IO or loops
-                eprintln!("Error scanning entry: {}", e);
+                tracing::warn!(error = %e, "Error scanning entry");
             }
         }
     }
 
     files.sort();
+
+    tracing::info!(
+        files_found = files.len(),
+        skipped_large = skipped_large,
+        skipped_permission = skipped_permission,
+        "Directory scan completed"
+    );
+
     Ok(files)
 }
 
