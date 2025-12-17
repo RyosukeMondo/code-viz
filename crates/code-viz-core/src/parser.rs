@@ -132,11 +132,159 @@ impl LanguageParser for JavaScriptParser {
     }
 }
 
+pub struct RustParser;
+impl LanguageParser for RustParser {
+    fn language(&self) -> &str {
+        "rust"
+    }
+    fn parse(&self, source: &str) -> Result<Tree, ParseError> {
+        parse_with_language(tree_sitter_rust::language(), source)
+    }
+    fn count_functions(&self, tree: &Tree) -> usize {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_rust::language(),
+                "(function_item) @f"
+            ).expect("Invalid Rust query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+    }
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_rust::language(),
+                "(line_comment) @c (block_comment) @c"
+            ).expect("Invalid Rust comment query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8])
+            .map(|m| m.captures[0].node.range())
+            .collect()
+    }
+}
+
+pub struct PythonParser;
+impl LanguageParser for PythonParser {
+    fn language(&self) -> &str {
+        "python"
+    }
+    fn parse(&self, source: &str) -> Result<Tree, ParseError> {
+        parse_with_language(tree_sitter_python::language(), source)
+    }
+    fn count_functions(&self, tree: &Tree) -> usize {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_python::language(),
+                "(function_definition) @f"
+            ).expect("Invalid Python query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+    }
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_python::language(),
+                "(comment) @c"
+            ).expect("Invalid Python comment query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8])
+            .map(|m| m.captures[0].node.range())
+            .collect()
+    }
+}
+
+pub struct GoParser;
+impl LanguageParser for GoParser {
+    fn language(&self) -> &str {
+        "go"
+    }
+    fn parse(&self, source: &str) -> Result<Tree, ParseError> {
+        parse_with_language(tree_sitter_go::language(), source)
+    }
+    fn count_functions(&self, tree: &Tree) -> usize {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_go::language(),
+                "(function_declaration) @f (method_declaration) @f (func_literal) @f"
+            ).expect("Invalid Go query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+    }
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_go::language(),
+                "(comment) @c"
+            ).expect("Invalid Go comment query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8])
+            .map(|m| m.captures[0].node.range())
+            .collect()
+    }
+}
+
+pub struct CppParser;
+impl LanguageParser for CppParser {
+    fn language(&self) -> &str {
+        "cpp"
+    }
+    fn parse(&self, source: &str) -> Result<Tree, ParseError> {
+        parse_with_language(tree_sitter_cpp::language(), source)
+    }
+    fn count_functions(&self, tree: &Tree) -> usize {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_cpp::language(),
+                "(function_declaration) @f"
+            ).expect("Invalid C++ query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+    }
+    fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
+        static QUERY: OnceLock<Query> = OnceLock::new();
+        let query = QUERY.get_or_init(|| {
+            Query::new(
+                tree_sitter_cpp::language(),
+                "(comment) @c"
+            ).expect("Invalid C++ comment query")
+        });
+        
+        let mut cursor = QueryCursor::new();
+        cursor.matches(query, tree.root_node(), &[] as &[u8])
+            .map(|m| m.captures[0].node.range())
+            .collect()
+    }
+}
+
 pub fn get_parser(language: &str) -> Result<Box<dyn LanguageParser>, ParseError> {
     match language {
         "typescript" | "ts" => Ok(Box::new(TypeScriptParser)),
         "javascript" | "js" | "jsx" => Ok(Box::new(JavaScriptParser)),
         "tsx" => Ok(Box::new(TsxParser)),
+        "rust" | "rs" => Ok(Box::new(RustParser)),
+        "python" | "py" => Ok(Box::new(PythonParser)),
+        "go" => Ok(Box::new(GoParser)),
+        "cpp" | "cxx" | "cc" | "hpp" | "h" => Ok(Box::new(CppParser)),
         _ => Err(ParseError::UnsupportedLanguage(language.to_string())),
     }
 }

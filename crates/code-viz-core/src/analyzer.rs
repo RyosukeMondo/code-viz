@@ -54,9 +54,11 @@ pub fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
         "ts" => "typescript",
         "tsx" => "tsx",
         "js" => "javascript",
-        "jsx" => "javascript", // or jsx
-        "rs" => "rust", // Not implemented yet, will fail
-        "py" => "python", // Not implemented yet
+        "jsx" => "javascript",
+        "rs" => "rust",
+        "py" => "python",
+        "go" => "go",
+        "cpp" | "cxx" | "cc" | "hpp" | "h" => "cpp",
         ext => ext,
     };
 
@@ -148,7 +150,7 @@ mod tests {
         let config = AnalysisConfig::default();
         let result = analyze(root, &config).unwrap();
 
-        assert_eq!(result.summary.total_files, 2); // TS and JS. RS fails and is skipped.
+        assert_eq!(result.summary.total_files, 3); // TS, JS, and RS.
         assert_eq!(result.summary.total_loc, 2);
         assert_eq!(result.summary.total_functions, 1);
         
@@ -157,6 +159,6 @@ mod tests {
             .collect();
         assert!(file_names.contains(&"test.ts"));
         assert!(file_names.contains(&"index.js"));
-        assert!(!file_names.contains(&"main.rs"));
+        assert!(file_names.contains(&"main.rs"));
     }
 }

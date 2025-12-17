@@ -24,3 +24,8 @@ target/
 # CodeViz specific
 .code-viz/
 .code-viz.toml
+
+# Tool and workflow artifacts
+.serena/
+.spec-workflow/
+logs/

@@ -76,7 +76,7 @@ pub fn scan_directory(
                 if let Some(ext) = path.extension() {
                     let ext_str = ext.to_string_lossy();
                     match ext_str.as_ref() {
-                        "ts" | "tsx" | "js" | "jsx" | "rs" | "py" => {
+                        "ts" | "tsx" | "js" | "jsx" | "rs" | "py" | "go" | "cpp" | "cc" | "cxx" | "hpp" | "h" => {
                              files.push(path.to_path_buf());
                         }
                         _ => {}
