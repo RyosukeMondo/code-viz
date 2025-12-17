@@ -257,7 +257,7 @@
   - _Requirements: 1, 5_
   - _Prompt: Implement the task for spec treemap-visualization, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Rust Testing Engineer with expertise in unit testing and data structures | Task: Create unit tests for transformation functions following requirements 1 and 5, testing flat_to_hierarchy with edge cases | Restrictions: Must test empty input, single file, deep nesting, large datasets, ensure O(n) complexity | Success: All transformation paths tested, edge cases covered, tests pass, performance verified. After completion, log implementation with log-implementation tool. Mark task as complete in tasks.md._
 
-- [-] 6.5. Create E2E tests with Playwright
+- [x] 6.5. Create E2E tests with Playwright
   - Files: `tests/e2e/treemap.spec.ts`, `playwright.config.ts`
   - Set up Playwright for Tauri testing
   - Test full user flow: analyze → drill down → view details
