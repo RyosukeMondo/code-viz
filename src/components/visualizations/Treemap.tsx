@@ -30,7 +30,7 @@ import {
   GridComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import type { TreemapProps } from '../../types';
+import type { TreemapProps, TreeNode } from '../../types';
 import { treeNodeToECharts, filterByPath, getFileCount } from '../../utils/treeTransform';
 import { getComplexityLabel } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
@@ -52,11 +52,13 @@ const TreemapComponent: React.FC<TreemapProps> = ({
   drillDownPath = [],
   onNodeClick,
   onNodeHover,
+  onNavigateBack,
   width = '100%',
   height = 600,
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
+  const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
 
   // Memoize filtered data to avoid re-filtering on every render
   const filteredData = useMemo(() => {
@@ -121,6 +123,93 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       onNodeHover(null);
     }
   }, [onNodeHover]);
+
+  /**
+   * Get flattened list of visible nodes for keyboard navigation
+   */
+  const getVisibleNodes = useCallback((): TreeNode[] => {
+    if (!filteredData) return [];
+
+    const nodes: TreeNode[] = [];
+    const traverse = (node: TreeNode) => {
+      if (node.type === 'file' || (node.type === 'directory' && node.children.length > 0)) {
+        nodes.push(node);
+      }
+      if (node.children && node.children.length > 0) {
+        node.children.forEach(traverse);
+      }
+    };
+
+    traverse(filteredData);
+    return nodes;
+  }, [filteredData]);
+
+  /**
+   * Handle keyboard navigation
+   */
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const visibleNodes = getVisibleNodes();
+
+      if (visibleNodes.length === 0) return;
+
+      switch (event.key) {
+        case 'Enter':
+        case ' ': // Space key
+          event.preventDefault();
+          // Select the currently focused node
+          if (visibleNodes[selectedNodeIndex] && onNodeClick) {
+            onNodeClick(visibleNodes[selectedNodeIndex]);
+          }
+          break;
+
+        case 'Escape':
+          event.preventDefault();
+          // Navigate back
+          if (onNavigateBack) {
+            onNavigateBack();
+          }
+          break;
+
+        case 'ArrowRight':
+        case 'ArrowDown':
+          event.preventDefault();
+          // Move to next node
+          setSelectedNodeIndex((prev) =>
+            prev < visibleNodes.length - 1 ? prev + 1 : prev
+          );
+          break;
+
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          event.preventDefault();
+          // Move to previous node
+          setSelectedNodeIndex((prev) => (prev > 0 ? prev - 1 : prev));
+          break;
+
+        case 'Home':
+          event.preventDefault();
+          // Jump to first node
+          setSelectedNodeIndex(0);
+          break;
+
+        case 'End':
+          event.preventDefault();
+          // Jump to last node
+          setSelectedNodeIndex(visibleNodes.length - 1);
+          break;
+
+        default:
+          break;
+      }
+    },
+    [selectedNodeIndex, getVisibleNodes, onNodeClick, onNavigateBack]
+  );
+
+  // Reset selected index when drill-down path changes
+  useEffect(() => {
+    setSelectedNodeIndex(0);
+  }, [drillDownPath]);
 
   useEffect(() => {
     if (!chartRef.current || !data || !echartsData) {
@@ -291,11 +380,15 @@ const TreemapComponent: React.FC<TreemapProps> = ({
     <div
       ref={chartRef}
       data-testid="treemap-node"
+      tabIndex={0}
+      role="application"
+      aria-label="Interactive treemap visualization - use arrow keys to navigate, Enter to select, Escape to go back"
+      onKeyDown={handleKeyDown}
       style={{
         width: typeof width === 'number' ? `${width}px` : width,
         height: typeof height === 'number' ? `${height}px` : height,
       }}
-      className="treemap-container"
+      className="treemap-container focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg"
     />
   );
 };
@@ -309,7 +402,8 @@ export const Treemap = memo(TreemapComponent, (prevProps, nextProps) => {
     prevProps.width === nextProps.width &&
     prevProps.height === nextProps.height &&
     prevProps.onNodeClick === nextProps.onNodeClick &&
-    prevProps.onNodeHover === nextProps.onNodeHover
+    prevProps.onNodeHover === nextProps.onNodeHover &&
+    prevProps.onNavigateBack === nextProps.onNavigateBack
   );
 });
 

@@ -132,6 +132,17 @@ export function AnalysisView() {
   }, [setSelectedFile]);
 
   /**
+   * Handle navigate back (Escape key in treemap)
+   */
+  const handleNavigateBack = useCallback(() => {
+    if (drillDownPath.length > 0) {
+      // Navigate up one level
+      setDrillDownPath(drillDownPath.slice(0, -1));
+      setSelectedFile(null);
+    }
+  }, [drillDownPath, setDrillDownPath, setSelectedFile]);
+
+  /**
    * Handle reset button click
    */
   const handleReset = useCallback(() => {
@@ -396,6 +407,7 @@ export function AnalysisView() {
                   drillDownPath={drillDownPath}
                   onNodeClick={handleNodeClick}
                   onNodeHover={handleNodeHover}
+                  onNavigateBack={handleNavigateBack}
                   width="100%"
                   height="100%"
                 />

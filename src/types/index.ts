@@ -80,6 +80,9 @@ export interface TreemapProps {
   /** Callback fired when a node is hovered */
   onNodeHover?: (node: TreeNode | null) => void;
 
+  /** Callback fired when Escape key is pressed (navigate back) */
+  onNavigateBack?: () => void;
+
   /** Width of the chart (defaults to 100%) */
   width?: string | number;
 
