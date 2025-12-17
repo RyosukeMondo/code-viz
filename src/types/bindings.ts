@@ -51,6 +51,7 @@ export interface TreeNode {
  * Analyzes a repository and returns hierarchical tree structure for visualization
  *
  * @param path - Absolute path to the repository root directory
+ * @param requestId - Optional UUID for correlating frontend and backend logs
  * @returns Promise resolving to the root TreeNode
  * @throws Error if path does not exist, is not a directory, or analysis fails
  *
@@ -58,11 +59,18 @@ export interface TreeNode {
  * ```typescript
  * import { analyzeRepository } from './types/bindings';
  *
- * const tree = await analyzeRepository('/home/user/my-project');
+ * const requestId = crypto.randomUUID();
+ * const tree = await analyzeRepository('/home/user/my-project', requestId);
  * console.log(`Total LOC: ${tree.loc}`);
  * ```
  */
-export async function analyzeRepository(path: string): Promise<TreeNode> {
+export async function analyzeRepository(
+  path: string,
+  requestId?: string
+): Promise<TreeNode> {
   const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<TreeNode>('analyze_repository', { path });
+  return invoke<TreeNode>('analyze_repository', {
+    path,
+    request_id: requestId
+  });
 }

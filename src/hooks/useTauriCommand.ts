@@ -23,6 +23,9 @@ interface TauriCommandState<T> {
   /** Error message (null if no error) */
   error: string | null;
 
+  /** Current request ID (for log correlation) */
+  requestId: string | null;
+
   /** Function to execute the Tauri command */
   execute: (...args: unknown[]) => Promise<void>;
 
@@ -94,6 +97,7 @@ export function useTauriCommand<T = unknown>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
 
   // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
@@ -116,19 +120,42 @@ export function useTauriCommand<T = unknown>(
 
       if (!isMountedRef.current) return;
 
+      // Generate unique request ID for correlation with backend logs
+      const reqId = crypto.randomUUID();
+      setRequestId(reqId);
       setLoading(true);
       setError(null);
+
+      console.log(`[${reqId}] Starting Tauri command: ${command}`, args);
 
       try {
         // Convert args array to args object expected by Tauri
         // For single argument commands, pass the first arg directly
         // For multiple arguments, assume they're passed as an object
-        const invokeArgs =
-          args.length === 0
-            ? undefined
-            : args.length === 1
-            ? (args[0] as Record<string, unknown>)
-            : (args[0] as Record<string, unknown>);
+        let invokeArgs: Record<string, unknown> | undefined;
+
+        if (args.length === 0) {
+          // No arguments, just add request_id
+          invokeArgs = { request_id: reqId };
+        } else if (args.length === 1) {
+          // Single argument - merge with request_id
+          const firstArg = args[0];
+          if (typeof firstArg === 'object' && firstArg !== null) {
+            invokeArgs = { ...firstArg, request_id: reqId } as Record<
+              string,
+              unknown
+            >;
+          } else {
+            // If it's a primitive, wrap it
+            invokeArgs = { value: firstArg, request_id: reqId };
+          }
+        } else {
+          // Multiple arguments - assume first is object
+          invokeArgs = {
+            ...(args[0] as Record<string, unknown>),
+            request_id: reqId,
+          };
+        }
 
         const result = await invoke<T>(command, invokeArgs);
 
@@ -140,6 +167,7 @@ export function useTauriCommand<T = unknown>(
           return;
         }
 
+        console.log(`[${reqId}] Command completed successfully: ${command}`);
         setData(result);
         setLoading(false);
 
@@ -157,6 +185,7 @@ export function useTauriCommand<T = unknown>(
 
         const errorMessage =
           err instanceof Error ? err.message : String(err);
+        console.error(`[${reqId}] Command failed: ${command}`, errorMessage);
         setError(errorMessage);
         setLoading(false);
 
@@ -177,6 +206,7 @@ export function useTauriCommand<T = unknown>(
     setData(null);
     setLoading(false);
     setError(null);
+    setRequestId(null);
   }, []);
 
   // Execute immediately on mount if requested
@@ -201,6 +231,7 @@ export function useTauriCommand<T = unknown>(
     data,
     loading,
     error,
+    requestId,
     execute,
     reset,
   };

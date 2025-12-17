@@ -26,5 +26,8 @@ specta = "2.0.0-rc.20"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
+# Request correlation
+uuid = { version = "1.11", features = ["v4", "serde"] }
+
 [lib]
 crate-type = ["lib"]

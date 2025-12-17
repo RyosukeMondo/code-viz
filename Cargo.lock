@@ -520,6 +520,7 @@ dependencies = [
  "tauri-specta",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
