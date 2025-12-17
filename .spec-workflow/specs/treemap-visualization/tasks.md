@@ -268,7 +268,7 @@
 
 ## Phase 7: Integration & Polish
 
-- [ ] 7.1. Verify CLI-GUI parity
+- [x] 7.1. Verify CLI-GUI parity
   - Files: `tests/integration/cli-gui-parity.test.ts`
   - Run same analysis via CLI (JSON output) and GUI
   - Compare results (LOC totals, file counts, largest files)
