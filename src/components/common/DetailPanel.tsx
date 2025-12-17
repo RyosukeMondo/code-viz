@@ -56,7 +56,7 @@ export function DetailPanel({ node, onClose }: DetailPanelProps) {
   const complexityColor = complexityToColor(node.complexity);
 
   return (
-    <div className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+    <div data-testid="detail-panel" className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-start justify-between">
         <div className="flex-1 min-w-0">
@@ -69,6 +69,7 @@ export function DetailPanel({ node, onClose }: DetailPanelProps) {
         </div>
         <button
           onClick={onClose}
+          data-testid="detail-panel-close"
           className="ml-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           aria-label="Close detail panel"
           title="Close (Esc)"

@@ -262,6 +262,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
   return (
     <div
       ref={chartRef}
+      data-testid="treemap-node"
       style={{
         width: typeof width === 'number' ? `${width}px` : width,
         height: typeof height === 'number' ? `${height}px` : height,

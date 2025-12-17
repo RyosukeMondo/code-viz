@@ -47,6 +47,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ path, onNavigate }) => {
 
   return (
     <nav
+      data-testid="breadcrumb"
       aria-label="Breadcrumb navigation"
       className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300"
     >
@@ -94,6 +95,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ path, onNavigate }) => {
                 type="button"
                 onClick={() => onNavigate(index)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
+                data-testid="breadcrumb-segment"
                 aria-label={`Navigate to ${segment}`}
                 aria-current={index === path.length - 1 ? 'page' : undefined}
                 className={`inline-flex items-center px-3 py-1.5 rounded-md font-medium transition-colors
