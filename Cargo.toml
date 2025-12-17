@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/code-viz-core",
     "crates/code-viz-cli",
+    "src-tauri",
 ]
 
 [workspace.package]

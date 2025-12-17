@@ -29,3 +29,12 @@ target/
 .serena/
 .spec-workflow/
 logs/
+
+# Tauri / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+src-tauri/target/
+src-tauri/WixTools/

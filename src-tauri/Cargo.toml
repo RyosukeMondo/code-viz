@@ -1,0 +1,26 @@
+[package]
+name = "code-viz-gui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Interactive treemap visualization for code analysis"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = ["protocol-asset"] }
+tauri-plugin-shell = "2.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Link to our analysis engine
+code-viz-core = { path = "../crates/code-viz-core" }
+
+[features]
+# Default features for production
+default = ["custom-protocol"]
+# Feature used for development to expose devtools
+custom-protocol = ["tauri/custom-protocol"]
