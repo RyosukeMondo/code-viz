@@ -16,8 +16,11 @@ tauri-plugin-shell = "2.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
 
-# Link to our analysis engine
+# Link to our analysis engine and Tauri wrapper
 code-viz-core = { path = "../crates/code-viz-core" }
+code-viz-tauri = { path = "../crates/code-viz-tauri" }
+tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
+specta = "2.0.0-rc.22"
 
 [features]
 # Default features for production
