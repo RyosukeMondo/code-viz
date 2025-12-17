@@ -394,4 +394,236 @@ mod tests {
         assert_eq!(src.loc, 600);
         assert_eq!(src.children.len(), 3);
     }
+
+    #[test]
+    fn test_mixed_depth_structure() {
+        let files = vec![
+            create_test_file("README.md", 10),
+            create_test_file("src/main.rs", 100),
+            create_test_file("src/utils/helper.rs", 50),
+            create_test_file("src/utils/config.rs", 30),
+            create_test_file("tests/integration/test1.rs", 40),
+        ];
+        let tree = flat_to_hierarchy(files);
+
+        assert_eq!(tree.loc, 230);
+        assert_eq!(tree.children.len(), 3); // README.md, src, tests
+
+        // Verify root level file
+        let readme = tree.children.iter().find(|c| c.name == "README.md").unwrap();
+        assert_eq!(readme.node_type, "file");
+        assert_eq!(readme.loc, 10);
+
+        // Verify nested directories aggregate correctly
+        let src = tree.children.iter().find(|c| c.name == "src").unwrap();
+        assert_eq!(src.loc, 180);
+        assert_eq!(src.children.len(), 2); // main.rs and utils/
+
+        let utils = src.children.iter().find(|c| c.name == "utils").unwrap();
+        assert_eq!(utils.loc, 80);
+        assert_eq!(utils.children.len(), 2);
+    }
+
+    #[test]
+    fn test_special_characters_in_path() {
+        let files = vec![
+            create_test_file("src/my-file.rs", 100),
+            create_test_file("src/file_with_underscore.rs", 200),
+            create_test_file("tests/test-1.rs", 50),
+        ];
+        let tree = flat_to_hierarchy(files);
+
+        assert_eq!(tree.loc, 350);
+
+        let src = tree.children.iter().find(|c| c.name == "src").unwrap();
+        assert_eq!(src.children.len(), 2);
+
+        let file1 = src.children.iter().find(|c| c.name == "my-file.rs");
+        let file2 = src.children.iter().find(|c| c.name == "file_with_underscore.rs");
+
+        assert!(file1.is_some());
+        assert!(file2.is_some());
+    }
+
+    #[test]
+    fn test_files_with_same_name_different_dirs() {
+        let files = vec![
+            create_test_file("src/main.rs", 100),
+            create_test_file("tests/main.rs", 200),
+            create_test_file("examples/main.rs", 300),
+        ];
+        let tree = flat_to_hierarchy(files);
+
+        assert_eq!(tree.loc, 600);
+        assert_eq!(tree.children.len(), 3);
+
+        // Each directory should have its own main.rs with correct LOC
+        let src = tree.children.iter().find(|c| c.name == "src").unwrap();
+        let src_main = &src.children[0];
+        assert_eq!(src_main.name, "main.rs");
+        assert_eq!(src_main.loc, 100);
+
+        let tests = tree.children.iter().find(|c| c.name == "tests").unwrap();
+        let tests_main = &tests.children[0];
+        assert_eq!(tests_main.name, "main.rs");
+        assert_eq!(tests_main.loc, 200);
+
+        let examples = tree.children.iter().find(|c| c.name == "examples").unwrap();
+        let examples_main = &examples.children[0];
+        assert_eq!(examples_main.name, "main.rs");
+        assert_eq!(examples_main.loc, 300);
+    }
+
+    #[test]
+    fn test_very_long_path() {
+        let long_path = "a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/file.rs";
+        let files = vec![create_test_file(long_path, 50)];
+        let tree = flat_to_hierarchy(files);
+
+        assert_eq!(tree.loc, 50);
+        assert_eq!(tree.children.len(), 1);
+
+        // Verify we can traverse the entire depth
+        let mut current = &tree.children[0];
+        let mut depth = 0;
+        while !current.children.is_empty() && current.node_type != "file" {
+            current = &current.children[0];
+            depth += 1;
+        }
+
+        // Should have traversed through all intermediate directories
+        assert!(depth > 20);
+        assert_eq!(current.name, "file.rs");
+        assert_eq!(current.node_type, "file");
+    }
+
+    #[test]
+    fn test_complexity_capping() {
+        // Test that complexity is properly capped at 100
+        let files = vec![
+            create_test_file("huge_file.rs", 10000), // Should cap at 100
+        ];
+        let tree = flat_to_hierarchy(files);
+
+        assert_eq!(tree.loc, 10000);
+        assert_eq!(tree.complexity, 100); // Should be capped
+
+        let file = &tree.children[0];
+        assert_eq!(file.complexity, 100); // Should be capped
+    }
+
+    #[test]
+    fn test_last_modified_aggregation() {
+        use std::time::Duration;
+
+        let now = SystemTime::now();
+        let old = now - Duration::from_secs(86400); // 1 day ago
+        let older = now - Duration::from_secs(172800); // 2 days ago
+
+        let files = vec![
+            FileMetrics {
+                path: PathBuf::from("src/old.rs"),
+                language: "rust".to_string(),
+                loc: 100,
+                size_bytes: 2048,
+                function_count: 5,
+                last_modified: old,
+            },
+            FileMetrics {
+                path: PathBuf::from("src/older.rs"),
+                language: "rust".to_string(),
+                loc: 100,
+                size_bytes: 2048,
+                function_count: 5,
+                last_modified: older,
+            },
+            FileMetrics {
+                path: PathBuf::from("src/newest.rs"),
+                language: "rust".to_string(),
+                loc: 100,
+                size_bytes: 2048,
+                function_count: 5,
+                last_modified: now,
+            },
+        ];
+
+        let tree = flat_to_hierarchy(files);
+
+        // Root should have the most recent timestamp
+        let src = &tree.children[0];
+        assert!(src.last_modified >= now - Duration::from_secs(1)); // Allow for small time differences
+    }
+
+    #[test]
+    fn test_parallel_directory_trees() {
+        let files = vec![
+            create_test_file("frontend/src/main.ts", 100),
+            create_test_file("frontend/src/utils.ts", 50),
+            create_test_file("backend/src/main.rs", 200),
+            create_test_file("backend/src/handler.rs", 150),
+            create_test_file("shared/types.ts", 30),
+        ];
+        let tree = flat_to_hierarchy(files);
+
+        assert_eq!(tree.loc, 530);
+        assert_eq!(tree.children.len(), 3); // frontend, backend, shared
+
+        let frontend = tree.children.iter().find(|c| c.name == "frontend").unwrap();
+        assert_eq!(frontend.loc, 150);
+
+        let backend = tree.children.iter().find(|c| c.name == "backend").unwrap();
+        assert_eq!(backend.loc, 350);
+
+        let shared = tree.children.iter().find(|c| c.name == "shared").unwrap();
+        assert_eq!(shared.loc, 30);
+    }
+
+    #[test]
+    fn test_performance_large_dataset() {
+        use std::time::Instant;
+
+        // Generate 10,000 files to test O(n) complexity
+        let mut files = Vec::new();
+        for i in 0..10_000 {
+            let path = format!("src/module_{}/submodule_{}/file_{}.rs", i / 100, i / 10, i);
+            files.push(create_test_file(&path, 100));
+        }
+
+        let start = Instant::now();
+        let tree = flat_to_hierarchy(files);
+        let duration = start.elapsed();
+
+        // Verify correctness
+        assert_eq!(tree.loc, 1_000_000); // 10,000 files * 100 LOC
+
+        // Performance check: should complete in reasonable time (< 1 second for 10K files)
+        assert!(duration.as_secs() < 1, "Performance test failed: took {:?} for 10K files", duration);
+
+        println!("Performance test: 10,000 files processed in {:?}", duration);
+    }
+
+    #[test]
+    fn test_no_duplicate_children() {
+        // Ensure that the same directory isn't added multiple times as a child
+        let files = vec![
+            create_test_file("src/a.rs", 100),
+            create_test_file("src/b.rs", 200),
+            create_test_file("src/c.rs", 300),
+        ];
+        let tree = flat_to_hierarchy(files);
+
+        // Root should only have one "src" directory
+        assert_eq!(tree.children.len(), 1);
+        assert_eq!(tree.children[0].name, "src");
+
+        // Src should have exactly 3 file children
+        let src = &tree.children[0];
+        assert_eq!(src.children.len(), 3);
+
+        // Verify no duplicate names
+        let names: Vec<&str> = src.children.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"a.rs"));
+        assert!(names.contains(&"b.rs"));
+        assert!(names.contains(&"c.rs"));
+    }
 }
