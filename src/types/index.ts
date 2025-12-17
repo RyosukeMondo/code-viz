@@ -5,6 +5,9 @@
  * and UI-specific interfaces that complement the auto-generated Tauri bindings.
  */
 
+// Import types from bindings for internal use
+import type { TreeNode } from './bindings';
+
 // Re-export all types from bindings for convenient single import
 export type { TreeNode } from './bindings';
 export { analyzeRepository } from './bindings';
