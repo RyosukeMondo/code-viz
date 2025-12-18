@@ -41,6 +41,7 @@ pub struct Symbol {
 
 /// Type of symbol
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub enum SymbolKind {
     /// Regular function declaration
     Function,

@@ -41,4 +41,8 @@ pub struct TreeNode {
 
     /// Last modified timestamp (for cache invalidation and sorting)
     pub last_modified: SystemTime,
+
+    /// Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dead_code_ratio: Option<f64>,
 }

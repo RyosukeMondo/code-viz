@@ -530,6 +530,7 @@ dependencies = [
  "chrono",
  "clap",
  "code-viz-core",
+ "code-viz-dead-code",
  "colored",
  "csv",
  "ctrlc",
@@ -579,6 +580,7 @@ dependencies = [
  "rayon",
  "serde",
  "sled",
+ "specta",
  "tempfile",
  "thiserror 1.0.69",
  "tracing",
@@ -608,6 +610,7 @@ name = "code-viz-tauri"
 version = "0.1.0"
 dependencies = [
  "code-viz-core",
+ "code-viz-dead-code",
  "serde",
  "serde_json",
  "specta",

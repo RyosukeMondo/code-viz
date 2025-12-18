@@ -10,6 +10,7 @@ description = "Tauri wrapper library for code-viz analysis engine"
 [dependencies]
 # Core analysis engine
 code-viz-core = { path = "../code-viz-core" }
+code-viz-dead-code = { path = "../code-viz-dead-code", features = ["specta"] }
 
 # Tauri and IPC
 tauri = { version = "2.0", features = [] }

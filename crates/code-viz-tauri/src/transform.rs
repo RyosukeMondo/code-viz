@@ -134,6 +134,7 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
             node_type: "directory".to_string(),
             children: vec![],
             last_modified: std::time::SystemTime::now(),
+            dead_code_ratio: None,
         };
     }
 
@@ -173,6 +174,7 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
         node_type: "directory".to_string(),
         children: vec![],
         last_modified: std::time::SystemTime::now(),
+        dead_code_ratio: None,
     };
     dir_map.insert(root_node_path.clone(), root_node);
 
@@ -204,6 +206,7 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
             node_type: "file".to_string(),
             children: vec![],
             last_modified: file.last_modified,
+            dead_code_ratio: None,
         };
         file_nodes.push((file_path.clone(), file_node));
 
@@ -257,6 +260,7 @@ fn ensure_parent_directories(
                 node_type: "directory".to_string(),
                 children: vec![],
                 last_modified: std::time::SystemTime::now(),
+                dead_code_ratio: None,
             };
             dir_map.insert(parent_buf.clone(), dir_node);
 
