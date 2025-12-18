@@ -4,6 +4,7 @@ use colored::*;
 use serde_json;
 use std::fmt::Write;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum DeadCodeFormatterError {
     JsonSerializationFailed,
@@ -22,12 +23,14 @@ impl std::fmt::Display for DeadCodeFormatterError {
 impl std::error::Error for DeadCodeFormatterError {}
 
 /// Format dead code result as pretty-printed JSON
+#[allow(dead_code)]
 pub fn format_json(result: &DeadCodeResult) -> Result<String, DeadCodeFormatterError> {
     serde_json::to_string_pretty(result)
         .map_err(|_| DeadCodeFormatterError::JsonSerializationFailed)
 }
 
 /// Format dead code result as human-readable text with colors
+#[allow(dead_code)]
 pub fn format_text(result: &DeadCodeResult) -> Result<String, DeadCodeFormatterError> {
     let mut output = String::new();
     let summary = &result.summary;
@@ -206,6 +209,7 @@ pub fn format_text(result: &DeadCodeResult) -> Result<String, DeadCodeFormatterE
 }
 
 /// Colorize confidence score based on thresholds
+#[allow(dead_code)]
 fn colorize_confidence(confidence: u8) -> String {
     let conf_str = format!("{}%", confidence);
     if confidence >= 90 {
@@ -218,6 +222,7 @@ fn colorize_confidence(confidence: u8) -> String {
 }
 
 /// Format symbol kind as human-readable string
+#[allow(dead_code)]
 fn format_symbol_kind(kind: SymbolKind) -> &'static str {
     match kind {
         SymbolKind::Function => "fn",

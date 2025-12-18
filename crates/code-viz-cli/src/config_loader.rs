@@ -15,7 +15,9 @@ pub enum ConfigError {
 #[derive(Debug, Deserialize, Default)]
 pub struct ConfigFile {
     pub analysis: Option<AnalysisConfigSection>,
+    #[allow(dead_code)]
     pub output: Option<OutputConfigSection>,
+    #[allow(dead_code)]
     pub cache: Option<CacheConfigSection>,
 }
 
@@ -26,11 +28,13 @@ pub struct AnalysisConfigSection {
 
 #[derive(Debug, Deserialize)]
 pub struct OutputConfigSection {
+    #[allow(dead_code)]
     pub format: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct CacheConfigSection {
+    #[allow(dead_code)]
     pub enabled: Option<bool>,
 }
 

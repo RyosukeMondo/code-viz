@@ -115,6 +115,9 @@ fn strip_prefix(path: &Path, prefix: &Path) -> PathBuf {
 ///         size_bytes: 2048,
 ///         function_count: 5,
 ///         last_modified: SystemTime::now(),
+///         dead_function_count: None,
+///         dead_code_loc: None,
+///         dead_code_ratio: None,
 ///     },
 /// ];
 ///
@@ -387,6 +390,9 @@ mod tests {
             size_bytes: 2048,
             function_count: 5,
             last_modified: SystemTime::now(),
+            dead_function_count: None,
+            dead_code_loc: None,
+            dead_code_ratio: None,
         }
     }
 
@@ -637,6 +643,9 @@ mod tests {
                 size_bytes: 2048,
                 function_count: 5,
                 last_modified: old,
+                dead_function_count: None,
+                dead_code_loc: None,
+                dead_code_ratio: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/older.rs"),
@@ -645,6 +654,9 @@ mod tests {
                 size_bytes: 2048,
                 function_count: 5,
                 last_modified: older,
+                dead_function_count: None,
+                dead_code_loc: None,
+                dead_code_ratio: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/newest.rs"),
@@ -653,6 +665,9 @@ mod tests {
                 size_bytes: 2048,
                 function_count: 5,
                 last_modified: now,
+                dead_function_count: None,
+                dead_code_loc: None,
+                dead_code_ratio: None,
             },
         ];
 

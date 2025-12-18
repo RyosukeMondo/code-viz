@@ -248,7 +248,10 @@ impl SymbolGraphCache {
         let current_files: std::collections::HashSet<_> = files.iter().collect();
         for cached_file in cached.file_hashes.keys() {
             if !current_files.contains(cached_file) {
-                tracing::debug!("File removed from analysis, invalidating cache: {:?}", cached_file);
+                tracing::debug!(
+                    "File removed from analysis, invalidating cache: {:?}",
+                    cached_file
+                );
                 let _ = self.db.remove(b"symbol_graph");
                 return Ok(true);
             }
@@ -351,7 +354,9 @@ mod tests {
         let cache = SymbolGraphCache::new(&cache_dir).unwrap();
 
         // Invalidate with no cache should return true (stale)
-        let is_stale = cache.invalidate_if_stale(&[PathBuf::from("test.ts")]).unwrap();
+        let is_stale = cache
+            .invalidate_if_stale(&[PathBuf::from("test.ts")])
+            .unwrap();
         assert!(is_stale);
     }
 

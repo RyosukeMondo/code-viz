@@ -4,7 +4,7 @@ use code_viz_core::{analyze, AnalysisConfig};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use thiserror::Error;
 
@@ -29,16 +29,28 @@ pub enum AnalyzeError {
     DeadCodeFailed(String),
 }
 
-pub fn run(
-    path: PathBuf,
-    format: String,
-    exclude: Vec<String>,
-    verbose: bool,
-    threshold: Option<String>,
-    output: Option<PathBuf>,
-    baseline: Option<PathBuf>,
-    dead_code: bool,
-) -> Result<(), AnalyzeError> {
+pub struct AnalyzeConfig {
+    pub path: PathBuf,
+    pub format: String,
+    pub exclude: Vec<String>,
+    pub verbose: bool,
+    pub threshold: Option<String>,
+    pub output: Option<PathBuf>,
+    pub baseline: Option<PathBuf>,
+    pub dead_code: bool,
+}
+
+pub fn run(config: AnalyzeConfig) -> Result<(), AnalyzeError> {
+    let AnalyzeConfig {
+        path,
+        format,
+        exclude,
+        verbose,
+        threshold,
+        output,
+        baseline,
+        dead_code,
+    } = config;
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
     if verbose {
@@ -193,7 +205,7 @@ fn check_threshold(threshold_str: &str, files: &[code_viz_core::FileMetrics]) ->
 }
 
 fn perform_dead_code_analysis(
-    root: &PathBuf,
+    root: &Path,
     file_metrics: &mut [code_viz_core::FileMetrics],
     exclude_patterns: &[String],
 ) -> Result<(), AnalyzeError> {

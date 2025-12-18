@@ -30,7 +30,7 @@ pub fn run(old_path: PathBuf, new_path: PathBuf) -> Result<(), DiffError> {
     let mut largest_growth_file: Option<PathBuf> = None;
     let mut largest_growth_delta = 0;
 
-    for (path, _) in &new_files {
+    for path in new_files.keys() {
         if !old_files.contains_key(path) {
             files_added += 1;
         } else {

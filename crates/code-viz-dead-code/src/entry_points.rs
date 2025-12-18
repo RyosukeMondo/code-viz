@@ -213,9 +213,15 @@ mod tests {
         let exported_symbol = create_test_symbol("publicApi", index_path.clone(), true);
         let unexported_symbol = create_test_symbol("privateHelper", index_path.clone(), false);
 
-        graph.symbols.insert(exported_symbol.id.clone(), exported_symbol.clone());
-        graph.symbols.insert(unexported_symbol.id.clone(), unexported_symbol);
-        graph.exports.insert(index_path, vec![exported_symbol.id.clone()]);
+        graph
+            .symbols
+            .insert(exported_symbol.id.clone(), exported_symbol.clone());
+        graph
+            .symbols
+            .insert(unexported_symbol.id.clone(), unexported_symbol);
+        graph
+            .exports
+            .insert(index_path, vec![exported_symbol.id.clone()]);
 
         let entry_points = detect_entry_points(&graph);
         // Only the exported symbol should be an entry point
@@ -273,7 +279,9 @@ mod tests {
         let main_symbol = create_test_symbol("main", regular_path.clone(), false);
         let other_symbol = create_test_symbol("helper", regular_path, false);
 
-        graph.symbols.insert(main_symbol.id.clone(), main_symbol.clone());
+        graph
+            .symbols
+            .insert(main_symbol.id.clone(), main_symbol.clone());
         graph.symbols.insert(other_symbol.id.clone(), other_symbol);
 
         let entry_points = detect_entry_points(&graph);
@@ -292,7 +300,9 @@ mod tests {
 
         let lib_path = PathBuf::from("src/lib.rs");
         let exported_symbol = create_test_symbol("public_api", lib_path.clone(), true);
-        graph.symbols.insert(exported_symbol.id.clone(), exported_symbol.clone());
+        graph
+            .symbols
+            .insert(exported_symbol.id.clone(), exported_symbol.clone());
 
         let entry_points = detect_entry_points(&graph);
         assert_eq!(entry_points.len(), 1);
@@ -309,7 +319,9 @@ mod tests {
 
         let index_path = PathBuf::from("src/index.ts");
         let unexported_symbol = create_test_symbol("privateHelper", index_path, false);
-        graph.symbols.insert(unexported_symbol.id.clone(), unexported_symbol);
+        graph
+            .symbols
+            .insert(unexported_symbol.id.clone(), unexported_symbol);
 
         let entry_points = detect_entry_points(&graph);
         // Unexported symbols in entry files are NOT entry points
@@ -326,7 +338,9 @@ mod tests {
 
         let utils_path = PathBuf::from("src/utils.ts");
         let exported_symbol = create_test_symbol("utilFunc", utils_path, true);
-        graph.symbols.insert(exported_symbol.id.clone(), exported_symbol);
+        graph
+            .symbols
+            .insert(exported_symbol.id.clone(), exported_symbol);
 
         let entry_points = detect_entry_points(&graph);
         // Exported symbols in non-entry files are NOT entry points
@@ -345,8 +359,12 @@ mod tests {
         let exported_symbol = create_test_symbol("init", main_path.clone(), true);
 
         // Symbol is both in symbols map and exports
-        graph.symbols.insert(exported_symbol.id.clone(), exported_symbol.clone());
-        graph.exports.insert(main_path, vec![exported_symbol.id.clone()]);
+        graph
+            .symbols
+            .insert(exported_symbol.id.clone(), exported_symbol.clone());
+        graph
+            .exports
+            .insert(main_path, vec![exported_symbol.id.clone()]);
 
         let entry_points = detect_entry_points(&graph);
         // Should not duplicate the same entry point

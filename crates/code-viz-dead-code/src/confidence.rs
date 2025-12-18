@@ -80,7 +80,7 @@ impl ConfidenceCalculator {
         }
 
         // Clamp to 0-100 range
-        score.max(0).min(100) as u8
+        score.clamp(0, 100) as u8
     }
 }
 
@@ -188,7 +188,8 @@ fn check_git_modification(path: &Path, repo_root: &Path) -> bool {
                 // Check if file exists in this commit
                 if tree.get_path(rel_path).is_ok() {
                     // Found the file, check commit time
-                    let commit_time = UNIX_EPOCH + Duration::from_secs(commit.time().seconds() as u64);
+                    let commit_time =
+                        UNIX_EPOCH + Duration::from_secs(commit.time().seconds() as u64);
                     if let Ok(elapsed) = SystemTime::now().duration_since(commit_time) {
                         return elapsed < Duration::from_secs(30 * 24 * 60 * 60);
                     }
@@ -236,11 +237,7 @@ fn could_be_dynamic_import(name: &str) -> bool {
 /// True if symbol appears to be tested
 fn has_test_coverage(symbol: &Symbol, graph: &SymbolGraph) -> bool {
     // Get all test symbols
-    let test_symbols: Vec<&Symbol> = graph
-        .symbols
-        .values()
-        .filter(|s| s.is_test)
-        .collect();
+    let test_symbols: Vec<&Symbol> = graph.symbols.values().filter(|s| s.is_test).collect();
 
     if test_symbols.is_empty() {
         return false;
@@ -256,10 +253,7 @@ fn has_test_coverage(symbol: &Symbol, graph: &SymbolGraph) -> bool {
 
     // Could also check if test file imports the symbol's file
     // But that requires import resolution which we already have in the graph
-    let test_paths: Vec<&PathBuf> = test_symbols
-        .iter()
-        .map(|s| &s.path)
-        .collect();
+    let test_paths: Vec<&PathBuf> = test_symbols.iter().map(|s| &s.path).collect();
 
     // Check if any test file has this symbol in its dependencies
     for test_path in test_paths {
@@ -284,12 +278,7 @@ mod tests {
     use ahash::AHashMap as HashMap;
 
     /// Create a test symbol with given attributes
-    fn create_test_symbol(
-        name: &str,
-        is_exported: bool,
-        is_test: bool,
-        path: &str,
-    ) -> Symbol {
+    fn create_test_symbol(name: &str, is_exported: bool, is_test: bool, path: &str) -> Symbol {
         Symbol {
             id: format!("{}:1", path),
             name: name.to_string(),
@@ -324,7 +313,10 @@ mod tests {
         let calculator = ConfidenceCalculator::new(graph);
 
         let score = calculator.calculate(&symbol);
-        assert_eq!(score, 100, "Unexported unused function should have 100 confidence");
+        assert_eq!(
+            score, 100,
+            "Unexported unused function should have 100 confidence"
+        );
     }
 
     #[test]
@@ -334,21 +326,24 @@ mod tests {
         let calculator = ConfidenceCalculator::new(graph);
 
         let score = calculator.calculate(&symbol);
-        assert_eq!(score, 70, "Exported function should reduce confidence by 30");
+        assert_eq!(
+            score, 70,
+            "Exported function should reduce confidence by 30"
+        );
     }
 
     #[test]
     fn test_dynamic_import_pattern_reduces_confidence() {
         // Test various dynamic import patterns
         let patterns = vec![
-            ("my_handler", 75),        // ends with _handler
-            ("handler_foo", 75),       // starts with handler_
-            ("foo_plugin", 75),        // ends with _plugin
-            ("plugin_bar", 75),        // starts with plugin_
-            ("data_loader", 75),       // ends with _loader
-            ("middleware_auth", 75),   // starts with middleware_
-            ("onClick_hook", 75),      // ends with _hook
-            ("regularFunction", 100),  // no pattern match
+            ("my_handler", 75),       // ends with _handler
+            ("handler_foo", 75),      // starts with handler_
+            ("foo_plugin", 75),       // ends with _plugin
+            ("plugin_bar", 75),       // starts with plugin_
+            ("data_loader", 75),      // ends with _loader
+            ("middleware_auth", 75),  // starts with middleware_
+            ("onClick_hook", 75),     // ends with _hook
+            ("regularFunction", 100), // no pattern match
         ];
 
         for (name, expected_score) in patterns {
@@ -393,14 +388,18 @@ mod tests {
     #[test]
     fn test_has_test_coverage_by_name() {
         let symbol = create_test_symbol("myFunction", false, false, "/src/utils.ts");
-        let test_symbol = create_test_symbol("test_myFunction", false, true, "/tests/utils.test.ts");
+        let test_symbol =
+            create_test_symbol("test_myFunction", false, true, "/tests/utils.test.ts");
 
         let graph = create_test_graph(vec![symbol.clone(), test_symbol]);
         let calculator = ConfidenceCalculator::new(graph);
 
         let score = calculator.calculate(&symbol);
         // Base 100 - 15 (test coverage) = 85
-        assert_eq!(score, 85, "Function with test coverage should reduce confidence by 15");
+        assert_eq!(
+            score, 85,
+            "Function with test coverage should reduce confidence by 15"
+        );
     }
 
     #[test]
@@ -472,7 +471,10 @@ mod tests {
         // Expected: 100 - 20 (recently modified) = 80
         // Note: Without git-integration feature, this falls back to file mtime check
         // which should detect the file was just created (within 30 days)
-        assert_eq!(score, 80, "Recently created file should reduce confidence by 20");
+        assert_eq!(
+            score, 80,
+            "Recently created file should reduce confidence by 20"
+        );
     }
 
     #[test]
@@ -488,18 +490,10 @@ mod tests {
         writeln!(file, "export function exported_handler() {{}}").unwrap();
         drop(file);
 
-        let symbol = create_test_symbol(
-            "exported_handler",
-            true,
-            false,
-            file_path.to_str().unwrap(),
-        );
-        let test_symbol = create_test_symbol(
-            "test_exported_handler",
-            false,
-            true,
-            "/tests/test.ts",
-        );
+        let symbol =
+            create_test_symbol("exported_handler", true, false, file_path.to_str().unwrap());
+        let test_symbol =
+            create_test_symbol("test_exported_handler", false, true, "/tests/test.ts");
 
         let graph = create_test_graph(vec![symbol.clone(), test_symbol]);
         let calculator = ConfidenceCalculator::new(graph);
@@ -531,18 +525,10 @@ mod tests {
         // - recent modification: -20
         // - has test coverage: -15
         // Total: -90, should clamp to 0 minimum
-        let symbol = create_test_symbol(
-            "exported_handler",
-            true,
-            false,
-            file_path.to_str().unwrap(),
-        );
-        let test_symbol = create_test_symbol(
-            "test_exported_handler",
-            false,
-            true,
-            "/tests/test.ts",
-        );
+        let symbol =
+            create_test_symbol("exported_handler", true, false, file_path.to_str().unwrap());
+        let test_symbol =
+            create_test_symbol("test_exported_handler", false, true, "/tests/test.ts");
 
         let graph = create_test_graph(vec![symbol.clone(), test_symbol]);
         let calculator = ConfidenceCalculator::new(graph);

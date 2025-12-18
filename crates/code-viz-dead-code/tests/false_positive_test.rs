@@ -150,10 +150,8 @@ fn validate_project(
 
     for file_dead in &result.files {
         for dead_symbol in &file_dead.dead_code {
-            let symbol_info = SymbolInfo::new(
-                &dead_symbol.symbol,
-                &file_dead.path.to_string_lossy(),
-            );
+            let symbol_info =
+                SymbolInfo::new(&dead_symbol.symbol, &file_dead.path.to_string_lossy());
 
             if dead_symbol.confidence > 80 {
                 high_conf_detected.push(symbol_info.clone());
@@ -290,7 +288,10 @@ fn test_false_positive_rate_validation() {
     println!("Total False Positives: {}", total_fp);
     println!("Total False Negatives: {}", total_fn);
     println!("Total High-Confidence Detections: {}", total_high_conf);
-    println!("\n🎯 OVERALL FALSE POSITIVE RATE: {:.2}%", overall_fp_rate * 100.0);
+    println!(
+        "\n🎯 OVERALL FALSE POSITIVE RATE: {:.2}%",
+        overall_fp_rate * 100.0
+    );
     println!("🎯 TARGET: <5.00%\n");
 
     // Assert that false positive rate is below 5%
@@ -301,7 +302,10 @@ fn test_false_positive_rate_validation() {
     );
 
     println!("✅ PRIMARY VALIDATION CHECK PASSED!");
-    println!("  False Positive Rate: {:.2}% < 5.00% ✓\n", overall_fp_rate * 100.0);
+    println!(
+        "  False Positive Rate: {:.2}% < 5.00% ✓\n",
+        overall_fp_rate * 100.0
+    );
 
     // Additional quality checks (warnings only, not failures)
     println!("📋 Additional Metrics:");
@@ -317,14 +321,20 @@ fn test_false_positive_rate_validation() {
     // Check for low confidence detections (proper uncertainty handling)
     let total_low_conf: usize = all_results.iter().map(|r| r.correct_low_confidence).sum();
     if total_low_conf > 0 {
-        println!("  ✓ Low-confidence detections: {} (proper uncertainty handling)", total_low_conf);
+        println!(
+            "  ✓ Low-confidence detections: {} (proper uncertainty handling)",
+            total_low_conf
+        );
     } else {
         println!("  ⚠️  Warning: No low-confidence detections - all decisions were binary");
     }
 
     // False negatives are acceptable (conservative is better than aggressive)
     if total_fn > 0 {
-        println!("  ℹ️  Note: {} false negatives (conservative behavior - acceptable)", total_fn);
+        println!(
+            "  ℹ️  Note: {} false negatives (conservative behavior - acceptable)",
+            total_fn
+        );
     }
 
     println!("\n✅ False Positive Rate Validation PASSED!");
@@ -379,7 +389,10 @@ fn test_project3_library_api() {
 
     // Check for low-confidence detections (exported symbols flagged properly)
     if result.correct_low_confidence > 0 {
-        println!("  ✓ Properly flagged {} exported symbols with low confidence", result.correct_low_confidence);
+        println!(
+            "  ✓ Properly flagged {} exported symbols with low confidence",
+            result.correct_low_confidence
+        );
     }
 
     // Note: If internalHelper isn't detected, that's okay - conservative behavior
@@ -427,7 +440,10 @@ fn test_confidence_scoring() {
 
     // Internal unused symbols should have high confidence if detected
     if let Some(conf) = internal_symbol_confidence {
-        println!("  ℹ️  Internal symbol (internalHelper) confidence: {}", conf);
+        println!(
+            "  ℹ️  Internal symbol (internalHelper) confidence: {}",
+            conf
+        );
         if conf >= 80 {
             println!("  ✓ High confidence for internal symbol (>= 80) - GOOD");
         } else {
@@ -438,9 +454,14 @@ fn test_confidence_scoring() {
     }
 
     // The key test: if both are detected, exported should have lower confidence
-    if let (Some(exp_conf), Some(int_conf)) = (exported_symbol_confidence, internal_symbol_confidence) {
+    if let (Some(exp_conf), Some(int_conf)) =
+        (exported_symbol_confidence, internal_symbol_confidence)
+    {
         if exp_conf < int_conf {
-            println!("  ✓ Confidence scoring working: exported ({}) < internal ({})", exp_conf, int_conf);
+            println!(
+                "  ✓ Confidence scoring working: exported ({}) < internal ({})",
+                exp_conf, int_conf
+            );
         }
     }
 

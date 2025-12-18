@@ -32,6 +32,9 @@ mod tests {
                 size_bytes: 1024,
                 function_count: 5,
                 last_modified: SystemTime::now(),
+                dead_function_count: None,
+                dead_code_loc: None,
+                dead_code_ratio: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/lib.rs"),
@@ -40,6 +43,9 @@ mod tests {
                 size_bytes: 512,
                 function_count: 2,
                 last_modified: SystemTime::now(),
+                dead_function_count: None,
+                dead_code_loc: None,
+                dead_code_ratio: None,
             },
         ];
 

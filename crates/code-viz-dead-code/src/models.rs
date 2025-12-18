@@ -95,7 +95,8 @@ impl DeadCodeResult {
         let mut total_dead_loc = 0;
 
         for file in &self.files {
-            let filtered_symbols: Vec<DeadSymbol> = file.dead_code
+            let filtered_symbols: Vec<DeadSymbol> = file
+                .dead_code
                 .iter()
                 .filter(|symbol| symbol.confidence >= min_confidence)
                 .cloned()
@@ -127,7 +128,8 @@ impl DeadCodeResult {
 
         // Recalculate ratio based on original total
         let dead_code_ratio = if self.summary.total_dead_loc > 0 {
-            total_dead_loc as f64 / self.summary.total_dead_loc as f64 * self.summary.dead_code_ratio
+            total_dead_loc as f64 / self.summary.total_dead_loc as f64
+                * self.summary.dead_code_ratio
         } else {
             0.0
         };

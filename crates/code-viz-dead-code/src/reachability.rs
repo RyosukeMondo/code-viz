@@ -52,7 +52,10 @@ impl ReachabilityAnalyzer {
     ///
     /// # Errors
     /// Returns error if no entry points provided
-    pub fn analyze(&mut self, entry_points: Vec<SymbolId>) -> Result<HashSet<SymbolId>, ReachabilityError> {
+    pub fn analyze(
+        &mut self,
+        entry_points: Vec<SymbolId>,
+    ) -> Result<HashSet<SymbolId>, ReachabilityError> {
         if entry_points.is_empty() {
             return Err(ReachabilityError::NoEntryPoints);
         }
@@ -190,7 +193,9 @@ mod tests {
 
         // Start from A (entry point)
         let entry_points = vec!["A".to_string()];
-        let reachable = analyzer.analyze(entry_points).expect("Analysis should succeed");
+        let reachable = analyzer
+            .analyze(entry_points)
+            .expect("Analysis should succeed");
 
         // A, B, C should be reachable
         assert!(reachable.contains("A"), "A should be reachable");
@@ -200,7 +205,11 @@ mod tests {
         // D should not be reachable
         assert!(!reachable.contains("D"), "D should not be reachable");
 
-        assert_eq!(reachable.len(), 3, "Should have exactly 3 reachable symbols");
+        assert_eq!(
+            reachable.len(),
+            3,
+            "Should have exactly 3 reachable symbols"
+        );
     }
 
     #[test]
@@ -228,10 +237,16 @@ mod tests {
 
         // Start from A
         let entry_points = vec!["A".to_string()];
-        let reachable = analyzer.analyze(entry_points).expect("Analysis should succeed");
+        let reachable = analyzer
+            .analyze(entry_points)
+            .expect("Analysis should succeed");
 
         // All three should be reachable (circular is ok)
-        assert_eq!(reachable.len(), 3, "All symbols in circular dependency should be reachable");
+        assert_eq!(
+            reachable.len(),
+            3,
+            "All symbols in circular dependency should be reachable"
+        );
         assert!(reachable.contains("A"));
         assert!(reachable.contains("B"));
         assert!(reachable.contains("C"));
@@ -244,7 +259,9 @@ mod tests {
 
         // Start from A
         let entry_points = vec!["A".to_string()];
-        let reachable = analyzer.analyze(entry_points).expect("Analysis should succeed");
+        let reachable = analyzer
+            .analyze(entry_points)
+            .expect("Analysis should succeed");
 
         // Identify dead code
         let dead = identify_dead_code(&graph, &reachable);
@@ -265,8 +282,14 @@ mod tests {
         // Chain 1: Entry1 -> A -> B
         // Chain 2: Entry2 -> C -> D
         // E is isolated (dead)
-        symbols.insert("Entry1".to_string(), create_symbol("Entry1", "main1", "main1.ts"));
-        symbols.insert("Entry2".to_string(), create_symbol("Entry2", "main2", "main2.ts"));
+        symbols.insert(
+            "Entry1".to_string(),
+            create_symbol("Entry1", "main1", "main1.ts"),
+        );
+        symbols.insert(
+            "Entry2".to_string(),
+            create_symbol("Entry2", "main2", "main2.ts"),
+        );
         symbols.insert("A".to_string(), create_symbol("A", "funcA", "a.ts"));
         symbols.insert("B".to_string(), create_symbol("B", "funcB", "b.ts"));
         symbols.insert("C".to_string(), create_symbol("C", "funcC", "c.ts"));
@@ -288,7 +311,9 @@ mod tests {
 
         // Multiple entry points
         let entry_points = vec!["Entry1".to_string(), "Entry2".to_string()];
-        let reachable = analyzer.analyze(entry_points).expect("Analysis should succeed");
+        let reachable = analyzer
+            .analyze(entry_points)
+            .expect("Analysis should succeed");
 
         // All except E should be reachable
         assert_eq!(reachable.len(), 6, "Should have 6 reachable symbols");
@@ -315,7 +340,10 @@ mod tests {
         let entry_points = vec![];
         let result = analyzer.analyze(entry_points);
 
-        assert!(result.is_err(), "Should return error for empty entry points");
+        assert!(
+            result.is_err(),
+            "Should return error for empty entry points"
+        );
         match result {
             Err(ReachabilityError::NoEntryPoints) => {
                 // Expected error
@@ -331,12 +359,16 @@ mod tests {
 
         // First analysis
         let entry_points1 = vec!["A".to_string()];
-        let reachable1 = analyzer.analyze(entry_points1).expect("First analysis should succeed");
+        let reachable1 = analyzer
+            .analyze(entry_points1)
+            .expect("First analysis should succeed");
         assert_eq!(reachable1.len(), 3);
 
         // Second analysis should clear previous state
         let entry_points2 = vec!["D".to_string()];
-        let reachable2 = analyzer.analyze(entry_points2).expect("Second analysis should succeed");
+        let reachable2 = analyzer
+            .analyze(entry_points2)
+            .expect("Second analysis should succeed");
 
         // Only D should be reachable now
         assert_eq!(reachable2.len(), 1);
@@ -355,10 +387,16 @@ mod tests {
 
         // Even with entry point, should handle gracefully
         let entry_points = vec!["NonExistent".to_string()];
-        let reachable = analyzer.analyze(entry_points).expect("Analysis should succeed");
+        let reachable = analyzer
+            .analyze(entry_points)
+            .expect("Analysis should succeed");
 
         // No symbols should be reachable (entry point doesn't exist)
-        assert_eq!(reachable.len(), 0, "No symbols should be reachable in empty graph");
+        assert_eq!(
+            reachable.len(),
+            0,
+            "No symbols should be reachable in empty graph"
+        );
 
         // No dead code either
         let dead = identify_dead_code(&graph, &reachable);
@@ -372,7 +410,10 @@ mod tests {
         let exports = HashMap::new();
 
         // Single symbol with no dependencies
-        symbols.insert("Isolated".to_string(), create_symbol("Isolated", "isolated", "isolated.ts"));
+        symbols.insert(
+            "Isolated".to_string(),
+            create_symbol("Isolated", "isolated", "isolated.ts"),
+        );
 
         let graph = SymbolGraph {
             symbols,
@@ -384,7 +425,9 @@ mod tests {
 
         // If Isolated is an entry point, it should be reachable
         let entry_points = vec!["Isolated".to_string()];
-        let reachable = analyzer.analyze(entry_points).expect("Analysis should succeed");
+        let reachable = analyzer
+            .analyze(entry_points)
+            .expect("Analysis should succeed");
 
         assert_eq!(reachable.len(), 1);
         assert!(reachable.contains("Isolated"));

@@ -60,7 +60,7 @@ pub fn run(
     // Format output
     let formatted_output = match format.as_str() {
         "json" => format_json(&filtered_result)?,
-        "text" | _ => format_text(&filtered_result),
+        _ => format_text(&filtered_result), // Default to text
     };
 
     // Write output
@@ -126,7 +126,7 @@ fn check_threshold(
 
 fn format_json(result: &code_viz_dead_code::DeadCodeResult) -> Result<String, DeadCodeError> {
     serde_json::to_string_pretty(result)
-        .map_err(|e| DeadCodeError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))
+        .map_err(|e| DeadCodeError::IoError(std::io::Error::other(e)))
 }
 
 fn format_text(result: &code_viz_dead_code::DeadCodeResult) -> String {

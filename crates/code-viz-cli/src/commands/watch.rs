@@ -216,7 +216,7 @@ fn print_output(result: &AnalysisResult, format: &str) -> Result<(), WatchError>
         // "print updated metrics ... if --format json ... else print '[timestamp] path: X LOC'"
         // So for text mode, we don't print full summary every time, just the update line.
         // Initial analysis prints full summary.
-        if result.files.len() > 0 { // Check if initial call
+        if !result.files.is_empty() { // Check if initial call
              // Actually `run` calls `print_output` for initial result.
              // If format is text, we want full summary.
              // But inside loop, we handle incremental prints manually.

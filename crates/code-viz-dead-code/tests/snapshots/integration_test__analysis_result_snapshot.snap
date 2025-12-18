@@ -1,0 +1,68 @@
+---
+source: crates/code-viz-dead-code/tests/integration_test.rs
+expression: snapshot_data
+---
+{
+  "dead_symbols": [
+    [
+      "circular-a.ts",
+      [
+        "functionA",
+        "helperA"
+      ]
+    ],
+    [
+      "circular-b.ts",
+      [
+        "functionB",
+        "helperB"
+      ]
+    ],
+    [
+      "dead.ts",
+      [
+        "unusedExportedFunction",
+        "UnusedClass",
+        "constructor",
+        "getValue",
+        "deadAsyncFunction",
+        "unusedDefault"
+      ]
+    ],
+    [
+      "internal.ts",
+      [
+        "internalUsedHelper",
+        "completelyUnused",
+        "anotherUnusedFunction"
+      ]
+    ],
+    [
+      "main.ts",
+      [
+        "setupApp"
+      ]
+    ],
+    [
+      "used.ts",
+      [
+        "internalHelper"
+      ]
+    ],
+    [
+      "helper.ts",
+      [
+        "helperForDeadCode",
+        "unusedUtility",
+        "privateUnusedHelper"
+      ]
+    ]
+  ],
+  "file_count": 7,
+  "summary": {
+    "dead_classes": 1,
+    "dead_functions": 17,
+    "files_with_dead_code": 7,
+    "total_files": 7
+  }
+}

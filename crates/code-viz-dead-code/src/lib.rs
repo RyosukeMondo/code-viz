@@ -31,26 +31,24 @@
 
 #![allow(dead_code)]
 
-pub mod symbol_graph;
-pub mod reachability;
+pub mod cache;
 pub mod confidence;
 pub mod entry_points;
-pub mod cache;
 pub mod models;
+pub mod reachability;
+pub mod symbol_graph;
 
 // Re-export main types for convenience
-pub use models::{
-    DeadCodeResult, DeadCodeSummary, FileDeadCode, DeadSymbol,
-};
+pub use models::{DeadCodeResult, DeadCodeSummary, DeadSymbol, FileDeadCode};
 
-pub use symbol_graph::{SymbolGraph, SymbolGraphBuilder, GraphError};
-pub use reachability::{ReachabilityAnalyzer, ReachabilityError};
+pub use cache::{CacheError, SymbolGraphCache};
 pub use confidence::ConfidenceCalculator;
 pub use entry_points::detect_entry_points;
-pub use cache::{SymbolGraphCache, CacheError};
+pub use reachability::{ReachabilityAnalyzer, ReachabilityError};
+pub use symbol_graph::{GraphError, SymbolGraph, SymbolGraphBuilder};
 
-use std::path::{Path, PathBuf};
 use ahash::AHashMap as HashMap;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Configuration options for dead code analysis
@@ -229,7 +227,9 @@ pub fn analyze_dead_code(
         total_dead_loc += loc;
 
         match symbol.kind {
-            models::SymbolKind::Function | models::SymbolKind::ArrowFunction | models::SymbolKind::Method => {
+            models::SymbolKind::Function
+            | models::SymbolKind::ArrowFunction
+            | models::SymbolKind::Method => {
                 dead_functions += 1;
             }
             models::SymbolKind::Class => {
@@ -245,12 +245,13 @@ pub fn analyze_dead_code(
             line_end: symbol.line_end,
             loc,
             confidence,
-            reason: format!("Unreachable from entry points"),
+            reason: "Unreachable from entry points".to_string(),
             last_modified: None,
         };
 
-        files_map.entry(symbol.path.clone())
-            .or_insert_with(Vec::new)
+        files_map
+            .entry(symbol.path.clone())
+            .or_default()
             .push(dead_symbol);
     }
 
@@ -264,7 +265,9 @@ pub fn analyze_dead_code(
     files.sort_by(|a, b| a.path.cmp(&b.path));
 
     // Calculate total LOC (approximate by counting lines in all symbols)
-    let total_loc: usize = graph.symbols.values()
+    let total_loc: usize = graph
+        .symbols
+        .values()
         .map(|s| s.line_end.saturating_sub(s.line_start) + 1)
         .sum();
 
@@ -304,7 +307,9 @@ fn load_or_build_graph(
     config: &AnalysisConfig,
     root_path: &Path,
 ) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
-    let cache_dir = config.cache_dir.clone()
+    let cache_dir = config
+        .cache_dir
+        .clone()
         .unwrap_or_else(|| root_path.join(".code-viz").join("cache"));
 
     let cache = cache::SymbolGraphCache::new(&cache_dir)?;
@@ -332,9 +337,7 @@ fn load_or_build_graph(
 
 /// Build symbol graph from files using parallel processing
 #[tracing::instrument(skip(files))]
-fn build_graph_from_files(
-    files: &[PathBuf],
-) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
+fn build_graph_from_files(files: &[PathBuf]) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
     use rayon::prelude::*;
 
     // Read all files in parallel
@@ -386,7 +389,8 @@ function main() {
 
 main();
 "#,
-        ).unwrap();
+        )
+        .unwrap();
 
         // Create used.ts (partially used)
         fs::write(
@@ -400,7 +404,8 @@ export function deadFunction() {
     console.log('I am never called');
 }
 "#,
-        ).unwrap();
+        )
+        .unwrap();
 
         // Create dead.ts (completely unused)
         fs::write(
@@ -416,20 +421,30 @@ export class UnusedClass {
     }
 }
 "#,
-        ).unwrap();
+        )
+        .unwrap();
 
         // Run analysis
         let result = analyze_dead_code(&src_dir, None).unwrap();
 
         // Verify results
         assert!(result.summary.total_files > 0, "Should analyze files");
-        assert!(result.summary.files_with_dead_code > 0, "Should find dead code");
-        assert!(result.summary.dead_functions >= 2, "Should find at least 2 dead functions");
+        assert!(
+            result.summary.files_with_dead_code > 0,
+            "Should find dead code"
+        );
+        assert!(
+            result.summary.dead_functions >= 2,
+            "Should find at least 2 dead functions"
+        );
 
         // Print results for debugging
         eprintln!("Dead functions: {}", result.summary.dead_functions);
         eprintln!("Dead classes: {}", result.summary.dead_classes);
-        eprintln!("Files with dead code: {}", result.summary.files_with_dead_code);
+        eprintln!(
+            "Files with dead code: {}",
+            result.summary.files_with_dead_code
+        );
     }
 
     #[test]
@@ -443,33 +458,31 @@ export class UnusedClass {
                 total_dead_loc: 30,
                 dead_code_ratio: 0.5,
             },
-            files: vec![
-                FileDeadCode {
-                    path: PathBuf::from("test.ts"),
-                    dead_code: vec![
-                        DeadSymbol {
-                            symbol: "highConfidence".to_string(),
-                            kind: models::SymbolKind::Function,
-                            line_start: 1,
-                            line_end: 10,
-                            loc: 10,
-                            confidence: 95,
-                            reason: "Test".to_string(),
-                            last_modified: None,
-                        },
-                        DeadSymbol {
-                            symbol: "lowConfidence".to_string(),
-                            kind: models::SymbolKind::Function,
-                            line_start: 11,
-                            line_end: 20,
-                            loc: 10,
-                            confidence: 50,
-                            reason: "Test".to_string(),
-                            last_modified: None,
-                        },
-                    ],
-                },
-            ],
+            files: vec![FileDeadCode {
+                path: PathBuf::from("test.ts"),
+                dead_code: vec![
+                    DeadSymbol {
+                        symbol: "highConfidence".to_string(),
+                        kind: models::SymbolKind::Function,
+                        line_start: 1,
+                        line_end: 10,
+                        loc: 10,
+                        confidence: 95,
+                        reason: "Test".to_string(),
+                        last_modified: None,
+                    },
+                    DeadSymbol {
+                        symbol: "lowConfidence".to_string(),
+                        kind: models::SymbolKind::Function,
+                        line_start: 11,
+                        line_end: 20,
+                        loc: 10,
+                        confidence: 50,
+                        reason: "Test".to_string(),
+                        last_modified: None,
+                    },
+                ],
+            }],
         };
 
         let filtered = result.filter_by_confidence(80);

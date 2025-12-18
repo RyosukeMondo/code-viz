@@ -5,8 +5,8 @@
 //! import/export relationships.
 
 use crate::models::{Symbol, SymbolId, SymbolKind};
-use code_viz_core::parser::LanguageParser;
 use ahash::AHashMap as HashMap;
+use code_viz_core::parser::LanguageParser;
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -160,7 +160,10 @@ fn extract_symbol_name(node: &tree_sitter::Node, source: &str, kind: &str) -> St
                     let mut child_cursor = child.walk();
                     for subchild in child.children(&mut child_cursor) {
                         if subchild.kind() == "identifier" {
-                            return subchild.utf8_text(source.as_bytes()).unwrap_or("").to_string();
+                            return subchild
+                                .utf8_text(source.as_bytes())
+                                .unwrap_or("")
+                                .to_string();
                         }
                     }
                 }
@@ -242,8 +245,11 @@ fn resolve_import_path(
     let import_source = import_source.trim_matches(|c| c == '"' || c == '\'');
 
     // Skip node_modules and package imports (e.g., "react", "lodash")
-    if !import_source.starts_with('.') && !import_source.starts_with('/')
-        && !import_source.starts_with("@/") && !import_source.starts_with("~/") {
+    if !import_source.starts_with('.')
+        && !import_source.starts_with('/')
+        && !import_source.starts_with("@/")
+        && !import_source.starts_with("~/")
+    {
         return None;
     }
 
@@ -430,7 +436,10 @@ impl SymbolGraphBuilder {
     ///
     /// # Returns
     /// Complete symbol graph with all relationships
-    pub fn build_graph(&mut self, files: Vec<(PathBuf, String)>) -> Result<SymbolGraph, GraphError> {
+    pub fn build_graph(
+        &mut self,
+        files: Vec<(PathBuf, String)>,
+    ) -> Result<SymbolGraph, GraphError> {
         use std::sync::Mutex;
 
         // Pre-allocate capacity more accurately (estimate 20 symbols per file)
@@ -438,19 +447,20 @@ impl SymbolGraphBuilder {
         let estimated_symbols = file_count * 20;
 
         // Build a map of available files for import resolution
-        let available_files: HashMap<PathBuf, bool> = files.iter()
-            .map(|(path, _)| (path.clone(), true))
-            .collect();
+        let available_files: HashMap<PathBuf, bool> =
+            files.iter().map(|(path, _)| (path.clone(), true)).collect();
 
         // Use thread-safe containers for parallel processing
         let all_symbols = Mutex::new(HashMap::with_capacity(estimated_symbols));
         let exports = Mutex::new(HashMap::with_capacity(file_count));
 
         // First pass: Extract all symbols from all files IN PARALLEL
-        let symbol_results: Vec<Result<_, GraphError>> = files.par_iter()
+        let symbol_results: Vec<Result<_, GraphError>> = files
+            .par_iter()
             .map(|(file_path, source)| {
                 // Determine the parser based on file extension
-                let parser: Box<dyn LanguageParser> = if file_path.extension()
+                let parser: Box<dyn LanguageParser> = if file_path
+                    .extension()
                     .and_then(|s| s.to_str())
                     .map(|s| s == "ts" || s == "tsx")
                     .unwrap_or(false)
@@ -498,9 +508,11 @@ impl SymbolGraphBuilder {
         // Second pass: Build import relationships IN PARALLEL
         let imports = Mutex::new(HashMap::with_capacity(estimated_symbols));
 
-        let import_results: Vec<Result<_, GraphError>> = files.par_iter()
+        let import_results: Vec<Result<_, GraphError>> = files
+            .par_iter()
             .map(|(file_path, source)| {
-                let parser: Box<dyn LanguageParser> = if file_path.extension()
+                let parser: Box<dyn LanguageParser> = if file_path
+                    .extension()
                     .and_then(|s| s.to_str())
                     .map(|s| s == "ts" || s == "tsx")
                     .unwrap_or(false)
@@ -519,15 +531,14 @@ impl SymbolGraphBuilder {
 
                 // Resolve import paths to actual files
                 for import_source in import_sources {
-                    if let Some(resolved_path) = resolve_import_path(
-                        file_path,
-                        &import_source,
-                        &available_files,
-                    ) {
+                    if let Some(resolved_path) =
+                        resolve_import_path(file_path, &import_source, &available_files)
+                    {
                         // Find exported symbols from the imported file
                         if let Some(exported_symbols) = exports.get(&resolved_path) {
                             // Get all symbols in the current file that could depend on these imports
-                            let file_symbols: Vec<SymbolId> = all_symbols.values()
+                            let file_symbols: Vec<SymbolId> = all_symbols
+                                .values()
                                 .filter(|s| s.path == *file_path)
                                 .map(|s| s.id.clone())
                                 .collect();
@@ -600,8 +611,12 @@ mod tests {
         let symbols = builder.extract_symbols(path, source, &parser).unwrap();
 
         assert_eq!(symbols.len(), 2);
-        assert!(symbols.iter().any(|s| s.name == "regularFunction" && s.kind == SymbolKind::Function));
-        assert!(symbols.iter().any(|s| s.name == "arrowFunc" && s.kind == SymbolKind::ArrowFunction));
+        assert!(symbols
+            .iter()
+            .any(|s| s.name == "regularFunction" && s.kind == SymbolKind::Function));
+        assert!(symbols
+            .iter()
+            .any(|s| s.name == "arrowFunc" && s.kind == SymbolKind::ArrowFunction));
     }
 
     #[test]
@@ -624,8 +639,12 @@ mod tests {
         let symbols = builder.extract_symbols(path, source, &parser).unwrap();
 
         assert_eq!(symbols.len(), 2);
-        assert!(symbols.iter().any(|s| s.name == "MyClass" && s.kind == SymbolKind::Class));
-        assert!(symbols.iter().any(|s| s.name == "myMethod" && s.kind == SymbolKind::Method));
+        assert!(symbols
+            .iter()
+            .any(|s| s.name == "MyClass" && s.kind == SymbolKind::Class));
+        assert!(symbols
+            .iter()
+            .any(|s| s.name == "myMethod" && s.kind == SymbolKind::Method));
     }
 
     #[test]
@@ -753,7 +772,8 @@ const second = () => {
                 export function helper() {
                     return 42;
                 }
-                "#.to_string(),
+                "#
+                .to_string(),
             ),
             (
                 PathBuf::from("src/main.ts"),
@@ -763,7 +783,8 @@ const second = () => {
                 function main() {
                     helper();
                 }
-                "#.to_string(),
+                "#
+                .to_string(),
             ),
         ];
 
@@ -776,8 +797,7 @@ const second = () => {
         assert!(graph.exports.contains_key(&PathBuf::from("src/utils.ts")));
 
         // Check that helper function was found
-        let helper_symbol = graph.symbols.values()
-            .find(|s| s.name == "helper");
+        let helper_symbol = graph.symbols.values().find(|s| s.name == "helper");
         assert!(helper_symbol.is_some());
     }
 
@@ -790,7 +810,8 @@ const second = () => {
                 PathBuf::from("a.ts"),
                 r#"
                 export function funcA() {}
-                "#.to_string(),
+                "#
+                .to_string(),
             ),
             (
                 PathBuf::from("b.ts"),
@@ -799,7 +820,8 @@ const second = () => {
                 export function funcB() {
                     funcA();
                 }
-                "#.to_string(),
+                "#
+                .to_string(),
             ),
             (
                 PathBuf::from("c.ts"),
@@ -808,7 +830,8 @@ const second = () => {
                 function funcC() {
                     funcB();
                 }
-                "#.to_string(),
+                "#
+                .to_string(),
             ),
         ];
 
@@ -836,7 +859,8 @@ const second = () => {
                 export function funcA() {
                     funcB();
                 }
-                "#.to_string(),
+                "#
+                .to_string(),
             ),
             (
                 PathBuf::from("b.ts"),
@@ -845,7 +869,8 @@ const second = () => {
                 export function funcB() {
                     funcA();
                 }
-                "#.to_string(),
+                "#
+                .to_string(),
             ),
         ];
 

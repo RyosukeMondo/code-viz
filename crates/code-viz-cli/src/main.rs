@@ -127,7 +127,16 @@ fn main() -> anyhow::Result<()> {
             baseline,
             dead_code,
         } => {
-            commands::analyze::run(path, format, exclude, verbose, threshold, output, baseline, dead_code)?;
+            commands::analyze::run(commands::analyze::AnalyzeConfig {
+                path,
+                format,
+                exclude,
+                verbose,
+                threshold,
+                output,
+                baseline,
+                dead_code,
+            })?;
         }
         Commands::Watch {
             path,

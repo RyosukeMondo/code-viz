@@ -18,6 +18,9 @@ mod path_handling_tests {
             size_bytes: 2048,
             function_count: 5,
             last_modified: SystemTime::now(),
+            dead_function_count: None,
+            dead_code_loc: None,
+            dead_code_ratio: None,
         }
     }
 
