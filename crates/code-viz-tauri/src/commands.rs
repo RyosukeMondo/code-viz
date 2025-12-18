@@ -220,3 +220,191 @@ pub async fn analyze_dead_code_command(
 
     Ok(filtered_result)
 }
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use serde_json;
+    use std::env;
+
+    /// Integration test: Verify analyze_repository returns valid serializable TreeNode
+    ///
+    /// This test ensures that the entire command pipeline (analysis → transformation → serialization)
+    /// produces JSON that matches the TypeScript contract expected by the frontend.
+    #[tokio::test]
+    async fn test_analyze_repository_serialization_contract() {
+        // Use current directory as test subject (code-viz itself)
+        let current_dir = env::current_dir()
+            .expect("Failed to get current directory")
+            .to_string_lossy()
+            .to_string();
+
+        // Execute the command
+        let result = analyze_repository(current_dir, Some("test-request-id".to_string())).await;
+
+        // Command should succeed
+        assert!(result.is_ok(), "analyze_repository failed: {:?}", result);
+
+        let tree = result.unwrap();
+
+        // Verify basic structure
+        assert!(!tree.name.is_empty(), "TreeNode name should not be empty");
+        assert!(tree.loc > 0, "TreeNode LOC should be positive");
+        assert!(tree.complexity > 0, "TreeNode complexity should be positive");
+
+        // CRITICAL: Serialize to JSON and verify structure
+        let json_value = serde_json::to_value(&tree).expect("Failed to serialize TreeNode to JSON");
+
+        // Verify required fields exist and have correct types
+        assert!(
+            json_value["id"].is_string(),
+            "id must be a string, got: {:?}",
+            json_value["id"]
+        );
+        assert!(
+            json_value["name"].is_string(),
+            "name must be a string, got: {:?}",
+            json_value["name"]
+        );
+        assert!(
+            json_value["path"].is_string(),
+            "path must be a string, got: {:?}",
+            json_value["path"]
+        );
+        assert!(
+            json_value["loc"].is_number(),
+            "loc must be a number, got: {:?}",
+            json_value["loc"]
+        );
+        assert!(
+            json_value["complexity"].is_number(),
+            "complexity must be a number, got: {:?}",
+            json_value["complexity"]
+        );
+        assert!(
+            json_value["type"].is_string(),
+            "type must be a string, got: {:?}",
+            json_value["type"]
+        );
+
+        // CRITICAL: Verify lastModified is serialized as ISO 8601 string, NOT raw object
+        assert!(
+            json_value["lastModified"].is_string(),
+            "lastModified MUST be a string (ISO 8601), not an object. Got: {:?}",
+            json_value["lastModified"]
+        );
+
+        // Verify ISO 8601 format
+        let timestamp_str = json_value["lastModified"]
+            .as_str()
+            .expect("lastModified should be a string");
+        assert!(
+            timestamp_str.contains('T'),
+            "lastModified must be ISO 8601 format (contain T): {}",
+            timestamp_str
+        );
+        assert!(
+            timestamp_str.ends_with('Z'),
+            "lastModified must use Z for UTC (not +00:00): {}",
+            timestamp_str
+        );
+
+        // Verify children array exists (even if empty for files)
+        assert!(
+            json_value["children"].is_array(),
+            "children must be an array, got: {:?}",
+            json_value["children"]
+        );
+
+        // If there are children, verify they also have proper serialization
+        if let Some(children) = json_value["children"].as_array() {
+            if !children.is_empty() {
+                let first_child = &children[0];
+                assert!(
+                    first_child["lastModified"].is_string(),
+                    "Child node lastModified must also be a string, got: {:?}",
+                    first_child["lastModified"]
+                );
+            }
+        }
+    }
+
+    /// Integration test: Verify serialized JSON contains no raw SystemTime objects
+    ///
+    /// This test catches regressions where SystemTime might serialize as
+    /// {secs_since_epoch: ..., nanos_since_epoch: ...} instead of ISO 8601 string.
+    #[tokio::test]
+    async fn test_no_raw_systemtime_in_json() {
+        let current_dir = env::current_dir()
+            .expect("Failed to get current directory")
+            .to_string_lossy()
+            .to_string();
+
+        let result = analyze_repository(current_dir, Some("test-systemtime".to_string())).await;
+        assert!(result.is_ok(), "analyze_repository failed");
+
+        let tree = result.unwrap();
+        let json_str = serde_json::to_string(&tree).expect("Failed to serialize to JSON string");
+
+        // CRITICAL: JSON should never contain raw SystemTime fields
+        assert!(
+            !json_str.contains("secs_since_epoch"),
+            "JSON contains raw SystemTime field 'secs_since_epoch'. This breaks TypeScript contract!"
+        );
+        assert!(
+            !json_str.contains("nanos_since_epoch"),
+            "JSON contains raw SystemTime field 'nanos_since_epoch'. This breaks TypeScript contract!"
+        );
+
+        // Verify it does contain the expected field name
+        assert!(
+            json_str.contains("lastModified"),
+            "JSON must contain 'lastModified' field"
+        );
+    }
+
+    /// Integration test: Verify dead code command serialization
+    ///
+    /// Tests that dead code results serialize correctly and include proper timestamps
+    #[tokio::test]
+    async fn test_analyze_dead_code_serialization() {
+        let current_dir = env::current_dir()
+            .expect("Failed to get current directory")
+            .to_string_lossy()
+            .to_string();
+
+        // Call with min_confidence of 70
+        let result =
+            analyze_dead_code_command(current_dir, 70, Some("test-dead-code".to_string())).await;
+
+        // Command should succeed
+        assert!(
+            result.is_ok(),
+            "analyze_dead_code_command failed: {:?}",
+            result
+        );
+
+        let dead_code_result = result.unwrap();
+
+        // Verify serialization works
+        let json_value =
+            serde_json::to_value(&dead_code_result).expect("Failed to serialize DeadCodeResult");
+
+        // Verify basic structure
+        assert!(
+            json_value["summary"].is_object(),
+            "summary must be an object"
+        );
+        assert!(
+            json_value["files"].is_array(),
+            "files must be an array"
+        );
+
+        // Verify no raw SystemTime objects in the entire result
+        let json_str = serde_json::to_string(&dead_code_result).expect("Failed to serialize");
+        assert!(
+            !json_str.contains("secs_since_epoch"),
+            "DeadCodeResult JSON should not contain raw SystemTime fields"
+        );
+    }
+}

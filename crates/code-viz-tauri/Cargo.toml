@@ -31,5 +31,8 @@ tracing-subscriber = { workspace = true }
 # Request correlation
 uuid = { version = "1.11", features = ["v4", "serde"] }
 
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
 [lib]
 crate-type = ["lib"]
