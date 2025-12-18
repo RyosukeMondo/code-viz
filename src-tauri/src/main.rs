@@ -9,7 +9,8 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            code_viz_tauri::analyze_repository
+            code_viz_tauri::analyze_repository,
+            code_viz_tauri::analyze_dead_code_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

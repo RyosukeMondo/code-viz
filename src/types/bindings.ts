@@ -39,6 +39,103 @@ export interface TreeNode {
 
   /** Last modified timestamp (ISO 8601 format) */
   lastModified: string;
+
+  /** Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled */
+  deadCodeRatio?: number;
+}
+
+/**
+ * Type of symbol in source code
+ *
+ * Corresponds to Rust enum: code_viz_dead_code::models::SymbolKind
+ */
+export type SymbolKind =
+  | "Function"
+  | "ArrowFunction"
+  | "Class"
+  | "Method"
+  | "Variable";
+
+/**
+ * A dead (unreachable) symbol with metadata
+ *
+ * Corresponds to Rust struct: code_viz_dead_code::models::DeadSymbol
+ */
+export interface DeadSymbol {
+  /** Symbol name */
+  symbol: string;
+
+  /** Type of symbol */
+  kind: SymbolKind;
+
+  /** Starting line number */
+  lineStart: number;
+
+  /** Ending line number */
+  lineEnd: number;
+
+  /** Lines of code in this symbol */
+  loc: number;
+
+  /** Deletion confidence score (0-100) */
+  confidence: number;
+
+  /** Reason why this symbol is marked as dead */
+  reason: string;
+
+  /** Last modification time (ISO 8601 format, if available) */
+  lastModified?: string;
+}
+
+/**
+ * Dead code found in a single file
+ *
+ * Corresponds to Rust struct: code_viz_dead_code::models::FileDeadCode
+ */
+export interface FileDeadCode {
+  /** File path */
+  path: string;
+
+  /** List of dead symbols in this file */
+  deadCode: DeadSymbol[];
+}
+
+/**
+ * Summary statistics for dead code analysis
+ *
+ * Corresponds to Rust struct: code_viz_dead_code::models::DeadCodeSummary
+ */
+export interface DeadCodeSummary {
+  /** Total number of files analyzed */
+  totalFiles: number;
+
+  /** Number of files containing dead code */
+  filesWithDeadCode: number;
+
+  /** Total number of dead functions */
+  deadFunctions: number;
+
+  /** Total number of dead classes */
+  deadClasses: number;
+
+  /** Total lines of dead code */
+  totalDeadLoc: number;
+
+  /** Ratio of dead code to total code (0.0 to 1.0) */
+  deadCodeRatio: number;
+}
+
+/**
+ * Complete result of dead code analysis
+ *
+ * Corresponds to Rust struct: code_viz_dead_code::models::DeadCodeResult
+ */
+export interface DeadCodeResult {
+  /** Aggregated summary statistics */
+  summary: DeadCodeSummary;
+
+  /** Dead code grouped by file */
+  files: FileDeadCode[];
 }
 
 /**
@@ -71,6 +168,37 @@ export async function analyzeRepository(
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke<TreeNode>('analyze_repository', {
     path,
+    request_id: requestId
+  });
+}
+
+/**
+ * Analyzes dead code in a repository and returns filtered results
+ *
+ * @param path - Absolute path to the repository root directory
+ * @param minConfidence - Minimum confidence score (0-100) for dead code inclusion
+ * @param requestId - Optional UUID for correlating frontend and backend logs
+ * @returns Promise resolving to dead code analysis results
+ * @throws Error if path does not exist, is not a directory, or analysis fails
+ *
+ * @example
+ * ```typescript
+ * import { analyzeDeadCode } from './types/bindings';
+ *
+ * const requestId = crypto.randomUUID();
+ * const result = await analyzeDeadCode('/home/user/my-project', 80, requestId);
+ * console.log(`Found ${result.summary.deadFunctions} dead functions`);
+ * ```
+ */
+export async function analyzeDeadCode(
+  path: string,
+  minConfidence: number,
+  requestId?: string
+): Promise<DeadCodeResult> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<DeadCodeResult>('analyze_dead_code_command', {
+    path,
+    min_confidence: minConfidence,
     request_id: requestId
   });
 }
