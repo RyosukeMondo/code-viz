@@ -1,0 +1,20 @@
+{
+  "name": "sample-dead-code-test-repo",
+  "version": "1.0.0",
+  "description": "Sample TypeScript repository for testing dead code detection",
+  "type": "module",
+  "main": "./src/main.ts",
+  "exports": {
+    ".": "./src/main.ts",
+    "./used": "./src/used.ts",
+    "./internal": "./src/internal.ts",
+    "./dead": "./src/dead.ts",
+    "./utils/helper": "./src/utils/helper.ts"
+  },
+  "scripts": {
+    "test": "node tests/app.test.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
