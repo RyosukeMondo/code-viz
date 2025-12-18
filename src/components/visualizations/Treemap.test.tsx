@@ -883,4 +883,202 @@ describe('Treemap', () => {
       expect(itemStyle2.borderColor(mockParams)).not.toBe('#ffffff');
     });
   });
+
+  describe('Click Handler with Original TreeNode Data', () => {
+    /**
+     * REGRESSION TEST for serialization bug
+     *
+     * Bug: When clicking on a node, the component was reconstructing a TreeNode
+     * from ECharts data, which had children in ECharts format (not TreeNode format).
+     * This caused drill-down to fail because the children array was malformed.
+     *
+     * Fix: Use findNodeByPath to get the original TreeNode from source data instead
+     * of reconstructing from ECharts data.
+     */
+    it('should pass original TreeNode with proper children to onNodeClick', () => {
+      const onNodeClick = vi.fn();
+
+      render(<Treemap data={mockTreeData} onNodeClick={onNodeClick} />);
+
+      // Simulate ECharts click event on 'subdir' directory
+      const clickHandler = mockOn.mock.calls.find((call) => call[0] === 'click')?.[1];
+      expect(clickHandler).toBeDefined();
+
+      // Simulate ECharts data (which has 'value' instead of 'loc')
+      const echartsClickData = {
+        data: {
+          name: 'subdir',
+          path: '/root/subdir',
+          value: 700, // ECharts format uses 'value', not 'loc'
+          complexity: 25,
+          type: 'directory',
+          // ECharts children would also be in ECharts format
+          children: [
+            { name: 'file2.ts', value: 400, path: '/root/subdir/file2.ts' },
+            { name: 'file3.ts', value: 300, path: '/root/subdir/file3.ts' },
+          ],
+        },
+      };
+
+      clickHandler(echartsClickData);
+
+      // CRITICAL: onNodeClick should receive the ORIGINAL TreeNode, not reconstructed one
+      expect(onNodeClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'subdir',
+          path: '/root/subdir',
+          loc: 700, // Should be 'loc', not 'value'
+          complexity: 25,
+          type: 'directory',
+          // Children should be proper TreeNode objects with 'loc', not 'value'
+          children: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'file2.ts',
+              path: '/root/subdir/file2.ts',
+              loc: 400, // NOT 'value'
+              complexity: 20,
+              type: 'file',
+              children: [],
+            }),
+            expect.objectContaining({
+              name: 'file3.ts',
+              path: '/root/subdir/file3.ts',
+              loc: 300, // NOT 'value'
+              complexity: 30,
+              type: 'file',
+              children: [],
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should find nested nodes correctly', () => {
+      const onNodeClick = vi.fn();
+
+      render(<Treemap data={mockTreeData} onNodeClick={onNodeClick} />);
+
+      const clickHandler = mockOn.mock.calls.find((call) => call[0] === 'click')?.[1];
+
+      // Click on deeply nested file
+      const echartsClickData = {
+        data: {
+          name: 'file2.ts',
+          path: '/root/subdir/file2.ts',
+          value: 400,
+          complexity: 20,
+          type: 'file',
+        },
+      };
+
+      clickHandler(echartsClickData);
+
+      // Should find and return the original nested node
+      expect(onNodeClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'file2.ts',
+          path: '/root/subdir/file2.ts',
+          loc: 400,
+          complexity: 20,
+          type: 'file',
+          children: [], // Empty array for file
+        })
+      );
+    });
+
+    it('should log error when node path not found', () => {
+      const onNodeClick = vi.fn();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      render(<Treemap data={mockTreeData} onNodeClick={onNodeClick} />);
+
+      const clickHandler = mockOn.mock.calls.find((call) => call[0] === 'click')?.[1];
+
+      // Click with invalid path
+      const echartsClickData = {
+        data: {
+          name: 'nonexistent.ts',
+          path: '/root/nonexistent.ts',
+          value: 100,
+        },
+      };
+
+      clickHandler(echartsClickData);
+
+      // Should log error and NOT call onNodeClick
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Treemap] Could not find original node for path:'),
+        '/root/nonexistent.ts'
+      );
+      expect(onNodeClick).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle clicks when data prop changes', () => {
+      const onNodeClick = vi.fn();
+
+      const { rerender } = render(<Treemap data={mockTreeData} onNodeClick={onNodeClick} />);
+
+      const clickHandler = mockOn.mock.calls.find((call) => call[0] === 'click')?.[1];
+
+      // Click on subdir from first data set
+      clickHandler({
+        data: {
+          name: 'subdir',
+          path: '/root/subdir',
+          value: 700,
+        },
+      });
+
+      expect(onNodeClick).toHaveBeenCalledTimes(1);
+      expect(onNodeClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'subdir',
+          path: '/root/subdir',
+        })
+      );
+
+      // Update data
+      const newData: TreeNode = {
+        ...mockTreeData,
+        children: [
+          {
+            id: 'new-file',
+            name: 'newfile.ts',
+            path: '/root/newfile.ts',
+            loc: 500,
+            complexity: 35,
+            type: 'file',
+            children: [],
+            lastModified: '2024-01-15T10:30:00Z',
+          },
+        ],
+      };
+
+      rerender(<Treemap data={newData} onNodeClick={onNodeClick} />);
+
+      // After rerender, get the new click handler
+      // Find the last 'click' handler registration (after rerender)
+      const clickCalls = mockOn.mock.calls.filter((call) => call[0] === 'click');
+      const clickHandler2 = clickCalls[clickCalls.length - 1][1];
+
+      clickHandler2({
+        data: {
+          name: 'newfile.ts',
+          path: '/root/newfile.ts',
+          value: 500,
+        },
+      });
+
+      expect(onNodeClick).toHaveBeenCalledTimes(2);
+      expect(onNodeClick).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          name: 'newfile.ts',
+          path: '/root/newfile.ts',
+          loc: 500,
+        })
+      );
+    });
+  });
 });

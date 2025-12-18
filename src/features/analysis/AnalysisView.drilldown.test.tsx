@@ -374,4 +374,129 @@ describe('AnalysisView - Drill-down navigation', () => {
       expect(pathElement.textContent).toBe('[]');
     });
   });
+
+  /**
+   * REGRESSION TEST for click handler bug
+   *
+   * Bug: When clicking on a treemap node, the Treemap component was reconstructing
+   * a TreeNode from ECharts data format. This caused children to have 'value'
+   * instead of 'loc', breaking the drill-down logic when checking `children.length > 0`.
+   *
+   * Fix: Treemap now uses findNodeByPath to retrieve the original TreeNode from
+   * source data, ensuring children are in the correct format.
+   */
+  describe('REGRESSION: Children format in clicked nodes', () => {
+    it('should receive TreeNode with proper children structure when clicking', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockResolvedValue(mockTreeData);
+
+      render(<AnalysisView />);
+
+      const input = screen.getByTestId('repository-path-input');
+      const analyzeButton = screen.getByTestId('analyze-button');
+
+      await userEvent.type(input, '/home/user/code-viz');
+      await userEvent.click(analyzeButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('treemap-mock')).toBeInTheDocument();
+      });
+
+      // Click on 'src' directory - this should drill down successfully
+      // Before fix: Children would have 'value' instead of 'loc', breaking drill-down
+      // After fix: Children have correct TreeNode structure with 'loc'
+      const srcButton = screen.getByTestId('click-src');
+      await userEvent.click(srcButton);
+
+      // Verify drill-down worked (path updated)
+      await waitFor(() => {
+        const pathElement = screen.getByTestId('drill-down-path');
+        expect(pathElement.textContent).toBe('["src"]');
+      });
+
+      // Verify the filtered node shows its children
+      const currentNode = screen.getByTestId('current-node');
+      expect(currentNode.textContent).toBe('src');
+
+      // Should now see buttons for src's children (components and utils)
+      expect(screen.getByTestId('click-components')).toBeInTheDocument();
+      expect(screen.getByTestId('click-utils')).toBeInTheDocument();
+    });
+
+    it('should allow multi-level drill-down without children format errors', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockResolvedValue(mockTreeData);
+
+      render(<AnalysisView />);
+
+      const input = screen.getByTestId('repository-path-input');
+      const analyzeButton = screen.getByTestId('analyze-button');
+
+      await userEvent.type(input, '/home/user/code-viz');
+      await userEvent.click(analyzeButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('treemap-mock')).toBeInTheDocument();
+      });
+
+      // First level drill-down
+      await userEvent.click(screen.getByTestId('click-src'));
+      await waitFor(() => {
+        expect(screen.getByTestId('drill-down-path').textContent).toBe('["src"]');
+      });
+
+      // Second level drill-down
+      await userEvent.click(screen.getByTestId('click-components'));
+      await waitFor(() => {
+        expect(screen.getByTestId('drill-down-path').textContent).toBe('["src","components"]');
+      });
+
+      // Verify we're at the correct level
+      const currentNode = screen.getByTestId('current-node');
+      expect(currentNode.textContent).toBe('components');
+
+      // Should see the Button.tsx file
+      expect(screen.getByTestId('click-Button.tsx')).toBeInTheDocument();
+    });
+
+    it('should not attempt drill-down on files (only directories)', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockResolvedValue(mockTreeData);
+
+      render(<AnalysisView />);
+
+      const input = screen.getByTestId('repository-path-input');
+      const analyzeButton = screen.getByTestId('analyze-button');
+
+      await userEvent.type(input, '/home/user/code-viz');
+      await userEvent.click(analyzeButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('treemap-mock')).toBeInTheDocument();
+      });
+
+      // Drill down to src
+      await userEvent.click(screen.getByTestId('click-src'));
+      await waitFor(() => {
+        expect(screen.getByTestId('drill-down-path').textContent).toBe('["src"]');
+      });
+
+      // Drill down to components
+      await userEvent.click(screen.getByTestId('click-components'));
+      await waitFor(() => {
+        expect(screen.getByTestId('drill-down-path').textContent).toBe('["src","components"]');
+      });
+
+      // Click on Button.tsx file - should NOT update drill-down path
+      // (files open detail panel instead)
+      const buttonFile = screen.getByTestId('click-Button.tsx');
+      await userEvent.click(buttonFile);
+
+      // Path should remain unchanged
+      await waitFor(() => {
+        const pathElement = screen.getByTestId('drill-down-path');
+        expect(pathElement.textContent).toBe('["src","components"]');
+      });
+    });
+  });
 });

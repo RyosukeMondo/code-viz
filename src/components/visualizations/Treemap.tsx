@@ -31,7 +31,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { TreemapProps, TreeNode } from '../../types';
-import { treeNodeToECharts, getFileCount } from '../../utils/treeTransform';
+import { treeNodeToECharts, getFileCount, findNodeByPath } from '../../utils/treeTransform';
 import { getComplexityLabel, deadCodeBorderColor } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
 import { useDeadCodeEnabled } from '../../store/analysisStore';
@@ -84,37 +84,31 @@ const TreemapComponent: React.FC<TreemapProps> = ({
 
   // Memoize event handlers to prevent unnecessary re-renders
   const handleClick = useCallback((params: any) => {
-    if (params.data && onNodeClick) {
-      // Convert ECharts data back to TreeNode format for the callback
-      const clickedNode = {
-        id: params.data.path,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
-        lastModified: '', // Not available in ECharts data
-      };
-      onNodeClick(clickedNode);
+    if (params.data && onNodeClick && data) {
+      // CRITICAL: Find the original TreeNode from source data using path
+      // Don't reconstruct from ECharts data - children would be in wrong format
+      const path = params.data.path;
+      const originalNode = findNodeByPath(data, path);
+
+      if (originalNode) {
+        onNodeClick(originalNode);
+      } else {
+        console.error('[Treemap] Could not find original node for path:', path);
+      }
     }
-  }, [onNodeClick]);
+  }, [onNodeClick, data]);
 
   const handleMouseOver = useCallback((params: any) => {
-    if (params.data && onNodeHover) {
-      const hoveredNode = {
-        id: params.data.path,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
-        lastModified: '',
-      };
-      onNodeHover(hoveredNode);
+    if (params.data && onNodeHover && data) {
+      // Find original TreeNode from source data
+      const path = params.data.path;
+      const originalNode = findNodeByPath(data, path);
+
+      if (originalNode) {
+        onNodeHover(originalNode);
+      }
     }
-  }, [onNodeHover]);
+  }, [onNodeHover, data]);
 
   const handleMouseOut = useCallback(() => {
     if (onNodeHover) {
