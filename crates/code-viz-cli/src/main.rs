@@ -43,6 +43,10 @@ enum Commands {
         /// Compare against a baseline report
         #[arg(long)]
         baseline: Option<PathBuf>,
+
+        /// Enable dead code analysis
+        #[arg(long)]
+        dead_code: bool,
     },
     /// Watch a directory for changes and re-analyze
     Watch {
@@ -121,8 +125,9 @@ fn main() -> anyhow::Result<()> {
             threshold,
             output,
             baseline,
+            dead_code,
         } => {
-            commands::analyze::run(path, format, exclude, verbose, threshold, output, baseline)?;
+            commands::analyze::run(path, format, exclude, verbose, threshold, output, baseline, dead_code)?;
         }
         Commands::Watch {
             path,

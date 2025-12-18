@@ -21,6 +21,18 @@ pub struct FileMetrics {
 
     /// Last modified timestamp (for cache invalidation)
     pub last_modified: SystemTime,
+
+    /// Number of dead functions (only present when dead code analysis enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dead_function_count: Option<usize>,
+
+    /// Lines of dead code (only present when dead code analysis enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dead_code_loc: Option<usize>,
+
+    /// Ratio of dead code to total code (only present when dead code analysis enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dead_code_ratio: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,6 +69,9 @@ pub struct AnalysisConfig {
 
     /// Whether to use disk cache for unchanged files
     pub use_cache: bool,
+
+    /// Enable dead code analysis (default: false)
+    pub enable_dead_code: bool,
 }
 
 impl Default for AnalysisConfig {
@@ -70,6 +85,7 @@ impl Default for AnalysisConfig {
                 "build/**".into(),
             ],
             use_cache: true,
+            enable_dead_code: false,
         }
     }
 }

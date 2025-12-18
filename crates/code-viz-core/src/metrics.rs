@@ -29,6 +29,9 @@ pub fn calculate_metrics(
         size_bytes,
         function_count,
         last_modified,
+        dead_function_count: None,
+        dead_code_loc: None,
+        dead_code_ratio: None,
     })
 }
 
