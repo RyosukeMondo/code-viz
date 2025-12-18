@@ -1,0 +1,33 @@
+[package]
+name = "code-viz-dead-code"
+version = "0.1.0"
+edition = "2021"
+authors = ["CodeViz Team"]
+description = "Dead code detection and analysis engine for code-viz"
+license = "MIT"
+
+[features]
+default = []
+git-integration = ["git2"]
+
+[dependencies]
+# Core dependencies from workspace
+serde = { workspace = true }
+tree-sitter = { workspace = true }
+rayon = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+sled = { workspace = true }
+
+# Local dependencies
+code-viz-core = { path = "../code-viz-core" }
+
+# Additional dependencies for dead code analysis
+bincode = "1.3"
+git2 = { version = "0.18", optional = true }
+ahash = "0.8"
+
+[dev-dependencies]
+insta = { workspace = true }
+tempfile = { workspace = true }
+assert_fs = { workspace = true }

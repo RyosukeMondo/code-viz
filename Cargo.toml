@@ -4,6 +4,7 @@ members = [
     "crates/code-viz-core",
     "crates/code-viz-cli",
     "crates/code-viz-tauri",
+    "crates/code-viz-dead-code",
     "src-tauri",
 ]
 
@@ -35,6 +36,9 @@ env_logger = "0.10"
 log = "0.4"
 toml = "0.8"
 colored = "2.0"
+
+# Cache dependencies
+sled = "0.34"
 
 # Dev dependencies
 assert_cmd = "2.0"
