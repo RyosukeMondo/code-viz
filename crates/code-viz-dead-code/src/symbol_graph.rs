@@ -34,7 +34,7 @@ pub enum GraphError {
 }
 
 /// Symbol graph containing all symbols and their relationships
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SymbolGraph {
     /// All symbols indexed by their ID
     pub symbols: HashMap<SymbolId, Symbol>,
