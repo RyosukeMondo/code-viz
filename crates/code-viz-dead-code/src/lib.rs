@@ -24,8 +24,8 @@
 //! use std::path::Path;
 //!
 //! // Analyze a TypeScript project for dead code
-//! let result = analyze_dead_code(Path::new("./src"), &Default::default())?;
-//! println!("Found {} dead symbols", result.summary.total_dead_functions);
+//! let result = analyze_dead_code(Path::new("./src"))?;
+//! println!("Found {} dead symbols", result.summary.dead_functions);
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
@@ -40,7 +40,7 @@ pub mod models;
 
 // Re-export main types for convenience
 pub use models::{
-    DeadCodeResult, DeadCodeSummary, FileDeadCode, DeadSymbol, AnalysisConfig, AnalysisError,
+    DeadCodeResult, DeadCodeSummary, FileDeadCode, DeadSymbol,
 };
 
 /// Main entry point for dead code analysis
@@ -65,21 +65,14 @@ pub use models::{
 /// # Example
 ///
 /// ```rust,no_run
-/// use code_viz_dead_code::{analyze_dead_code, AnalysisConfig};
+/// use code_viz_dead_code::analyze_dead_code;
 /// use std::path::Path;
 ///
-/// let config = AnalysisConfig {
-///     min_confidence: 80,
-///     exclude_patterns: vec!["node_modules/**".to_string()],
-///     ..Default::default()
-/// };
-///
-/// let result = analyze_dead_code(Path::new("./src"), &config)?;
+/// let result = analyze_dead_code(Path::new("./src"))?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn analyze_dead_code(
     _path: &std::path::Path,
-    _config: &AnalysisConfig,
-) -> Result<DeadCodeResult, AnalysisError> {
+) -> Result<DeadCodeResult, String> {
     todo!("Will implement in task 3.1.1")
 }

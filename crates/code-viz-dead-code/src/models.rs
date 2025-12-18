@@ -1,95 +1,141 @@
-//! Core data structures for dead code analysis
+//! Core data models for dead code analysis.
 //!
-//! This module defines the primary data models used throughout the dead code
-//! detection pipeline.
+//! This module defines the data structures used throughout the dead code
+//! detection pipeline, including symbol representations, analysis results,
+//! and summary statistics.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use thiserror::Error;
+use std::time::SystemTime;
 
-/// Configuration for dead code analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AnalysisConfig {
-    /// Minimum confidence score to report (0-100)
-    pub min_confidence: u8,
-    /// Patterns to exclude from analysis
-    pub exclude_patterns: Vec<String>,
-    /// Enable incremental analysis using cache
-    pub enable_cache: bool,
+/// Unique identifier for a symbol (typically file path + line number)
+pub type SymbolId = String;
+
+/// A symbol extracted from source code (function, class, variable, etc.)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Symbol {
+    /// Unique identifier for this symbol
+    pub id: SymbolId,
+
+    /// Symbol name (e.g., "handleClick", "UserService")
+    pub name: String,
+
+    /// Type of symbol
+    pub kind: SymbolKind,
+
+    /// File path where symbol is defined
+    pub path: PathBuf,
+
+    /// Starting line number (1-indexed)
+    pub line_start: usize,
+
+    /// Ending line number (1-indexed)
+    pub line_end: usize,
+
+    /// Whether symbol is exported from its module
+    pub is_exported: bool,
+
+    /// Whether symbol is in a test file
+    pub is_test: bool,
 }
 
-impl Default for AnalysisConfig {
-    fn default() -> Self {
-        Self {
-            min_confidence: 0,
-            exclude_patterns: vec!["node_modules/**".to_string(), "dist/**".to_string()],
-            enable_cache: true,
-        }
-    }
+/// Type of symbol
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum SymbolKind {
+    /// Regular function declaration
+    Function,
+
+    /// Arrow function or function expression
+    ArrowFunction,
+
+    /// Class declaration
+    Class,
+
+    /// Method within a class
+    Method,
+
+    /// Variable or constant
+    Variable,
 }
 
-/// Result of dead code analysis
+/// Complete result of dead code analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct DeadCodeResult {
-    /// Summary statistics
+    /// Aggregated summary statistics
     pub summary: DeadCodeSummary,
+
     /// Dead code grouped by file
     pub files: Vec<FileDeadCode>,
 }
 
-/// Summary statistics for dead code analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeadCodeSummary {
-    /// Total number of dead functions
-    pub total_dead_functions: usize,
-    /// Total lines of dead code
-    pub dead_code_loc: usize,
-    /// Percentage of dead code (0.0-1.0)
-    pub dead_code_ratio: f64,
-    /// Number of files with dead code
-    pub files_with_dead_code: usize,
+impl DeadCodeResult {
+    /// Filter dead code by minimum confidence score
+    pub fn filter_by_confidence(&self, _min_confidence: u8) -> Self {
+        todo!("Will implement in task 3.1.1")
+    }
 }
 
-/// Dead code information for a single file
+/// Summary statistics for dead code analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct DeadCodeSummary {
+    /// Total number of files analyzed
+    pub total_files: usize,
+
+    /// Number of files containing dead code
+    pub files_with_dead_code: usize,
+
+    /// Total number of dead functions
+    pub dead_functions: usize,
+
+    /// Total number of dead classes
+    pub dead_classes: usize,
+
+    /// Total lines of dead code
+    pub total_dead_loc: usize,
+
+    /// Ratio of dead code to total code (0.0 to 1.0)
+    pub dead_code_ratio: f64,
+}
+
+/// Dead code found in a single file
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct FileDeadCode {
     /// File path
     pub path: PathBuf,
-    /// Dead symbols in this file
-    pub dead_symbols: Vec<DeadSymbol>,
-    /// Total lines of dead code in this file
-    pub dead_code_loc: usize,
+
+    /// List of dead symbols in this file
+    pub dead_code: Vec<DeadSymbol>,
 }
 
-/// A dead symbol (function, class, etc.)
+/// A dead (unreachable) symbol with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct DeadSymbol {
     /// Symbol name
-    pub name: String,
-    /// Symbol type (function, class, method, etc.)
-    pub kind: String,
+    pub symbol: String,
+
+    /// Type of symbol
+    pub kind: SymbolKind,
+
     /// Starting line number
     pub line_start: usize,
+
     /// Ending line number
     pub line_end: usize,
-    /// Confidence score (0-100)
+
+    /// Lines of code in this symbol
+    pub loc: usize,
+
+    /// Deletion confidence score (0-100)
     pub confidence: u8,
-    /// Reason for marking as dead
+
+    /// Reason why this symbol is marked as dead
     pub reason: String,
-}
 
-/// Errors that can occur during analysis
-#[derive(Debug, Error)]
-pub enum AnalysisError {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("Parse error: {0}")]
-    Parse(String),
-
-    #[error("Graph construction error: {0}")]
-    Graph(String),
-
-    #[error("Cache error: {0}")]
-    Cache(String),
+    /// Last modification time (if available)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_modified: Option<SystemTime>,
 }
