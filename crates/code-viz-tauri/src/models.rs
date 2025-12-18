@@ -78,6 +78,10 @@ mod tests {
             dead_code_ratio: None,
         };
 
+        // Debug: Print the actual JSON to see PathBuf serialization
+        let json_str = serde_json::to_string_pretty(&node).expect("Failed to serialize");
+        println!("Serialized JSON:\n{}", json_str);
+
         // Serialize to JSON
         let json = serde_json::to_value(&node).expect("Failed to serialize TreeNode");
 
