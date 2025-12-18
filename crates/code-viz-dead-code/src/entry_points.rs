@@ -281,4 +281,90 @@ mod tests {
         assert_eq!(entry_points.len(), 1);
         assert!(entry_points.contains(&main_symbol.id));
     }
+
+    #[test]
+    fn test_lib_rs_entry_file() {
+        let mut graph = SymbolGraph {
+            symbols: std::collections::HashMap::new(),
+            imports: std::collections::HashMap::new(),
+            exports: std::collections::HashMap::new(),
+        };
+
+        let lib_path = PathBuf::from("src/lib.rs");
+        let exported_symbol = create_test_symbol("public_api", lib_path.clone(), true);
+        graph.symbols.insert(exported_symbol.id.clone(), exported_symbol.clone());
+
+        let entry_points = detect_entry_points(&graph);
+        assert_eq!(entry_points.len(), 1);
+        assert!(entry_points.contains(&exported_symbol.id));
+    }
+
+    #[test]
+    fn test_unexported_in_entry_file_not_entry_point() {
+        let mut graph = SymbolGraph {
+            symbols: std::collections::HashMap::new(),
+            imports: std::collections::HashMap::new(),
+            exports: std::collections::HashMap::new(),
+        };
+
+        let index_path = PathBuf::from("src/index.ts");
+        let unexported_symbol = create_test_symbol("privateHelper", index_path, false);
+        graph.symbols.insert(unexported_symbol.id.clone(), unexported_symbol);
+
+        let entry_points = detect_entry_points(&graph);
+        // Unexported symbols in entry files are NOT entry points
+        assert_eq!(entry_points.len(), 0);
+    }
+
+    #[test]
+    fn test_exported_in_non_entry_file_not_entry_point() {
+        let mut graph = SymbolGraph {
+            symbols: std::collections::HashMap::new(),
+            imports: std::collections::HashMap::new(),
+            exports: std::collections::HashMap::new(),
+        };
+
+        let utils_path = PathBuf::from("src/utils.ts");
+        let exported_symbol = create_test_symbol("utilFunc", utils_path, true);
+        graph.symbols.insert(exported_symbol.id.clone(), exported_symbol);
+
+        let entry_points = detect_entry_points(&graph);
+        // Exported symbols in non-entry files are NOT entry points
+        assert_eq!(entry_points.len(), 0);
+    }
+
+    #[test]
+    fn test_multiple_entry_points_deduplication() {
+        let mut graph = SymbolGraph {
+            symbols: std::collections::HashMap::new(),
+            imports: std::collections::HashMap::new(),
+            exports: std::collections::HashMap::new(),
+        };
+
+        let main_path = PathBuf::from("src/main.ts");
+        let exported_symbol = create_test_symbol("init", main_path.clone(), true);
+
+        // Symbol is both in symbols map and exports
+        graph.symbols.insert(exported_symbol.id.clone(), exported_symbol.clone());
+        graph.exports.insert(main_path, vec![exported_symbol.id.clone()]);
+
+        let entry_points = detect_entry_points(&graph);
+        // Should not duplicate the same entry point
+        assert_eq!(entry_points.len(), 1);
+        assert!(entry_points.contains(&exported_symbol.id));
+    }
+
+    #[test]
+    fn test_all_file_extensions() {
+        // Test various JavaScript/TypeScript file extensions
+        assert!(is_entry_file(&PathBuf::from("main.ts")));
+        assert!(is_entry_file(&PathBuf::from("main.tsx")));
+        assert!(is_entry_file(&PathBuf::from("main.js")));
+        assert!(is_entry_file(&PathBuf::from("main.jsx")));
+        assert!(is_entry_file(&PathBuf::from("index.ts")));
+        assert!(is_entry_file(&PathBuf::from("index.tsx")));
+        assert!(is_entry_file(&PathBuf::from("index.js")));
+        assert!(is_entry_file(&PathBuf::from("index.jsx")));
+        assert!(is_entry_file(&PathBuf::from("lib.rs")));
+    }
 }
