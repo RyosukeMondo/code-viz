@@ -12,7 +12,7 @@
 
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { TreeNode } from '../types/bindings';
+import type { TreeNode, DeadCodeResult } from '../types/bindings';
 
 /**
  * Analysis state interface
@@ -32,6 +32,18 @@ interface AnalysisState {
 
   /** Error message if analysis failed (null if no error) */
   error: string | null;
+
+  /** Dead code overlay enabled flag (opt-in feature) */
+  deadCodeEnabled: boolean;
+
+  /** Dead code analysis results (null if not yet analyzed) */
+  deadCodeResults: DeadCodeResult | null;
+
+  /** Loading state during dead code analysis */
+  deadCodeLoading: boolean;
+
+  /** Error message if dead code analysis failed (null if no error) */
+  deadCodeError: string | null;
 }
 
 /**
@@ -55,6 +67,21 @@ interface AnalysisActions {
 
   /** Reset all state to initial values */
   reset: () => void;
+
+  /** Toggle dead code overlay on/off */
+  toggleDeadCodeOverlay: () => void;
+
+  /** Set dead code analysis results */
+  setDeadCodeResults: (results: DeadCodeResult | null) => void;
+
+  /** Set dead code loading state */
+  setDeadCodeLoading: (loading: boolean) => void;
+
+  /** Set dead code error message */
+  setDeadCodeError: (error: string | null) => void;
+
+  /** Reset dead code state */
+  resetDeadCode: () => void;
 }
 
 /**
@@ -71,6 +98,10 @@ const initialState: AnalysisState = {
   selectedFile: null,
   loading: false,
   error: null,
+  deadCodeEnabled: false,
+  deadCodeResults: null,
+  deadCodeLoading: false,
+  deadCodeError: null,
 };
 
 /**
@@ -136,6 +167,39 @@ export const useAnalysisStore = create<AnalysisStore>()(
       }),
 
     reset: () => set(initialState),
+
+    toggleDeadCodeOverlay: () =>
+      set((state) => {
+        state.deadCodeEnabled = !state.deadCodeEnabled;
+      }),
+
+    setDeadCodeResults: (results) =>
+      set((state) => {
+        state.deadCodeResults = results;
+        state.deadCodeError = null;
+      }),
+
+    setDeadCodeLoading: (loading) =>
+      set((state) => {
+        state.deadCodeLoading = loading;
+        if (loading) {
+          state.deadCodeError = null;
+        }
+      }),
+
+    setDeadCodeError: (error) =>
+      set((state) => {
+        state.deadCodeError = error;
+        state.deadCodeLoading = false;
+      }),
+
+    resetDeadCode: () =>
+      set((state) => {
+        state.deadCodeEnabled = false;
+        state.deadCodeResults = null;
+        state.deadCodeLoading = false;
+        state.deadCodeError = null;
+      }),
   }))
 );
 
@@ -163,6 +227,22 @@ export const useLoading = () => useAnalysisStore((state) => state.loading);
 /** Hook to get error state */
 export const useError = () => useAnalysisStore((state) => state.error);
 
+/** Hook to get dead code enabled state */
+export const useDeadCodeEnabled = () =>
+  useAnalysisStore((state) => state.deadCodeEnabled);
+
+/** Hook to get dead code results */
+export const useDeadCodeResults = () =>
+  useAnalysisStore((state) => state.deadCodeResults);
+
+/** Hook to get dead code loading state */
+export const useDeadCodeLoading = () =>
+  useAnalysisStore((state) => state.deadCodeLoading);
+
+/** Hook to get dead code error state */
+export const useDeadCodeError = () =>
+  useAnalysisStore((state) => state.deadCodeError);
+
 /** Hook to get all actions */
 export const useAnalysisActions = () =>
   useAnalysisStore((state) => ({
@@ -172,4 +252,9 @@ export const useAnalysisActions = () =>
     setLoading: state.setLoading,
     setError: state.setError,
     reset: state.reset,
+    toggleDeadCodeOverlay: state.toggleDeadCodeOverlay,
+    setDeadCodeResults: state.setDeadCodeResults,
+    setDeadCodeLoading: state.setDeadCodeLoading,
+    setDeadCodeError: state.setDeadCodeError,
+    resetDeadCode: state.resetDeadCode,
   }));
