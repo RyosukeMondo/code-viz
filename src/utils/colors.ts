@@ -106,3 +106,26 @@ export function getComplexityLabel(score: number): string {
   if (clampedScore < 80) return 'High';
   return 'Very High';
 }
+
+/**
+ * Maps a dead code ratio (0.0 to 1.0) to a border color
+ *
+ * Color mapping:
+ * - >0.5: Red (#ef4444) - High amount of dead code
+ * - 0.2-0.5: Orange (#f97316) - Medium amount of dead code
+ * - <0.2: Yellow (#eab308) - Low amount of dead code
+ *
+ * @param ratio - Dead code ratio from 0.0 to 1.0
+ * @returns Hex color code for border (e.g., "#ef4444")
+ */
+export function deadCodeBorderColor(ratio: number): string {
+  if (typeof ratio !== 'number' || isNaN(ratio)) {
+    return '#eab308'; // yellow for invalid values
+  }
+
+  const clampedRatio = Math.max(0, Math.min(1, ratio));
+
+  if (clampedRatio > 0.5) return '#ef4444'; // red
+  if (clampedRatio > 0.2) return '#f97316'; // orange
+  return '#eab308'; // yellow
+}

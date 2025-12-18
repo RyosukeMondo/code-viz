@@ -32,8 +32,9 @@ import {
 import { CanvasRenderer } from 'echarts/renderers';
 import type { TreemapProps, TreeNode } from '../../types';
 import { treeNodeToECharts, getFileCount } from '../../utils/treeTransform';
-import { getComplexityLabel } from '../../utils/colors';
+import { getComplexityLabel, deadCodeBorderColor } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
+import { useDeadCodeEnabled } from '../../store/analysisStore';
 
 // Register required ECharts components (tree-shaking)
 echarts.use([
@@ -59,6 +60,9 @@ const TreemapComponent: React.FC<TreemapProps> = ({
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
   const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
+
+  // Subscribe to dead code overlay state
+  const deadCodeEnabled = useDeadCodeEnabled();
 
   // The data prop already comes pre-filtered from AnalysisView
   // No need to filter again here
@@ -231,9 +235,20 @@ const TreemapComponent: React.FC<TreemapProps> = ({
 
       tooltip: {
         formatter: (info: any) => {
-          const { name, value, complexity, path, type } = info.data;
+          const { name, value, complexity, path, type, deadCodeRatio } = info.data;
           const complexityValue = complexity ?? 0;
           const complexityLabel = getComplexityLabel(complexityValue);
+
+          let deadCodeSection = '';
+          if (deadCodeEnabled && deadCodeRatio !== undefined && deadCodeRatio > 0) {
+            const percentage = (deadCodeRatio * 100).toFixed(1);
+            deadCodeSection = `
+              <div style="display: flex; justify-content: space-between; gap: 16px;">
+                <span style="color: #64748b;">Dead Code:</span>
+                <span style="font-weight: 500; color: ${deadCodeBorderColor(deadCodeRatio)};">${percentage}%</span>
+              </div>
+            `;
+          }
 
           return `
             <div style="padding: 8px;">
@@ -248,6 +263,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
                   <span style="color: #64748b;">Complexity:</span>
                   <span style="font-weight: 500;">${complexityValue.toFixed(1)} (${complexityLabel})</span>
                 </div>
+                ${deadCodeSection}
                 <div style="color: #64748b; font-size: 11px; margin-top: 4px; max-width: 300px; word-break: break-all;">
                   ${path}
                 </div>
@@ -318,8 +334,20 @@ const TreemapComponent: React.FC<TreemapProps> = ({
             },
           },
           itemStyle: {
-            borderColor: '#ffffff',
-            borderWidth: 2,
+            borderColor: (params: any) => {
+              // Apply dead code border color if overlay is enabled and node has dead code
+              if (deadCodeEnabled && params.data?.deadCodeRatio) {
+                return deadCodeBorderColor(params.data.deadCodeRatio);
+              }
+              return '#ffffff';
+            },
+            borderWidth: (params: any) => {
+              // Use thicker border for nodes with dead code when overlay is enabled
+              if (deadCodeEnabled && params.data?.deadCodeRatio) {
+                return 3;
+              }
+              return 2;
+            },
             gapWidth: 2,
           },
           emphasis: {
@@ -364,7 +392,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       chart.off('mouseout', handleMouseOut);
       window.removeEventListener('resize', handleResize);
     };
-  }, [data, echartsData, shouldUseLazyRendering, handleClick, handleMouseOver, handleMouseOut]);
+  }, [data, echartsData, shouldUseLazyRendering, deadCodeEnabled, handleClick, handleMouseOver, handleMouseOut]);
 
   // Dispose chart instance on unmount
   useEffect(() => {
