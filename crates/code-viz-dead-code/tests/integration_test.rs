@@ -13,6 +13,7 @@
 
 use code_viz_dead_code::{analyze_dead_code, AnalysisConfig};
 use std::path::{Path, PathBuf};
+use tempfile::TempDir;
 
 /// Get the path to the sample repository test corpus
 fn get_sample_repo_path() -> PathBuf {
@@ -20,6 +21,17 @@ fn get_sample_repo_path() -> PathBuf {
         .join("tests")
         .join("fixtures")
         .join("sample-repo")
+}
+
+/// Create a test config with a unique cache directory to prevent lock contention
+fn create_test_config() -> (AnalysisConfig, TempDir) {
+    let cache_dir = TempDir::new().expect("Failed to create temp cache dir");
+    let config = AnalysisConfig {
+        enable_cache: true,
+        cache_dir: Some(cache_dir.path().to_path_buf()),
+        ..Default::default()
+    };
+    (config, cache_dir)
 }
 
 /// Test that the sample repository fixtures exist and are properly structured
@@ -80,9 +92,10 @@ fn test_sample_repo_structure() {
 fn test_analyze_sample_repository() {
     let sample_repo = get_sample_repo_path();
 
-    // Run analysis with default config
-    let result =
-        analyze_dead_code(&sample_repo, None).expect("Analysis should complete successfully");
+    // Run analysis with unique cache directory
+    let (config, _cache_dir) = create_test_config();
+    let result = analyze_dead_code(&sample_repo, Some(config))
+        .expect("Analysis should complete successfully");
 
     // Verify basic metrics
     assert!(
@@ -142,7 +155,8 @@ fn test_analyze_sample_repository() {
 #[test]
 fn test_dead_file_detection() {
     let sample_repo = get_sample_repo_path();
-    let result = analyze_dead_code(&sample_repo, None).unwrap();
+    let (config, _cache_dir) = create_test_config();
+    let result = analyze_dead_code(&sample_repo, Some(config)).unwrap();
 
     // Find dead.ts in the results
     let dead_ts = result
@@ -190,7 +204,8 @@ fn test_dead_file_detection() {
 #[test]
 fn test_live_code_not_marked_dead() {
     let sample_repo = get_sample_repo_path();
-    let result = analyze_dead_code(&sample_repo, None).unwrap();
+    let (config, _cache_dir) = create_test_config();
+    let result = analyze_dead_code(&sample_repo, Some(config)).unwrap();
 
     // Check if used.ts has dead code (it shouldn't, all exports are used)
     let used_ts = result.files.iter().find(|f| f.path.ends_with("used.ts"));
@@ -220,7 +235,8 @@ fn test_live_code_not_marked_dead() {
 #[test]
 fn test_confidence_scores() {
     let sample_repo = get_sample_repo_path();
-    let result = analyze_dead_code(&sample_repo, None).unwrap();
+    let (config, _cache_dir) = create_test_config();
+    let result = analyze_dead_code(&sample_repo, Some(config)).unwrap();
 
     // Collect all dead symbols
     let all_dead: Vec<_> = result.files.iter().flat_map(|f| &f.dead_code).collect();
@@ -281,7 +297,8 @@ fn test_confidence_scores() {
 #[test]
 fn test_entry_point_detection() {
     let sample_repo = get_sample_repo_path();
-    let result = analyze_dead_code(&sample_repo, None).unwrap();
+    let (config, _cache_dir) = create_test_config();
+    let result = analyze_dead_code(&sample_repo, Some(config)).unwrap();
 
     // main.ts should not have its main() function marked as dead
     let main_ts_dead = result.files.iter().find(|f| f.path.ends_with("main.ts"));
@@ -335,7 +352,8 @@ fn test_circular_imports() {
     let sample_repo = get_sample_repo_path();
 
     // This should complete without hanging or stack overflow
-    let result = analyze_dead_code(&sample_repo, None)
+    let (config, _cache_dir) = create_test_config();
+    let result = analyze_dead_code(&sample_repo, Some(config))
         .expect("Should handle circular imports without crashing");
 
     // Find circular-a.ts and circular-b.ts
@@ -422,7 +440,8 @@ fn test_incremental_analysis() {
 fn test_analysis_result_snapshot() {
     let sample_repo = get_sample_repo_path();
 
-    let mut result = analyze_dead_code(&sample_repo, None).expect("Analysis should succeed");
+    let (config, _cache_dir) = create_test_config();
+    let mut result = analyze_dead_code(&sample_repo, Some(config)).expect("Analysis should succeed");
 
     // Sort files by path for deterministic output
     result.files.sort_by(|a, b| a.path.cmp(&b.path));
@@ -467,7 +486,8 @@ fn test_analysis_result_snapshot() {
 #[test]
 fn test_accuracy_metrics() {
     let sample_repo = get_sample_repo_path();
-    let result = analyze_dead_code(&sample_repo, None).unwrap();
+    let (config, _cache_dir) = create_test_config();
+    let result = analyze_dead_code(&sample_repo, Some(config)).unwrap();
 
     let total_dead = result
         .files
