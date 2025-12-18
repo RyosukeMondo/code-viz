@@ -2,6 +2,7 @@ use code_viz_core::AnalysisResult;
 use thiserror::Error;
 
 pub mod csv;
+pub mod dead_code;
 pub mod json;
 pub mod text;
 
