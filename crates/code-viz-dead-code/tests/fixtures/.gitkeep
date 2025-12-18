@@ -1,0 +1,8 @@
+# Test Fixtures
+
+This directory will contain sample TypeScript projects with known dead code for integration testing.
+
+Structure will include:
+- Sample projects with intentional dead code
+- Test cases for various TypeScript patterns (imports, exports, re-exports, circular dependencies)
+- Edge cases (dynamic imports, test files, etc.)
