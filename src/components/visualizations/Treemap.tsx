@@ -84,6 +84,17 @@ const TreemapComponent: React.FC<TreemapProps> = ({
 
   // Memoize event handlers to prevent unnecessary re-renders
   const handleClick = useCallback((params: any) => {
+    console.log('[Treemap] Click event:', {
+      hasData: !!params.data,
+      dataKeys: params.data ? Object.keys(params.data) : [],
+      name: params.data?.name,
+      path: params.data?.path,
+      value: params.data?.value,
+      type: params.data?.type,
+      dataName: data?.name,
+      dataChildrenCount: data?.children?.length,
+    });
+
     if (params.data && onNodeClick && data) {
       // CRITICAL: Find the original TreeNode from source data using path
       // Don't reconstruct from ECharts data - children would be in wrong format
@@ -92,12 +103,15 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       // Guard: ECharts might create wrapper/container nodes without our custom data
       if (!path) {
         console.debug('[Treemap] Clicked node has no path (likely container node), ignoring');
+        console.log('[Treemap] Full params.data:', params.data);
         return;
       }
 
+      console.log('[Treemap] Looking for path:', path, 'in root:', data.name);
       const originalNode = findNodeByPath(data, path);
 
       if (originalNode) {
+        console.log('[Treemap] Found original node:', originalNode.name, 'children:', originalNode.children.length);
         onNodeClick(originalNode);
       } else {
         console.error('[Treemap] Could not find original node for path:', path, 'in data:', data.name);

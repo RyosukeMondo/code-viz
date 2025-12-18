@@ -37,8 +37,14 @@ import { filterByPath } from '@/utils/treeTransform';
  * AnalysisView - Main feature component for code analysis and visualization
  */
 export function AnalysisView() {
-  // Local state for repository path input
-  const [repoPath, setRepoPath] = useState<string>('');
+  // Local state for repository path input (load from localStorage if available)
+  const [repoPath, setRepoPath] = useState<string>(() => {
+    try {
+      return localStorage.getItem('lastRepoPath') || '';
+    } catch {
+      return '';
+    }
+  });
 
   // Analysis hook for executing repository analysis
   const { data, loading, error, analyze, reset } = useAnalysis();
@@ -76,6 +82,14 @@ export function AnalysisView() {
       console.warn('[AnalysisView] Empty path, aborting');
       return;
     }
+
+    // Save path to localStorage for next time
+    try {
+      localStorage.setItem('lastRepoPath', repoPath.trim());
+    } catch (error) {
+      console.warn('[AnalysisView] Failed to save path to localStorage:', error);
+    }
+
     console.log('[AnalysisView] Calling analyze() with:', repoPath.trim());
     try {
       await analyze(repoPath.trim());
