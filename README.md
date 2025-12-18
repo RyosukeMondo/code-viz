@@ -112,6 +112,166 @@ Initialize a default configuration file.
 code-viz config init
 ```
 
+## Dead Code Detection
+
+CodeViz includes semantic dead code analysis to identify unused functions, classes, and modules across your codebase using stack-graphs for cross-file reachability analysis.
+
+### Overview
+
+The dead code analyzer builds a symbol graph from import/export relationships and performs depth-first search from entry points (main files, exports, tests) to identify unreachable code. Each dead symbol receives a confidence score (0-100) indicating how safe it is to delete.
+
+**Key Features:**
+- 🎯 **Semantic Analysis**: Uses stack-graphs to track cross-file dependencies
+- 📊 **Confidence Scores**: 0-100 score based on exports, test coverage, recent changes
+- 🔍 **Function-Level Granularity**: Identifies dead functions, classes, and methods
+- ⚡ **Incremental Analysis**: Cached symbol graphs for fast re-analysis
+- 🎨 **Visual Overlay**: GUI treemap highlights files with dead code
+
+### Quick Start
+
+Analyze a project for dead code:
+
+```bash
+code-viz dead-code ./src
+```
+
+Output:
+```text
+Dead Code Analysis Summary
+===========================
+Total Files Analyzed: 42
+Files with Dead Code: 12
+Dead Functions:       28
+Dead Classes:         4
+Total Dead LOC:       856 (12.3% of codebase)
+
+High-Confidence Deletions (score > 90):
+  1. src/utils/deprecated.ts: oldHelper() - 95% confidence
+  2. src/legacy/converter.ts: convertLegacy() - 92% confidence
+
+Top Files by Dead Code:
+  1. src/utils/deprecated.ts (245 LOC, 89% dead)
+  2. src/legacy/converter.ts (180 LOC, 65% dead)
+```
+
+### CLI Usage
+
+#### Standalone Command
+
+```bash
+# Basic analysis
+code-viz dead-code ./src
+
+# JSON output for CI integration
+code-viz dead-code ./src --format json > dead-code-report.json
+
+# Filter by minimum confidence (only show high-confidence dead code)
+code-viz dead-code ./src --min-confidence 90
+
+# Write results to file
+code-viz dead-code ./src --output dead-code.json
+
+# Fail CI if dead code ratio exceeds threshold (exit code 3)
+code-viz dead-code ./src --threshold dead_code_ratio=0.15
+```
+
+#### Integrated with Analyze Command
+
+Enable dead code detection alongside standard analysis:
+
+```bash
+# Add dead code analysis to standard metrics
+code-viz analyze ./src --dead-code
+
+# JSON output includes dead code fields
+code-viz analyze ./src --dead-code --format json
+```
+
+This extends the JSON output with dead code fields:
+```json
+{
+  "files": [
+    {
+      "path": "src/utils/helper.ts",
+      "loc": 150,
+      "dead_function_count": 3,
+      "dead_code_loc": 45,
+      "dead_code_ratio": 0.30
+    }
+  ]
+}
+```
+
+### GUI Usage
+
+The Tauri desktop app provides visual dead code detection:
+
+1. **Enable Overlay**: Click the "Dead Code" toggle in the toolbar
+2. **Visual Indicators**: Files with dead code show colored borders on the treemap:
+   - 🔴 **Red**: >50% dead code
+   - 🟠 **Orange**: 20-50% dead code
+   - 🟡 **Yellow**: <20% dead code
+3. **Hover Details**: Tooltips show dead code ratio and symbol counts
+4. **Click for Details**: Select a file to see the list of dead symbols with confidence scores and line numbers
+
+### Confidence Scores
+
+Each dead symbol receives a confidence score indicating deletion safety:
+
+| Score | Meaning | Action |
+|-------|---------|--------|
+| 90-100 | **High Confidence** | Safe to delete - unexported, untested, no dynamic usage |
+| 70-89 | **Medium Confidence** | Likely safe - may have test coverage or be exported |
+| 0-69 | **Low Confidence** | Review carefully - exported, recently modified, or matches dynamic import patterns |
+
+**Score Calculation:**
+- Base score: 100
+- Exported to public API: -30
+- Modified in last 30 days: -20
+- Matches dynamic import pattern (`*_handler`, `*_plugin`): -25
+- Has test coverage: -15
+
+### False Positives
+
+To reduce false positives, use the ignore file:
+
+Create `.code-viz-ignore-dead` in your project root:
+```
+# Ignore specific symbols (exact match)
+myDynamicHandler
+legacyPluginLoader
+
+# Ignore by pattern (glob)
+*_plugin
+handle*
+
+# Ignore entire files
+src/plugins/**
+```
+
+Common false positive cases:
+- **Dynamic imports**: `import('./handlers/' + name)` - scored with low confidence
+- **Reflection/eval**: Code loaded dynamically at runtime
+- **Public API exports**: Exported for external consumers (lower confidence)
+- **Framework conventions**: Files loaded by convention (e.g., Next.js pages)
+
+### Troubleshooting
+
+**"No entry points found" error:**
+- Ensure your project has `main.ts`, `index.ts`, or test files
+- Check that files are not excluded by `.code-viz.toml` patterns
+- For libraries, all exports are treated as entry points
+
+**High false positive rate:**
+- Use `--min-confidence 80` to filter out low-confidence results
+- Add patterns to `.code-viz-ignore-dead`
+- Check for dynamic import patterns in your codebase
+
+**Slow analysis on large codebases:**
+- First run builds symbol graph cache (may take 1-2 minutes)
+- Subsequent runs use incremental analysis (<1 second)
+- Cache stored in `.code-viz/cache/symbols.db`
+
 ## Configuration
 
 CodeViz looks for a `.code-viz.toml` file in the project root.
@@ -127,11 +287,19 @@ format = "text"
 
 [cache]
 enabled = true
+
+[dead_code]
+# Minimum confidence score to report (0-100)
+min_confidence = 80
+# Patterns to ignore (in addition to .code-viz-ignore-dead)
+ignore_patterns = ["*_plugin", "*_handler"]
 ```
 
 ## CI/CD Integration
 
-### GitHub Actions Example
+### GitHub Actions Examples
+
+#### Code Size Monitoring
 
 Fail CI if total LOC increases by more than 10% compared to main branch:
 
@@ -144,7 +312,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install CodeViz
         run: cargo install --git https://github.com/rmondo/code-viz crates/code-viz-cli
 
@@ -155,6 +323,56 @@ jobs:
       - name: Analyze & Compare
         run: |
           code-viz analyze . --format json --output report.json --baseline baseline.json
+```
+
+#### Dead Code Detection
+
+Fail CI if dead code ratio exceeds 15% or if new dead code is introduced:
+
+```yaml
+name: Dead Code Check
+on: [pull_request]
+
+jobs:
+  dead-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CodeViz
+        run: cargo install --git https://github.com/rmondo/code-viz crates/code-viz-cli
+
+      - name: Check Dead Code
+        run: |
+          # Fail if dead code ratio exceeds 15%
+          code-viz dead-code ./src --threshold dead_code_ratio=0.15
+
+          # Generate report for PR comment
+          code-viz dead-code ./src --format json --output dead-code.json
+
+      - name: Comment Dead Code Report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('dead-code.json'));
+            const summary = report.summary;
+
+            const comment = `## 🔍 Dead Code Analysis
+
+            - **Dead Functions**: ${summary.dead_functions}
+            - **Dead Classes**: ${summary.dead_classes}
+            - **Total Dead LOC**: ${summary.total_dead_loc} (${(summary.dead_code_ratio * 100).toFixed(1)}%)
+
+            ${summary.dead_code_ratio > 0.15 ? '⚠️ Dead code ratio exceeds 15% threshold!' : '✅ Within acceptable threshold'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 ```
 
 ## Contributing
