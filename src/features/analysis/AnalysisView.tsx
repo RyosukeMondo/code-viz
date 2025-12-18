@@ -15,17 +15,20 @@
  * - Keyboard navigation support
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Treemap } from '@/components/visualizations/Treemap';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { DetailPanel } from '@/components/common/DetailPanel';
+import { DeadCodePanel } from '@/components/common/DeadCodePanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AnalysisLoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { useAnalysis } from '@/hooks/useAnalysis';
+import { useDeadCodeAnalysis } from '@/hooks/useDeadCodeAnalysis';
 import {
   useSelectedFile,
   useDrillDownPath,
   useAnalysisActions,
+  useDeadCodeEnabled,
 } from '@/store/analysisStore';
 import type { TreeNode } from '@/types/bindings';
 import { filterByPath } from '@/utils/treeTransform';
@@ -40,10 +43,29 @@ export function AnalysisView() {
   // Analysis hook for executing repository analysis
   const { data, loading, error, analyze, reset } = useAnalysis();
 
+  // Dead code analysis hook
+  const {
+    results: deadCodeResults,
+    loading: deadCodeLoading,
+    error: deadCodeError,
+    analyze: analyzeDeadCode
+  } = useDeadCodeAnalysis();
+
   // Store state and actions
   const selectedFile = useSelectedFile();
   const drillDownPath = useDrillDownPath();
-  const { setSelectedFile, setDrillDownPath } = useAnalysisActions();
+  const deadCodeEnabled = useDeadCodeEnabled();
+  const { setSelectedFile, setDrillDownPath, toggleDeadCodeOverlay } = useAnalysisActions();
+
+  /**
+   * Trigger dead code analysis when main analysis completes and overlay is enabled
+   */
+  useEffect(() => {
+    if (data && deadCodeEnabled && repoPath.trim() && !deadCodeResults && !deadCodeLoading) {
+      console.log('[AnalysisView] Auto-triggering dead code analysis');
+      analyzeDeadCode(repoPath.trim(), 80);
+    }
+  }, [data, deadCodeEnabled, repoPath, deadCodeResults, deadCodeLoading, analyzeDeadCode]);
 
   /**
    * Handle analyze button click
@@ -58,10 +80,15 @@ export function AnalysisView() {
     try {
       await analyze(repoPath.trim());
       console.log('[AnalysisView] analyze() returned successfully');
+      // If dead code overlay is enabled, also run dead code analysis
+      if (deadCodeEnabled) {
+        console.log('[AnalysisView] Running dead code analysis');
+        await analyzeDeadCode(repoPath.trim(), 80);
+      }
     } catch (error) {
       console.error('[AnalysisView] analyze() threw error:', error);
     }
-  }, [repoPath, analyze]);
+  }, [repoPath, analyze, deadCodeEnabled, analyzeDeadCode]);
 
   /**
    * Handle Enter key in path input
@@ -179,6 +206,13 @@ export function AnalysisView() {
   }, [reset]);
 
   /**
+   * Handle dead code panel close
+   */
+  const handleDeadCodePanelClose = useCallback(() => {
+    setSelectedFile(null);
+  }, [setSelectedFile]);
+
+  /**
    * Compute current tree node based on drill-down path
    */
   const currentTreeNode = useMemo(() => {
@@ -186,6 +220,22 @@ export function AnalysisView() {
     if (drillDownPath.length === 0) return data;
     return filterByPath(data, drillDownPath);
   }, [data, drillDownPath]);
+
+  /**
+   * Find dead code for the currently selected file
+   */
+  const selectedFileDeadCode = useMemo(() => {
+    if (!selectedFile || !deadCodeResults || selectedFile.type !== 'file') {
+      return null;
+    }
+
+    // Find the file in dead code results by path
+    const fileDeadCode = deadCodeResults.files.find(
+      (f) => f.path === selectedFile.path
+    );
+
+    return fileDeadCode || null;
+  }, [selectedFile, deadCodeResults]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -245,18 +295,51 @@ export function AnalysisView() {
             </button>
 
             {data && !loading && (
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+              <>
+                <button
+                  onClick={toggleDeadCodeOverlay}
+                  className={`px-4 py-2 rounded-lg font-medium border transition-colors
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                           dark:focus:ring-offset-gray-800
+                           ${
+                             deadCodeEnabled
+                               ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                           }`}
+                  aria-label="Toggle dead code overlay"
+                  title="Toggle dead code visualization overlay"
+                >
+                  <span className="flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                    Dead Code
+                  </span>
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
                          border border-gray-300 dark:border-gray-600 rounded-lg
                          hover:bg-gray-200 dark:hover:bg-gray-600
                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                          dark:focus:ring-offset-gray-800
                          transition-colors"
-                aria-label="Reset analysis"
-              >
-                Reset
-              </button>
+                  aria-label="Reset analysis"
+                >
+                  Reset
+                </button>
+              </>
             )}
           </div>
 
@@ -274,6 +357,72 @@ export function AnalysisView() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
+        {/* Dead Code Loading State */}
+        {deadCodeLoading && deadCodeEnabled && !loading && (
+          <div className="absolute top-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg px-4 py-3 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3">
+              <svg
+                className="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Analyzing dead code...
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Dead Code Error State */}
+        {deadCodeError && deadCodeEnabled && !loading && (
+          <div className="absolute top-4 right-4 z-50 bg-red-50 dark:bg-red-900/20 rounded-lg shadow-lg px-4 py-3 border border-red-200 dark:border-red-800 max-w-md">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
+                  Dead Code Analysis Failed
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300 break-words">
+                  {deadCodeError}
+                </p>
+                <button
+                  onClick={() => analyzeDeadCode(repoPath.trim(), 80)}
+                  className="mt-2 text-sm font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Loading State - Enhanced Skeleton */}
         {loading && (
           <div data-testid="loading-state">
@@ -446,6 +595,14 @@ export function AnalysisView() {
 
         {/* Detail Panel */}
         <DetailPanel node={selectedFile} onClose={handleDetailPanelClose} />
+
+        {/* Dead Code Panel - Only show when dead code enabled and file has dead code */}
+        {deadCodeEnabled && selectedFileDeadCode && (
+          <DeadCodePanel
+            file={selectedFileDeadCode}
+            onClose={handleDeadCodePanelClose}
+          />
+        )}
       </main>
     </div>
   );
