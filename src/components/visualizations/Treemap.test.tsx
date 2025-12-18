@@ -1008,11 +1008,41 @@ describe('Treemap', () => {
       // Should log error and NOT call onNodeClick
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Treemap] Could not find original node for path:'),
-        '/root/nonexistent.ts'
+        '/root/nonexistent.ts',
+        'in data:',
+        'root'
       );
       expect(onNodeClick).not.toHaveBeenCalled();
 
       consoleSpy.mockRestore();
+    });
+
+    it('should ignore clicks on nodes without path (ECharts container nodes)', () => {
+      const onNodeClick = vi.fn();
+      const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+      render(<Treemap data={mockTreeData} onNodeClick={onNodeClick} />);
+
+      const clickHandler = mockOn.mock.calls.find((call) => call[0] === 'click')?.[1];
+
+      // Click with no path (ECharts might create container nodes)
+      const echartsClickData = {
+        data: {
+          name: 'container',
+          value: 1000,
+          // NO path property
+        },
+      };
+
+      clickHandler(echartsClickData);
+
+      // Should log debug message and NOT call onNodeClick
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Treemap] Clicked node has no path')
+      );
+      expect(onNodeClick).not.toHaveBeenCalled();
+
+      consoleDebugSpy.mockRestore();
     });
 
     it('should handle clicks when data prop changes', () => {
