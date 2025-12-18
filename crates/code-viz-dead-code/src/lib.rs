@@ -50,7 +50,7 @@ pub use entry_points::detect_entry_points;
 pub use cache::{SymbolGraphCache, CacheError};
 
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use ahash::AHashMap as HashMap;
 use thiserror::Error;
 
 /// Configuration options for dead code analysis

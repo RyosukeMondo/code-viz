@@ -6,7 +6,7 @@
 
 use crate::models::{Symbol, SymbolId};
 use crate::symbol_graph::SymbolGraph;
-use std::collections::HashSet;
+use ahash::AHashSet as HashSet;
 use thiserror::Error;
 
 /// Error type for reachability analysis
@@ -143,7 +143,7 @@ pub fn identify_dead_code(graph: &SymbolGraph, reachable: &HashSet<SymbolId>) ->
 mod tests {
     use super::*;
     use crate::models::SymbolKind;
-    use std::collections::HashMap;
+    use ahash::AHashMap as HashMap;
     use std::path::PathBuf;
 
     /// Helper function to create a test symbol

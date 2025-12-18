@@ -150,9 +150,9 @@ mod tests {
     #[test]
     fn test_detect_main_ts() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let main_path = PathBuf::from("src/main.ts");
@@ -166,9 +166,9 @@ mod tests {
     #[test]
     fn test_detect_index_ts() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let index_path = PathBuf::from("src/index.ts");
@@ -182,9 +182,9 @@ mod tests {
     #[test]
     fn test_detect_test_files() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         // Add symbol in test file
@@ -204,9 +204,9 @@ mod tests {
     #[test]
     fn test_detect_exported_symbols() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let index_path = PathBuf::from("src/index.ts");
@@ -226,9 +226,9 @@ mod tests {
     #[test]
     fn test_no_entry_points() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         // Add a regular, unexported symbol in a non-entry file
@@ -264,9 +264,9 @@ mod tests {
     #[test]
     fn test_main_function_detection() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let regular_path = PathBuf::from("src/app.ts");
@@ -285,9 +285,9 @@ mod tests {
     #[test]
     fn test_lib_rs_entry_file() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let lib_path = PathBuf::from("src/lib.rs");
@@ -302,9 +302,9 @@ mod tests {
     #[test]
     fn test_unexported_in_entry_file_not_entry_point() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let index_path = PathBuf::from("src/index.ts");
@@ -319,9 +319,9 @@ mod tests {
     #[test]
     fn test_exported_in_non_entry_file_not_entry_point() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let utils_path = PathBuf::from("src/utils.ts");
@@ -336,9 +336,9 @@ mod tests {
     #[test]
     fn test_multiple_entry_points_deduplication() {
         let mut graph = SymbolGraph {
-            symbols: std::collections::HashMap::new(),
-            imports: std::collections::HashMap::new(),
-            exports: std::collections::HashMap::new(),
+            symbols: ahash::AHashMap::new(),
+            imports: ahash::AHashMap::new(),
+            exports: ahash::AHashMap::new(),
         };
 
         let main_path = PathBuf::from("src/main.ts");

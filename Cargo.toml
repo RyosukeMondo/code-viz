@@ -46,3 +46,9 @@ assert_fs = "1.0"
 predicates = "3.0"
 insta = "1.0"
 tempfile = "3.8"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+strip = true

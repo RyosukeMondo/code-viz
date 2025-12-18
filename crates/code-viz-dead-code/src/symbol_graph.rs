@@ -6,7 +6,8 @@
 
 use crate::models::{Symbol, SymbolId, SymbolKind};
 use code_viz_core::parser::LanguageParser;
-use std::collections::HashMap;
+use ahash::AHashMap as HashMap;
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use thiserror::Error;
@@ -430,90 +431,133 @@ impl SymbolGraphBuilder {
     /// # Returns
     /// Complete symbol graph with all relationships
     pub fn build_graph(&mut self, files: Vec<(PathBuf, String)>) -> Result<SymbolGraph, GraphError> {
-        // Pre-allocate capacity
+        use std::sync::Mutex;
+
+        // Pre-allocate capacity more accurately (estimate 20 symbols per file)
         let file_count = files.len();
-        let mut all_symbols: HashMap<SymbolId, Symbol> = HashMap::with_capacity(file_count * 10);
-        let mut imports: HashMap<SymbolId, Vec<SymbolId>> = HashMap::new();
-        let mut exports: HashMap<PathBuf, Vec<SymbolId>> = HashMap::with_capacity(file_count);
+        let estimated_symbols = file_count * 20;
 
         // Build a map of available files for import resolution
         let available_files: HashMap<PathBuf, bool> = files.iter()
             .map(|(path, _)| (path.clone(), true))
             .collect();
 
-        // First pass: Extract all symbols from all files
-        for (file_path, source) in &files {
-            // Determine the parser based on file extension
-            let parser: Box<dyn LanguageParser> = if file_path.extension()
-                .and_then(|s| s.to_str())
-                .map(|s| s == "ts" || s == "tsx")
-                .unwrap_or(false)
-            {
-                Box::new(code_viz_core::parser::TypeScriptParser)
-            } else {
-                Box::new(code_viz_core::parser::JavaScriptParser)
-            };
+        // Use thread-safe containers for parallel processing
+        let all_symbols = Mutex::new(HashMap::with_capacity(estimated_symbols));
+        let exports = Mutex::new(HashMap::with_capacity(file_count));
 
-            // Extract symbols
-            let symbols = self.extract_symbols(file_path, source, parser.as_ref())?;
+        // First pass: Extract all symbols from all files IN PARALLEL
+        let symbol_results: Vec<Result<_, GraphError>> = files.par_iter()
+            .map(|(file_path, source)| {
+                // Determine the parser based on file extension
+                let parser: Box<dyn LanguageParser> = if file_path.extension()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s == "ts" || s == "tsx")
+                    .unwrap_or(false)
+                {
+                    Box::new(code_viz_core::parser::TypeScriptParser)
+                } else {
+                    Box::new(code_viz_core::parser::JavaScriptParser)
+                };
 
-            // Track exported symbols per file
-            let mut file_exports = Vec::new();
+                // Extract symbols (each thread gets its own builder)
+                let mut builder = SymbolGraphBuilder::new();
+                let symbols = builder.extract_symbols(file_path, source, parser.as_ref())?;
 
-            for symbol in symbols {
-                if symbol.is_exported {
-                    file_exports.push(symbol.id.clone());
+                // Track exported symbols per file
+                let mut file_exports = Vec::new();
+                for symbol in &symbols {
+                    if symbol.is_exported {
+                        file_exports.push(symbol.id.clone());
+                    }
                 }
-                all_symbols.insert(symbol.id.clone(), symbol);
+
+                Ok((file_path.clone(), symbols, file_exports))
+            })
+            .collect();
+
+        // Collect results and handle errors
+        for result in symbol_results {
+            let (file_path, symbols, file_exports) = result?;
+
+            let mut all_symbols_guard = all_symbols.lock().unwrap();
+            for symbol in symbols {
+                all_symbols_guard.insert(symbol.id.clone(), symbol);
             }
 
             if !file_exports.is_empty() {
-                exports.insert(file_path.clone(), file_exports);
+                let mut exports_guard = exports.lock().unwrap();
+                exports_guard.insert(file_path, file_exports);
             }
         }
 
-        // Second pass: Build import relationships
-        for (file_path, source) in &files {
-            let parser: Box<dyn LanguageParser> = if file_path.extension()
-                .and_then(|s| s.to_str())
-                .map(|s| s == "ts" || s == "tsx")
-                .unwrap_or(false)
-            {
-                Box::new(code_viz_core::parser::TypeScriptParser)
-            } else {
-                Box::new(code_viz_core::parser::JavaScriptParser)
-            };
+        // Unwrap the Mutex to get the final HashMaps
+        let all_symbols = all_symbols.into_inner().unwrap();
+        let exports = exports.into_inner().unwrap();
 
-            // Extract imports
-            let import_sources = self.extract_imports(file_path, source, parser.as_ref())?;
+        // Second pass: Build import relationships IN PARALLEL
+        let imports = Mutex::new(HashMap::with_capacity(estimated_symbols));
 
-            // Resolve import paths to actual files
-            for import_source in import_sources {
-                if let Some(resolved_path) = resolve_import_path(
-                    file_path,
-                    &import_source,
-                    &available_files,
-                ) {
-                    // Find exported symbols from the imported file
-                    if let Some(exported_symbols) = exports.get(&resolved_path) {
-                        // Get all symbols in the current file that could depend on these imports
-                        let file_symbols: Vec<&Symbol> = all_symbols.values()
-                            .filter(|s| s.path == *file_path)
-                            .collect();
+        let import_results: Vec<Result<_, GraphError>> = files.par_iter()
+            .map(|(file_path, source)| {
+                let parser: Box<dyn LanguageParser> = if file_path.extension()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s == "ts" || s == "tsx")
+                    .unwrap_or(false)
+                {
+                    Box::new(code_viz_core::parser::TypeScriptParser)
+                } else {
+                    Box::new(code_viz_core::parser::JavaScriptParser)
+                };
 
-                        // For simplicity, mark all symbols in the importing file as depending
-                        // on all exported symbols from the imported file
-                        // (More sophisticated analysis would parse which specific imports are used where)
-                        for symbol in file_symbols {
-                            imports
-                                .entry(symbol.id.clone())
-                                .or_insert_with(Vec::new)
-                                .extend(exported_symbols.clone());
+                // Extract imports
+                let builder = SymbolGraphBuilder::new();
+                let import_sources = builder.extract_imports(file_path, source, parser.as_ref())?;
+
+                // Collect import relationships for this file
+                let mut file_imports: Vec<(SymbolId, Vec<SymbolId>)> = Vec::new();
+
+                // Resolve import paths to actual files
+                for import_source in import_sources {
+                    if let Some(resolved_path) = resolve_import_path(
+                        file_path,
+                        &import_source,
+                        &available_files,
+                    ) {
+                        // Find exported symbols from the imported file
+                        if let Some(exported_symbols) = exports.get(&resolved_path) {
+                            // Get all symbols in the current file that could depend on these imports
+                            let file_symbols: Vec<SymbolId> = all_symbols.values()
+                                .filter(|s| s.path == *file_path)
+                                .map(|s| s.id.clone())
+                                .collect();
+
+                            // For simplicity, mark all symbols in the importing file as depending
+                            // on all exported symbols from the imported file
+                            for symbol_id in file_symbols {
+                                file_imports.push((symbol_id, exported_symbols.clone()));
+                            }
                         }
                     }
                 }
+
+                Ok(file_imports)
+            })
+            .collect();
+
+        // Collect import results
+        for result in import_results {
+            let file_imports = result?;
+            let mut imports_guard = imports.lock().unwrap();
+            for (symbol_id, deps) in file_imports {
+                imports_guard
+                    .entry(symbol_id)
+                    .or_insert_with(Vec::new)
+                    .extend(deps);
             }
         }
+
+        let imports = imports.into_inner().unwrap();
 
         Ok(SymbolGraph {
             symbols: all_symbols,

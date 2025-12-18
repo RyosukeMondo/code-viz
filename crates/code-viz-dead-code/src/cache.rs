@@ -5,8 +5,8 @@
 //! with file hashes for invalidation.
 
 use crate::symbol_graph::SymbolGraph;
+use ahash::AHashMap as HashMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -263,7 +263,7 @@ impl SymbolGraphCache {
 mod tests {
     use super::*;
     use crate::models::{Symbol, SymbolId, SymbolKind};
-    use std::collections::HashMap;
+    use ahash::AHashMap as HashMap;
     use tempfile::TempDir;
 
     fn create_test_graph() -> SymbolGraph {

@@ -281,7 +281,7 @@ fn has_test_coverage(symbol: &Symbol, graph: &SymbolGraph) -> bool {
 mod tests {
     use super::*;
     use crate::models::{Symbol, SymbolKind};
-    use std::collections::HashMap;
+    use ahash::AHashMap as HashMap;
 
     /// Create a test symbol with given attributes
     fn create_test_symbol(
