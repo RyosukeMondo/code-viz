@@ -129,3 +129,26 @@ export function deadCodeBorderColor(ratio: number): string {
   if (clampedRatio > 0.2) return '#f97316'; // orange
   return '#eab308'; // yellow
 }
+
+/**
+ * Maps a confidence score (0-100) to a color for dead code visualization
+ *
+ * Color mapping:
+ * - >80: Green (#22c55e) - High confidence it's safe to delete
+ * - 60-80: Yellow (#eab308) - Medium confidence, review needed
+ * - <60: Red (#ef4444) - Low confidence, likely false positive
+ *
+ * @param confidence - Confidence score from 0 to 100
+ * @returns Hex color code (e.g., "#22c55e")
+ */
+export function confidenceToColor(confidence: number): string {
+  if (typeof confidence !== 'number' || isNaN(confidence)) {
+    return '#94a3b8'; // gray-400 for invalid values
+  }
+
+  const clampedScore = Math.max(0, Math.min(100, confidence));
+
+  if (clampedScore > 80) return '#22c55e'; // green
+  if (clampedScore >= 60) return '#eab308'; // yellow
+  return '#ef4444'; // red
+}
