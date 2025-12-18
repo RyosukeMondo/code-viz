@@ -583,6 +583,8 @@ dependencies = [
  "thiserror 1.0.69",
  "tracing",
  "tree-sitter",
+ "tree-sitter-javascript",
+ "tree-sitter-typescript",
 ]
 
 [[package]]

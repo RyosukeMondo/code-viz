@@ -71,8 +71,77 @@ pub struct DeadCodeResult {
 
 impl DeadCodeResult {
     /// Filter dead code by minimum confidence score
-    pub fn filter_by_confidence(&self, _min_confidence: u8) -> Self {
-        todo!("Will implement in task 3.1.1")
+    ///
+    /// Returns a new `DeadCodeResult` containing only dead symbols
+    /// with confidence >= `min_confidence`.
+    ///
+    /// # Arguments
+    ///
+    /// * `min_confidence` - Minimum confidence score (0-100)
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use code_viz_dead_code::DeadCodeResult;
+    /// # let result: DeadCodeResult = unimplemented!();
+    /// // Only show high-confidence dead code (90% or higher)
+    /// let high_confidence = result.filter_by_confidence(90);
+    /// ```
+    pub fn filter_by_confidence(&self, min_confidence: u8) -> Self {
+        let mut filtered_files = Vec::new();
+        let mut dead_functions = 0;
+        let mut dead_classes = 0;
+        let mut total_dead_loc = 0;
+
+        for file in &self.files {
+            let filtered_symbols: Vec<DeadSymbol> = file.dead_code
+                .iter()
+                .filter(|symbol| symbol.confidence >= min_confidence)
+                .cloned()
+                .collect();
+
+            if !filtered_symbols.is_empty() {
+                // Update counters
+                for symbol in &filtered_symbols {
+                    total_dead_loc += symbol.loc;
+                    match symbol.kind {
+                        SymbolKind::Function | SymbolKind::ArrowFunction | SymbolKind::Method => {
+                            dead_functions += 1;
+                        }
+                        SymbolKind::Class => {
+                            dead_classes += 1;
+                        }
+                        _ => {}
+                    }
+                }
+
+                filtered_files.push(FileDeadCode {
+                    path: file.path.clone(),
+                    dead_code: filtered_symbols,
+                });
+            }
+        }
+
+        let files_with_dead_code = filtered_files.len();
+
+        // Recalculate ratio based on original total
+        let dead_code_ratio = if self.summary.total_dead_loc > 0 {
+            total_dead_loc as f64 / self.summary.total_dead_loc as f64 * self.summary.dead_code_ratio
+        } else {
+            0.0
+        };
+
+        DeadCodeResult {
+            summary: DeadCodeSummary {
+                total_files: self.summary.total_files,
+                files_with_dead_code,
+                dead_functions,
+                dead_classes,
+                total_dead_loc,
+                dead_code_ratio,
+            },
+            files: filtered_files,
+        }
     }
 }
 
