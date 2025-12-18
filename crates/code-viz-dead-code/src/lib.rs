@@ -24,7 +24,7 @@
 //! use std::path::Path;
 //!
 //! // Analyze a TypeScript project for dead code
-//! let result = analyze_dead_code(Path::new("./src"))?;
+//! let result = analyze_dead_code(Path::new("./src"), None)?;
 //! println!("Found {} dead symbols", result.summary.dead_functions);
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
