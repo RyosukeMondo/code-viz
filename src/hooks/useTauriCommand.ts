@@ -110,6 +110,8 @@ export function useTauriCommand<T = unknown>(
    */
   const execute = useCallback(
     async (...args: unknown[]) => {
+      console.log('[useTauriCommand] execute() ENTRY - command:', command, 'args:', args);
+
       // Cancel any ongoing request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -118,7 +120,10 @@ export function useTauriCommand<T = unknown>(
       // Create new abort controller for this request
       abortControllerRef.current = new AbortController();
 
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {
+        console.warn('[useTauriCommand] Component unmounted, aborting');
+        return;
+      }
 
       // Generate unique request ID for correlation with backend logs
       const reqId = crypto.randomUUID();
@@ -135,26 +140,20 @@ export function useTauriCommand<T = unknown>(
         let invokeArgs: Record<string, unknown> | undefined;
 
         if (args.length === 0) {
-          // No arguments, just add request_id
-          invokeArgs = { request_id: reqId };
+          // No arguments
+          invokeArgs = undefined;
         } else if (args.length === 1) {
-          // Single argument - merge with request_id
+          // Single argument - pass as-is
           const firstArg = args[0];
           if (typeof firstArg === 'object' && firstArg !== null) {
-            invokeArgs = { ...firstArg, request_id: reqId } as Record<
-              string,
-              unknown
-            >;
+            invokeArgs = firstArg as Record<string, unknown>;
           } else {
             // If it's a primitive, wrap it
-            invokeArgs = { value: firstArg, request_id: reqId };
+            invokeArgs = { value: firstArg };
           }
         } else {
           // Multiple arguments - assume first is object
-          invokeArgs = {
-            ...(args[0] as Record<string, unknown>),
-            request_id: reqId,
-          };
+          invokeArgs = args[0] as Record<string, unknown>;
         }
 
         const result = await invoke<T>(command, invokeArgs);
@@ -209,6 +208,19 @@ export function useTauriCommand<T = unknown>(
     setRequestId(null);
   }, []);
 
+  // Set mounted flag on mount
+  useEffect(() => {
+    isMountedRef.current = true;
+    console.log('[useTauriCommand] Component mounted, isMountedRef set to true');
+    return () => {
+      console.log('[useTauriCommand] Component unmounting, setting isMountedRef to false');
+      isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   // Execute immediately on mount if requested
   useEffect(() => {
     if (immediate) {
@@ -216,16 +228,6 @@ export function useTauriCommand<T = unknown>(
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [immediate]); // Only run once on mount
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
 
   return {
     data,

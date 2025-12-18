@@ -49,10 +49,18 @@ export function AnalysisView() {
    * Handle analyze button click
    */
   const handleAnalyze = useCallback(async () => {
+    console.log('[AnalysisView] handleAnalyze called, repoPath:', repoPath);
     if (!repoPath.trim()) {
+      console.warn('[AnalysisView] Empty path, aborting');
       return;
     }
-    await analyze(repoPath.trim());
+    console.log('[AnalysisView] Calling analyze() with:', repoPath.trim());
+    try {
+      await analyze(repoPath.trim());
+      console.log('[AnalysisView] analyze() returned successfully');
+    } catch (error) {
+      console.error('[AnalysisView] analyze() threw error:', error);
+    }
   }, [repoPath, analyze]);
 
   /**
@@ -69,11 +77,22 @@ export function AnalysisView() {
 
   /**
    * Handle folder picker dialog
-   * TODO: Implement when Tauri dialog plugin is available
    */
   const handleBrowse = useCallback(async () => {
-    // Placeholder - will be implemented when @tauri-apps/plugin-dialog is added
-    console.log('Browse functionality not yet implemented');
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: 'Select Repository Directory',
+      });
+
+      if (selected && typeof selected === 'string') {
+        setRepoPath(selected);
+      }
+    } catch (error) {
+      console.error('Failed to open folder picker:', error);
+    }
   }, []);
 
   /**
@@ -81,14 +100,23 @@ export function AnalysisView() {
    */
   const handleNodeClick = useCallback(
     (node: TreeNode) => {
+      console.log('[AnalysisView] Node clicked:', {
+        name: node.name,
+        type: node.type,
+        path: node.path,
+        currentDrillDownPath: JSON.stringify(drillDownPath),
+      });
+
       // If it's a directory, drill down
       if (node.type === 'directory' && node.children.length > 0) {
         // Build new drill-down path
         const newPath = [...drillDownPath, node.name];
+        console.log('[AnalysisView] Drilling down, new path:', JSON.stringify(newPath));
         setDrillDownPath(newPath);
         setSelectedFile(null);
       } else {
         // If it's a file, show details
+        console.log('[AnalysisView] Selecting file');
         setSelectedFile(node);
       }
     },

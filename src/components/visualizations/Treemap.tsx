@@ -31,7 +31,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { TreemapProps, TreeNode } from '../../types';
-import { treeNodeToECharts, filterByPath, getFileCount } from '../../utils/treeTransform';
+import { treeNodeToECharts, getFileCount } from '../../utils/treeTransform';
 import { getComplexityLabel } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
 
@@ -60,26 +60,20 @@ const TreemapComponent: React.FC<TreemapProps> = ({
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
   const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
 
-  // Memoize filtered data to avoid re-filtering on every render
-  const filteredData = useMemo(() => {
-    if (!data) return null;
-
-    return drillDownPath.length > 0
-      ? filterByPath(data, drillDownPath)
-      : data;
-  }, [data, drillDownPath]);
+  // The data prop already comes pre-filtered from AnalysisView
+  // No need to filter again here
 
   // Memoize ECharts transformation (expensive for large datasets)
   const echartsData = useMemo(() => {
-    if (!filteredData) return null;
-    return treeNodeToECharts(filteredData);
-  }, [filteredData]);
+    if (!data) return null;
+    return treeNodeToECharts(data);
+  }, [data]);
 
   // Calculate file count to determine if we need lazy rendering
   const fileCount = useMemo(() => {
-    if (!filteredData) return 0;
-    return getFileCount(filteredData);
-  }, [filteredData]);
+    if (!data) return 0;
+    return getFileCount(data);
+  }, [data]);
 
   // Determine if we should use lazy rendering (for datasets > 50K files)
   const shouldUseLazyRendering = fileCount > 50000;
@@ -128,7 +122,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
    * Get flattened list of visible nodes for keyboard navigation
    */
   const getVisibleNodes = useCallback((): TreeNode[] => {
-    if (!filteredData) return [];
+    if (!data) return [];
 
     const nodes: TreeNode[] = [];
     const traverse = (node: TreeNode) => {
@@ -140,9 +134,9 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       }
     };
 
-    traverse(filteredData);
+    traverse(data);
     return nodes;
-  }, [filteredData]);
+  }, [data]);
 
   /**
    * Handle keyboard navigation
@@ -223,8 +217,8 @@ const TreemapComponent: React.FC<TreemapProps> = ({
 
     const chart = chartInstanceRef.current;
 
-    if (!filteredData) {
-      console.warn('Filtered data is null, path not found:', drillDownPath);
+    if (!data) {
+      console.warn('Data is null');
       return;
     }
 
@@ -238,7 +232,8 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       tooltip: {
         formatter: (info: any) => {
           const { name, value, complexity, path, type } = info.data;
-          const complexityLabel = getComplexityLabel(complexity);
+          const complexityValue = complexity ?? 0;
+          const complexityLabel = getComplexityLabel(complexityValue);
 
           return `
             <div style="padding: 8px;">
@@ -251,7 +246,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 16px;">
                   <span style="color: #64748b;">Complexity:</span>
-                  <span style="font-weight: 500;">${complexity.toFixed(1)} (${complexityLabel})</span>
+                  <span style="font-weight: 500;">${complexityValue.toFixed(1)} (${complexityLabel})</span>
                 </div>
                 <div style="color: #64748b; font-size: 11px; margin-top: 4px; max-width: 300px; word-break: break-all;">
                   ${path}
@@ -270,7 +265,11 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       series: [
         {
           type: 'treemap',
-          data: [echartsData],
+          // Show children directly to avoid extra root wrapper level
+          // This prevents clicking on children from returning the root node
+          data: echartsData?.children && echartsData.children.length > 0
+            ? echartsData.children
+            : [echartsData],
           leafDepth: 1,
           roam: false,
           nodeClick: false, // Disable ECharts default click (we handle it manually)
@@ -280,6 +279,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
           label: {
             show: true,
             formatter: (params: any) => {
+              if (!params.data || !params.rect) return '';
               const { name, value } = params.data;
               // Show name and LOC for rectangles large enough
               if (params.rect.width > 60 && params.rect.height > 40) {
@@ -364,7 +364,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       chart.off('mouseout', handleMouseOut);
       window.removeEventListener('resize', handleResize);
     };
-  }, [data, echartsData, filteredData, drillDownPath, shouldUseLazyRendering, handleClick, handleMouseOver, handleMouseOut]);
+  }, [data, echartsData, shouldUseLazyRendering, handleClick, handleMouseOver, handleMouseOut]);
 
   // Dispose chart instance on unmount
   useEffect(() => {

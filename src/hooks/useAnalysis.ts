@@ -125,8 +125,11 @@ export function useAnalysis(): UseAnalysisResult {
    */
   const analyze = useCallback(
     async (path: string) => {
+      console.log('[useAnalysis] analyze() called with path:', path);
+
       // Validate path
       if (!path || typeof path !== 'string') {
+        console.error('[useAnalysis] Invalid path:', path);
         setError('Invalid repository path');
         return;
       }
@@ -135,10 +138,19 @@ export function useAnalysis(): UseAnalysisResult {
       lastPathRef.set(path);
 
       // Update store loading state
+      console.log('[useAnalysis] Setting loading state to true');
       setLoading(true);
 
       // Execute command (callbacks will handle success/error)
-      await execute({ path });
+      console.log('[useAnalysis] Calling execute with args:', { path });
+      try {
+        await execute({ path });
+        console.log('[useAnalysis] execute() completed');
+      } catch (error) {
+        console.error('[useAnalysis] execute() threw error:', error);
+        setError(error instanceof Error ? error.message : String(error));
+        setLoading(false);
+      }
     },
     [execute, setLoading, setError, lastPathRef]
   );

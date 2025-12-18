@@ -112,7 +112,6 @@ describe('useTauriCommand', () => {
       await waitFor(() => {
         expect(invoke).toHaveBeenCalledWith('test_command', {
           value: '/test/path',
-          request_id: 'test-uuid-123',
         });
       });
     });
@@ -128,12 +127,11 @@ describe('useTauriCommand', () => {
         expect(invoke).toHaveBeenCalledWith('test_command', {
           path: '/test/path',
           recursive: true,
-          request_id: 'test-uuid-123',
         });
       });
     });
 
-    it('should pass only request_id when no arguments provided', async () => {
+    it('should pass undefined when no arguments provided', async () => {
       vi.mocked(invoke).mockResolvedValue('success');
 
       const { result } = renderHook(() => useTauriCommand('test_command'));
@@ -141,9 +139,7 @@ describe('useTauriCommand', () => {
       await result.current.execute();
 
       await waitFor(() => {
-        expect(invoke).toHaveBeenCalledWith('test_command', {
-          request_id: 'test-uuid-123',
-        });
+        expect(invoke).toHaveBeenCalledWith('test_command', undefined);
       });
     });
 

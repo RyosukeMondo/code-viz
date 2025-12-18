@@ -330,16 +330,24 @@ describe('Treemap', () => {
 
       expect(mockSetOption).toHaveBeenCalled();
       const optionsArg = mockSetOption.mock.calls[0][0];
-      expect(optionsArg.series[0].data[0].name).toBe('root');
+      // When at root level, we show children directly to avoid wrapper layer
+      // This prevents clicking on children from returning the root node
+      expect(optionsArg.series[0].data).toHaveLength(2); // file1.ts and subdir
+      expect(optionsArg.series[0].data[0].name).toBe('file1.ts');
+      expect(optionsArg.series[0].data[1].name).toBe('subdir');
     });
 
-    it('should filter data based on drillDownPath', () => {
-      render(<Treemap data={mockTreeData} drillDownPath={['subdir']} />);
+    it('should render pre-filtered data from parent', () => {
+      // Parent component (AnalysisView) is responsible for filtering
+      // Treemap receives already-filtered data
+      const subdirNode = mockTreeData.children![1]; // The 'subdir' node (second child)
+      render(<Treemap data={subdirNode} drillDownPath={['subdir']} />);
 
       expect(mockSetOption).toHaveBeenCalled();
-      // The filtered data should be the subdir node
+      // When drilled down, we show the subdirectory's children
       const optionsArg = mockSetOption.mock.calls[0][0];
-      expect(optionsArg.series[0].data[0].name).toBe('subdir');
+      expect(optionsArg.series[0].data).toHaveLength(2); // file2.ts and file3.ts
+      expect(optionsArg.series[0].data[0].name).toBe('file2.ts');
     });
 
     it('should handle deep drill-down paths', () => {
@@ -424,12 +432,14 @@ describe('Treemap', () => {
       expect(mockSetOption.mock.calls.length).toBeGreaterThan(initialCallCount);
     });
 
-    it('should update chart when drillDownPath changes', () => {
+    it('should update chart when data changes (simulating drill-down)', () => {
       const { rerender } = render(<Treemap data={mockTreeData} drillDownPath={[]} />);
 
       const initialCallCount = mockSetOption.mock.calls.length;
 
-      rerender(<Treemap data={mockTreeData} drillDownPath={['subdir']} />);
+      // Parent component filters data and passes the filtered node
+      const subdirNode = mockTreeData.children![1]; // The 'subdir' node (second child)
+      rerender(<Treemap data={subdirNode} drillDownPath={['subdir']} />);
 
       expect(mockSetOption.mock.calls.length).toBeGreaterThan(initialCallCount);
     });
@@ -630,10 +640,13 @@ describe('Treemap', () => {
       render(<Treemap data={mockTreeData} />);
 
       const optionsArg = mockSetOption.mock.calls[0][0];
-      const echartsData = optionsArg.series[0].data[0];
+      // data[0] is file1.ts (file), data[1] is subdir (directory with children)
+      const subdirData = optionsArg.series[0].data[1];
 
-      expect(echartsData).toHaveProperty('children');
-      expect(Array.isArray(echartsData.children)).toBe(true);
+      expect(subdirData.name).toBe('subdir');
+      expect(subdirData).toHaveProperty('children');
+      expect(Array.isArray(subdirData.children)).toBe(true);
+      expect(subdirData.children).toHaveLength(2); // file2.ts and file3.ts
     });
   });
 });
