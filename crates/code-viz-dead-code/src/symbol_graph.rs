@@ -102,6 +102,42 @@ fn get_symbol_query(language: &str) -> Result<&'static Query, GraphError> {
     }
 }
 
+/// Get the Tree-sitter query for extracting imports from a specific language
+fn get_import_query(language: &str) -> Result<&'static Query, GraphError> {
+    match language {
+        "typescript" | "tsx" => {
+            static TS_QUERY: OnceLock<Query> = OnceLock::new();
+            Ok(TS_QUERY.get_or_init(|| {
+                Query::new(
+                    tree_sitter_typescript::language_typescript(),
+                    r#"
+                    (import_statement
+                        source: (string) @import_source)
+                    "#,
+                )
+                .expect("Invalid TypeScript import query")
+            }))
+        }
+        "javascript" | "jsx" => {
+            static JS_QUERY: OnceLock<Query> = OnceLock::new();
+            Ok(JS_QUERY.get_or_init(|| {
+                Query::new(
+                    tree_sitter_javascript::language(),
+                    r#"
+                    (import_statement
+                        source: (string) @import_source)
+                    "#,
+                )
+                .expect("Invalid JavaScript import query")
+            }))
+        }
+        _ => Err(GraphError::ParseError {
+            file: PathBuf::new(),
+            message: format!("Unsupported language for imports: {}", language),
+        }),
+    }
+}
+
 /// Extract the name from a Tree-sitter node
 fn extract_symbol_name(node: &tree_sitter::Node, source: &str, kind: &str) -> String {
     let mut cursor = node.walk();
@@ -190,10 +226,77 @@ fn is_test_file(path: &Path) -> bool {
         || path_str.starts_with("tests/")
 }
 
+/// Resolve an import path relative to the importing file
+///
+/// Handles:
+/// - Relative imports: "./utils" -> "../src/utils.ts"
+/// - Package imports: "@/utils" or "~/utils" (TypeScript path aliases)
+/// - Extension-less imports: "./utils" could be "./utils.ts" or "./utils/index.ts"
+fn resolve_import_path(
+    importer_path: &Path,
+    import_source: &str,
+    available_files: &HashMap<PathBuf, bool>,
+) -> Option<PathBuf> {
+    // Remove quotes from import source
+    let import_source = import_source.trim_matches(|c| c == '"' || c == '\'');
+
+    // Skip node_modules and package imports (e.g., "react", "lodash")
+    if !import_source.starts_with('.') && !import_source.starts_with('/')
+        && !import_source.starts_with("@/") && !import_source.starts_with("~/") {
+        return None;
+    }
+
+    // Get the directory of the importing file
+    let importer_dir = importer_path.parent()?;
+
+    // Handle TypeScript path aliases (@/ and ~/ typically map to src/)
+    let import_path_str = if import_source.starts_with("@/") || import_source.starts_with("~/") {
+        import_source[2..].to_string()
+    } else {
+        import_source.to_string()
+    };
+
+    // Resolve the path relative to the importer
+    let base_path = if import_path_str.starts_with("./") || import_path_str.starts_with("../") {
+        importer_dir.join(&import_path_str)
+    } else {
+        // Assume path alias points to project root (simplified)
+        PathBuf::from(&import_path_str)
+    };
+
+    // Try to resolve with common extensions
+    let extensions = ["", ".ts", ".tsx", ".js", ".jsx"];
+    for ext in &extensions {
+        let candidate = if ext.is_empty() {
+            base_path.clone()
+        } else {
+            base_path.with_extension(&ext[1..]) // Remove the leading dot
+        };
+
+        if available_files.contains_key(&candidate) {
+            return Some(candidate);
+        }
+    }
+
+    // Try index file resolution (import "./dir" -> "./dir/index.ts")
+    for ext in &[".ts", ".tsx", ".js", ".jsx"] {
+        let index_path = base_path.join(format!("index{}", ext));
+        if available_files.contains_key(&index_path) {
+            return Some(index_path);
+        }
+    }
+
+    // Log warning for unresolved import but don't fail
+    None
+}
+
 impl SymbolGraphBuilder {
     /// Create a new symbol graph builder
     pub fn new() -> Self {
-        todo!("Will implement in task 1.1.2")
+        Self {
+            graph: HashMap::new(),
+            dependencies: HashMap::new(),
+        }
     }
 
     /// Extract symbols from a single file using Tree-sitter
@@ -276,6 +379,49 @@ impl SymbolGraphBuilder {
         Ok(symbols)
     }
 
+    /// Extract import paths from a file
+    ///
+    /// # Arguments
+    /// * `path` - File path
+    /// * `source` - Source code content
+    /// * `parser` - Language parser
+    ///
+    /// # Returns
+    /// List of import source strings (e.g., "./utils", "@/components")
+    fn extract_imports(
+        &self,
+        path: &Path,
+        source: &str,
+        parser: &dyn LanguageParser,
+    ) -> Result<Vec<String>, GraphError> {
+        // Parse the source code
+        let tree = parser.parse(source).map_err(|e| GraphError::ParseError {
+            file: path.to_path_buf(),
+            message: e.to_string(),
+        })?;
+
+        let mut imports = Vec::new();
+
+        // Get the appropriate query based on language
+        let query = get_import_query(parser.language())?;
+        let mut cursor = QueryCursor::new();
+
+        // Execute the query on the tree
+        let matches = cursor.matches(query, tree.root_node(), source.as_bytes());
+
+        for m in matches {
+            for capture in m.captures {
+                let node = capture.node;
+                let import_source = node.utf8_text(source.as_bytes()).unwrap_or("");
+                if !import_source.is_empty() {
+                    imports.push(import_source.to_string());
+                }
+            }
+        }
+
+        Ok(imports)
+    }
+
     /// Build complete symbol graph from multiple files
     ///
     /// # Arguments
@@ -283,8 +429,97 @@ impl SymbolGraphBuilder {
     ///
     /// # Returns
     /// Complete symbol graph with all relationships
-    pub fn build_graph(&mut self, _files: Vec<(PathBuf, String)>) -> Result<SymbolGraph, GraphError> {
-        todo!("Will implement in task 1.1.2")
+    pub fn build_graph(&mut self, files: Vec<(PathBuf, String)>) -> Result<SymbolGraph, GraphError> {
+        // Pre-allocate capacity
+        let file_count = files.len();
+        let mut all_symbols: HashMap<SymbolId, Symbol> = HashMap::with_capacity(file_count * 10);
+        let mut imports: HashMap<SymbolId, Vec<SymbolId>> = HashMap::new();
+        let mut exports: HashMap<PathBuf, Vec<SymbolId>> = HashMap::with_capacity(file_count);
+
+        // Build a map of available files for import resolution
+        let available_files: HashMap<PathBuf, bool> = files.iter()
+            .map(|(path, _)| (path.clone(), true))
+            .collect();
+
+        // First pass: Extract all symbols from all files
+        for (file_path, source) in &files {
+            // Determine the parser based on file extension
+            let parser: Box<dyn LanguageParser> = if file_path.extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s == "ts" || s == "tsx")
+                .unwrap_or(false)
+            {
+                Box::new(code_viz_core::parser::TypeScriptParser)
+            } else {
+                Box::new(code_viz_core::parser::JavaScriptParser)
+            };
+
+            // Extract symbols
+            let symbols = self.extract_symbols(file_path, source, parser.as_ref())?;
+
+            // Track exported symbols per file
+            let mut file_exports = Vec::new();
+
+            for symbol in symbols {
+                if symbol.is_exported {
+                    file_exports.push(symbol.id.clone());
+                }
+                all_symbols.insert(symbol.id.clone(), symbol);
+            }
+
+            if !file_exports.is_empty() {
+                exports.insert(file_path.clone(), file_exports);
+            }
+        }
+
+        // Second pass: Build import relationships
+        for (file_path, source) in &files {
+            let parser: Box<dyn LanguageParser> = if file_path.extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s == "ts" || s == "tsx")
+                .unwrap_or(false)
+            {
+                Box::new(code_viz_core::parser::TypeScriptParser)
+            } else {
+                Box::new(code_viz_core::parser::JavaScriptParser)
+            };
+
+            // Extract imports
+            let import_sources = self.extract_imports(file_path, source, parser.as_ref())?;
+
+            // Resolve import paths to actual files
+            for import_source in import_sources {
+                if let Some(resolved_path) = resolve_import_path(
+                    file_path,
+                    &import_source,
+                    &available_files,
+                ) {
+                    // Find exported symbols from the imported file
+                    if let Some(exported_symbols) = exports.get(&resolved_path) {
+                        // Get all symbols in the current file that could depend on these imports
+                        let file_symbols: Vec<&Symbol> = all_symbols.values()
+                            .filter(|s| s.path == *file_path)
+                            .collect();
+
+                        // For simplicity, mark all symbols in the importing file as depending
+                        // on all exported symbols from the imported file
+                        // (More sophisticated analysis would parse which specific imports are used where)
+                        for symbol in file_symbols {
+                            imports
+                                .entry(symbol.id.clone())
+                                .or_insert_with(Vec::new)
+                                .extend(exported_symbols.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(SymbolGraph {
+            symbols: all_symbols,
+            imports,
+            exports,
+        })
     }
 }
 
@@ -461,5 +696,156 @@ const second = () => {
         assert!(symbol.id.contains("/home/user/project/test.ts"));
         assert!(symbol.id.contains("testFunc"));
         assert!(symbol.id.contains(":2:")); // Line number
+    }
+
+    #[test]
+    fn test_build_graph_simple() {
+        let mut builder = SymbolGraphBuilder::new();
+
+        let files = vec![
+            (
+                PathBuf::from("src/utils.ts"),
+                r#"
+                export function helper() {
+                    return 42;
+                }
+                "#.to_string(),
+            ),
+            (
+                PathBuf::from("src/main.ts"),
+                r#"
+                import { helper } from "./utils";
+
+                function main() {
+                    helper();
+                }
+                "#.to_string(),
+            ),
+        ];
+
+        let graph = builder.build_graph(files).unwrap();
+
+        // Check that symbols were extracted
+        assert!(graph.symbols.len() >= 2);
+
+        // Check that exports were tracked
+        assert!(graph.exports.contains_key(&PathBuf::from("src/utils.ts")));
+
+        // Check that helper function was found
+        let helper_symbol = graph.symbols.values()
+            .find(|s| s.name == "helper");
+        assert!(helper_symbol.is_some());
+    }
+
+    #[test]
+    fn test_build_graph_multi_file() {
+        let mut builder = SymbolGraphBuilder::new();
+
+        let files = vec![
+            (
+                PathBuf::from("a.ts"),
+                r#"
+                export function funcA() {}
+                "#.to_string(),
+            ),
+            (
+                PathBuf::from("b.ts"),
+                r#"
+                import { funcA } from "./a";
+                export function funcB() {
+                    funcA();
+                }
+                "#.to_string(),
+            ),
+            (
+                PathBuf::from("c.ts"),
+                r#"
+                import { funcB } from "./b";
+                function funcC() {
+                    funcB();
+                }
+                "#.to_string(),
+            ),
+        ];
+
+        let graph = builder.build_graph(files).unwrap();
+
+        // All three functions should be in the graph
+        assert!(graph.symbols.values().any(|s| s.name == "funcA"));
+        assert!(graph.symbols.values().any(|s| s.name == "funcB"));
+        assert!(graph.symbols.values().any(|s| s.name == "funcC"));
+
+        // Check exports
+        assert!(graph.exports.contains_key(&PathBuf::from("a.ts")));
+        assert!(graph.exports.contains_key(&PathBuf::from("b.ts")));
+    }
+
+    #[test]
+    fn test_build_graph_circular_imports() {
+        let mut builder = SymbolGraphBuilder::new();
+
+        let files = vec![
+            (
+                PathBuf::from("a.ts"),
+                r#"
+                import { funcB } from "./b";
+                export function funcA() {
+                    funcB();
+                }
+                "#.to_string(),
+            ),
+            (
+                PathBuf::from("b.ts"),
+                r#"
+                import { funcA } from "./a";
+                export function funcB() {
+                    funcA();
+                }
+                "#.to_string(),
+            ),
+        ];
+
+        // Should not panic or infinite loop on circular imports
+        let graph = builder.build_graph(files).unwrap();
+
+        assert!(graph.symbols.values().any(|s| s.name == "funcA"));
+        assert!(graph.symbols.values().any(|s| s.name == "funcB"));
+    }
+
+    #[test]
+    fn test_extract_imports() {
+        let source = r#"
+            import { foo } from "./foo";
+            import * as bar from "../bar";
+            import type { Baz } from "@/types";
+        "#;
+
+        let parser = TypeScriptParser;
+        let path = Path::new("test.ts");
+        let builder = SymbolGraphBuilder::new();
+
+        let imports = builder.extract_imports(path, source, &parser).unwrap();
+
+        assert_eq!(imports.len(), 3);
+        assert!(imports.iter().any(|i| i.contains("./foo")));
+        assert!(imports.iter().any(|i| i.contains("../bar")));
+        assert!(imports.iter().any(|i| i.contains("@/types")));
+    }
+
+    #[test]
+    fn test_resolve_relative_imports() {
+        let mut available = HashMap::new();
+        available.insert(PathBuf::from("src/utils.ts"), true);
+        available.insert(PathBuf::from("src/components/Button.tsx"), true);
+
+        let importer = Path::new("src/main.ts");
+
+        // Resolve "./utils" to "src/utils.ts"
+        let resolved = resolve_import_path(importer, "\"./utils\"", &available);
+        assert_eq!(resolved, Some(PathBuf::from("src/utils.ts")));
+
+        // Resolve "./components/Button" to "src/components/Button.tsx"
+        let resolved = resolve_import_path(importer, "\"./components/Button\"", &available);
+        assert_eq!(resolved, Some(PathBuf::from("src/components/Button.tsx")));
     }
 }
