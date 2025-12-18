@@ -71,6 +71,36 @@ enum Commands {
         #[command(subcommand)]
         subcommand: ConfigSubcommand,
     },
+    /// Analyze dead code in a directory
+    DeadCode {
+        /// Path to the directory to analyze
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Output format (json, text)
+        #[arg(long, short, default_value = "text")]
+        format: String,
+
+        /// Minimum confidence score (0-100)
+        #[arg(long, default_value = "80")]
+        min_confidence: u8,
+
+        /// Glob patterns to exclude
+        #[arg(long, short)]
+        exclude: Vec<String>,
+
+        /// Enable verbose logging
+        #[arg(long, short)]
+        verbose: bool,
+
+        /// Fail if metrics exceed threshold (e.g., "dead_code_ratio=0.05")
+        #[arg(long)]
+        threshold: Option<String>,
+
+        /// Write output to file instead of stdout
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -109,6 +139,17 @@ fn main() -> anyhow::Result<()> {
                 commands::config::run_init()?;
             }
         },
+        Commands::DeadCode {
+            path,
+            format,
+            min_confidence,
+            exclude,
+            verbose,
+            threshold,
+            output,
+        } => {
+            commands::dead_code::run(path, format, min_confidence, exclude, verbose, threshold, output)?;
+        }
     }
 
     Ok(())
