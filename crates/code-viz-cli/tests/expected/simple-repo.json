@@ -1,0 +1,35 @@
+{
+  "summary": {
+    "total_files": 3,
+    "total_loc": 26,
+    "total_functions": 6,
+    "largest_files": [
+      "crates/code-viz-cli/tests/fixtures/simple-repo/src/lib.rs",
+      "crates/code-viz-cli/tests/fixtures/simple-repo/src/main.rs",
+      "crates/code-viz-cli/tests/fixtures/simple-repo/src/utils.rs"
+    ]
+  },
+  "files": [
+    {
+      "path": "crates/code-viz-cli/tests/fixtures/simple-repo/src/lib.rs",
+      "language": "rust",
+      "loc": 14,
+      "size_bytes": 221,
+      "function_count": 3
+    },
+    {
+      "path": "crates/code-viz-cli/tests/fixtures/simple-repo/src/main.rs",
+      "language": "rust",
+      "loc": 6,
+      "size_bytes": 129,
+      "function_count": 1
+    },
+    {
+      "path": "crates/code-viz-cli/tests/fixtures/simple-repo/src/utils.rs",
+      "language": "rust",
+      "loc": 6,
+      "size_bytes": 120,
+      "function_count": 2
+    }
+  ]
+}
