@@ -130,5 +130,63 @@ mod serialization_tests {
 /// Tests for ECharts compatibility validation
 /// Ensures that the JSON output matches ECharts treemap requirements
 mod echarts_compatibility_tests {
-    // TODO: Implement ECharts compatibility validation tests
+    use super::helpers::validation_utils;
+    use serde_json::Value;
+
+    #[test]
+    fn test_echarts_treemap_format() {
+        let tree = validation_utils::create_test_tree();
+        let json = serde_json::to_value(&tree).expect("Failed to serialize TreeNode");
+
+        // ECharts treemap core requirements (mapped by frontend)
+        // Root node validation
+        assert!(json["name"].is_string(), "ECharts requires 'name' as string");
+        assert!(json["loc"].is_number(), "ECharts requires a value (we use 'loc')");
+        assert!(json["children"].is_array(), "Treemap root must have 'children' array");
+        
+        // Verify that at least one child exists and has required ECharts properties
+        let first_child = &json["children"][0];
+        assert!(first_child["name"].is_string());
+        assert!(first_child["loc"].is_number());
+    }
+
+    #[test]
+    fn test_all_nodes_have_required_properties() {
+        let tree = validation_utils::create_test_tree();
+        let json = serde_json::to_value(&tree).expect("Failed to serialize TreeNode");
+
+        // Recursively validate all nodes in the tree
+        validate_echarts_properties_recursive(&json, 0);
+    }
+
+    fn validate_echarts_properties_recursive(node: &Value, depth: u32) {
+        let node_name = node["name"].as_str().unwrap_or("unknown");
+        
+        // 1. Validate core ECharts treemap properties
+        assert!(node.get("name").is_some(), "Node '{}' missing 'name' at depth {}", node_name, depth);
+        assert!(node["name"].is_string(), "Node '{}' 'name' must be string", node_name);
+        
+        assert!(node.get("loc").is_some(), "Node '{}' missing 'loc' (ECharts value) at depth {}", node_name, depth);
+        assert!(node["loc"].is_number(), "Node '{}' 'loc' must be number", node_name);
+
+        // 2. Validate our Treemap component's required metadata
+        assert!(node.get("path").is_some(), "Node '{}' missing 'path' at depth {}", node_name, depth);
+        assert!(node["path"].is_string(), "Node '{}' 'path' must be string", node_name);
+        
+        assert!(node.get("type").is_some(), "Node '{}' missing 'type' at depth {}", node_name, depth);
+        assert!(node["type"].is_string(), "Node '{}' 'type' must be string", node_name);
+
+        // 3. Validate children structure if present
+        if let Some(children) = node.get("children") {
+            assert!(children.is_array(), "Node '{}' 'children' must be an array", node_name);
+            for child in children.as_array().unwrap() {
+                validate_echarts_properties_recursive(child, depth + 1);
+            }
+        }
+        
+        // Ensure directories have children (even if empty) to satisfy ECharts hierarchy
+        if node["type"] == "directory" {
+            assert!(node.get("children").is_some(), "Directory node '{}' must have 'children' field", node_name);
+        }
+    }
 }

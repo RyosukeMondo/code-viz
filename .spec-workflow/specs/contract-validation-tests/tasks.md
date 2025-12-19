@@ -42,7 +42,7 @@ Restrictions: Tests must not modify production code, must validate schema struct
 Success: test_validate_tree_node_schema() passes and validates all required fields exist in schema; test_all_specta_types_coverage() identifies all types with #[specta::specta] annotation; tests fail if required field removed from TreeNode; clear error messages on failure; tests execute in milliseconds
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). After implementing tests, verify they pass with cargo nextest run. Use log-implementation tool to record artifacts (test functions added, fields validated, execution time). Then mark task as complete in tasks.md (change [-] to [x])._
 
-- [-] 4. Implement serialization round-trip validation tests
+- [x] 4. Implement serialization round-trip validation tests
   - File: crates/code-viz-tauri/tests/contract_tests.rs (serialization_tests module)
   - Add test_tree_node_serialization_round_trip() for Rust → JSON → Rust
   - Add test_no_empty_string_paths() to prevent wrapper node bug
@@ -57,7 +57,7 @@ Restrictions: Must test all TreeNode variants (files and directories), must vali
 Success: Round-trip test preserves all TreeNode data exactly; empty string path test fails with error "path must not be empty string"; recursive validation checks all children and grandchildren; tests use fixtures from helpers module; all tests pass in <100ms total
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). After implementation, run tests and verify the empty string path test correctly fails when given bad data, then fix test data and verify pass. Use log-implementation tool with artifacts (test functions, validation strategy, edge cases covered). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 5. Implement ECharts compatibility validation tests
+- [x] 5. Implement ECharts compatibility validation tests
   - File: crates/code-viz-tauri/tests/contract_tests.rs (echarts_compatibility_tests module)
   - Add test_echarts_treemap_format() to validate data structure
   - Add test_all_nodes_have_required_properties() for recursive validation
