@@ -24,6 +24,7 @@ thiserror = "1.0"
 walkdir = "2.4"
 globset = "0.4"
 anyhow = "1.0"
+async-trait = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 

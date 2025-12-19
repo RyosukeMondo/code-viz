@@ -99,76 +99,78 @@
 
 ### Application Architecture
 
-**Dual-Head Hybrid Architecture** with strict separation of concerns:
+**Library-First Layered Architecture** with strict separation of concerns:
 
-The architecture follows a dual-head pattern where core business logic is shared between two interfaces:
-- **GUI Head (Tauri)**: Rich visual interface for interactive exploration
-- **CLI Head (Headless)**: Command-line interface for automation, testing, and CI/CD
+The architecture follows a library-first pattern where pure business logic is completely decoupled from presentation layers:
+- **Layer 0 (Core)**: Pure business logic with zero framework dependencies
+- **Layer 1 (Commands)**: Orchestration layer using trait abstractions
+- **Layer 2 (Presentation)**: Thin wrappers (Tauri GUI + CLI) consuming commands
 
-This enables comprehensive testing without GUI overhead: CLI tests run 10-100x faster than E2E GUI tests.
+This enables 100% testable business logic: Core tests run in milliseconds, command tests in seconds, presentation tests minimal.
 
 ```
-┌─────────────────────────────────────────────┐
-│         Frontend (React + WebGL)            │
-│  ┌────────────┐  ┌──────────────────────┐   │
-│  │  UI Layer  │  │  Visualization Layer │   │
-│  │  (Tailwind)│  │  (R3F, ECharts)      │   │
-│  └─────┬──────┘  └──────────┬───────────┘   │
-│        │                    │               │
-│        └────────┬───────────┘               │
-│                 │ Type-safe IPC             │
-│         ┌───────▼──────────┐                │
-│         │  Tauri Commands  │                │
-│         │  (Generated TS)  │                │
-└─────────┴──────────────────┴────────────────┘
-                 │ IPC Bridge
-┌─────────────────▼───────────────────────────┐
-│         Backend (Rust Core)                 │
-│  ┌──────────────────────────────────────┐   │
-│  │     Command Handlers (Tauri)         │   │
-│  │     (#[tauri::command] functions)    │   │
-│  └─────────────────┬────────────────────┘   │
-│                    │                        │
-│  ┌─────────────────▼────────────────────┐   │
-│  │      Analysis Engine (Shared Core)   │   │◄── Reused by CLI
-│  │  ┌─────────┐  ┌──────────────────┐   │   │
-│  │  │Tree-    │  │ Stack-graphs     │   │   │
-│  │  │sitter   │→ │ (Name Resolution)│   │   │
-│  │  │Parsers  │  └──────────────────┘   │   │
-│  │  └─────────┘                         │   │
-│  │  ┌─────────────────────────────────┐ │   │
-│  │  │ Metrics Calculator (Rayon)      │ │   │
-│  │  │ - Cognitive Complexity          │ │   │
-│  │  │ - LOC, Churn, AI Bloat Index    │ │   │
-│  │  └─────────────────────────────────┘ │   │
-│  └──────────────────────────────────────┘   │
-│                    │                        │
-│  ┌─────────────────▼────────────────────┐   │
-│  │  Git History Manager (git2-rs)      │   │
-│  └──────────────────────────────────────┘   │
-│                    │                        │
-│  ┌─────────────────▼────────────────────┐   │
-│  │  Cache Layer (sled / SQLite)        │   │
-│  │  - Parsed ASTs, Metrics Snapshots   │   │
-│  └──────────────────────────────────────┘   │
-└─────────────────────────────────────────────┘
-                 ▲
-                 │ Direct function calls
-         ┌───────┴───────┐
-         │   CLI Binary  │
-         │  (code-viz)   │
-         └───────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  Layer 2: Presentation (Thin Wrappers)                   │
+│  ┌─────────────────────┐    ┌──────────────────────┐     │
+│  │  Tauri GUI Wrapper  │    │   CLI Wrapper        │     │
+│  │  - IPC bindings     │    │   - Argument parsing │     │
+│  │  - Event emission   │    │   - Output format    │     │
+│  │  React Frontend ────┼────┤   - Clap CLI         │     │
+│  └─────────┬───────────┘    └──────────┬───────────┘     │
+└────────────┼──────────────────────────────┼───────────────┘
+             │                              │
+             └──────────────┬───────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────┐
+│  Layer 1: Commands (Orchestration - Trait-Based)         │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │  Command Functions (code-viz-commands)             │  │
+│  │  - analyze_repository(ctx, fs) -> Result          │  │
+│  │  - calculate_dead_code(ctx, fs) -> Result         │  │
+│  │  - export_report(ctx, fs, format) -> Result       │  │
+│  │                                                     │  │
+│  │  Uses trait abstractions:                          │  │
+│  │  - AppContext (events, progress, config)           │  │
+│  │  - FileSystem (read, write, watch)                 │  │
+│  │  - GitProvider (history, diff, blame)              │  │
+│  └────────────────────────────────────────────────────┘  │
+└───────────────────────────▲──────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────┐
+│  Layer 0: Core (Pure Business Logic - Zero Dependencies) │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │  code-viz-core (100% testable, no I/O)             │  │
+│  │  ┌──────────────────┐  ┌──────────────────────┐   │  │
+│  │  │  Analysis Engine │  │  Metrics Calculator  │   │  │
+│  │  │  - AST parsing   │  │  - LOC, Complexity   │   │  │
+│  │  │  - Symbol graph  │  │  - Churn, Bloat      │   │  │
+│  │  └──────────────────┘  └──────────────────────┘   │  │
+│  │  ┌──────────────────────────────────────────────┐ │  │
+│  │  │  Pure Data Structures & Algorithms          │ │  │
+│  │  │  - TreeNode, Metrics, AnalysisResult        │ │  │
+│  │  │  - Graph traversal, complexity calculation  │ │  │
+│  │  └──────────────────────────────────────────────┘ │  │
+│  └────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+
+Trait Implementations (Injected):
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│TauriContext │  │CliContext   │  │MockContext  │
+│- Tauri IPC  │  │- Stdout     │  │- Capture    │
+│- Events     │  │- Files      │  │- Assertions │
+└─────────────┘  └─────────────┘  └─────────────┘
 ```
 
 **Key Architectural Principles:**
 
-1. **SSOT (Single Source of Truth)**: Rust backend defines all data models; TypeScript types auto-generated via tauri-specta
-2. **Contract-Driven Development**: IPC contracts enforced at compile time via Specta, not runtime
-3. **Dual-Head Testability**: Core logic testable via fast CLI, GUI tested minimally for UX only
-4. **Incremental Processing**: Tree-sitter and stack-graphs minimize re-computation on file changes
-5. **Parallel Execution**: Rayon parallelizes file analysis across CPU cores
-6. **Lazy Visualization**: 3D scenes use LOD (Level of Detail) and culling; 2D charts lazy-load deep nodes
-7. **Contract Validation**: Automated tests ensure Rust ↔ TypeScript data contracts never break
+1. **Zero-Dependency Core**: Business logic has no I/O, no frameworks, 100% pure functions
+2. **Trait-Based Abstraction**: All external dependencies (I/O, events, config) injected via traits
+3. **Library-First Testing**: Core tested in milliseconds with direct function calls, no mocking needed
+4. **SSOT (Single Source of Truth)**: Rust defines all data models; TypeScript auto-generated via Specta
+5. **Contract-Driven Development**: IPC contracts enforced at compile time, runtime violations impossible
+6. **Presentation as Thin Skin**: Tauri/CLI are <100 LOC wrappers, all logic in commands/core
+7. **Parallel Execution**: Rayon parallelizes file analysis across CPU cores
+8. **Incremental Processing**: Tree-sitter and stack-graphs minimize re-computation on file changes
 
 ### Data Storage
 
@@ -298,31 +300,38 @@ layout {
 
 - **Testing Frameworks & Strategy**:
 
-  **Test Pyramid Architecture** (90% fast, 10% slow):
+  **Test Pyramid Architecture** (Library-First, 95% fast, 5% slow):
 
-  1. **Unit Tests (50% coverage target)**:
-     - **Rust**: cargo-nextest (faster test runner), insta (snapshot testing)
-     - **React**: Vitest for component unit tests
-     - **Speed**: Milliseconds per test
+  1. **Core Library Tests (90% line coverage target)**:
+     - **Rust Unit Tests**: Pure business logic in `code-viz-core`
+     - **Zero Dependencies**: No I/O, no mocking, direct function calls
+     - **Speed**: <1 second for 100+ tests (milliseconds per test)
+     - **Coverage**: All algorithms, data structures, calculations
 
   2. **Contract Validation Tests (100% interface coverage)**:
      - **Specta Schema Tests**: Validate Rust types generate correct TypeScript
      - **Serialization Round-trip Tests**: Ensure data survives Rust → JSON → TypeScript
-     - **Speed**: Seconds for full suite
+     - **Speed**: ~1 second for 20+ tests
      - **Critical**: Prevents wrapper node bugs (path: "" → undefined issues)
 
-  3. **CLI Integration Tests (Critical paths)**:
-     - **Location**: `crates/code-viz-cli/tests/`
-     - **Purpose**: Test analysis engine without GUI overhead
-     - **Speed**: 10-100x faster than E2E (no Tauri, no WebView)
-     - **Coverage**: Real repository analysis, JSON output validation
+  3. **Command Layer Tests (Critical business logic)**:
+     - **Location**: `crates/code-viz-commands/tests/`
+     - **Purpose**: Test orchestration with MockContext/MockFileSystem
+     - **Speed**: ~2 seconds for 50+ tests (no Tauri, no real I/O)
+     - **Coverage**: Command functions, event emissions, error handling
 
-  4. **E2E Tests (Smoke tests only)**:
-     - **Playwright**: Tauri WebView testing
-     - **Scope**: Minimal - critical user flow only (analyze → visualize → drill-down)
-     - **Speed**: Minutes (slow, reserved for essential UX validation)
+  4. **Presentation Layer Tests (Minimal)**:
+     - **Tauri Wrapper Tests**: IPC binding validation only
+     - **CLI Wrapper Tests**: Argument parsing, output formatting only
+     - **Speed**: ~5 seconds (thin layer, minimal logic)
+     - **Coverage**: Presentation-specific behavior only
 
-  5. **Visual Testing**:
+  5. **E2E Tests (Smoke tests only)**:
+     - **Playwright**: Single critical user flow
+     - **Scope**: Open → Analyze → Visualize → Drill-down
+     - **Speed**: ~30 seconds (GUI validation only)
+
+  6. **Visual Testing**:
      - **Storybook**: Component visual regression testing
 
 - **Documentation**:

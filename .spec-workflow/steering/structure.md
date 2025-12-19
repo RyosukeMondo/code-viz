@@ -88,33 +88,46 @@ code-viz/
 │   └── types/                      # TypeScript type definitions
 │       └── index.ts
 │
-├── crates/                         # Workspace crates (dual-head architecture)
-│   ├── code-viz-core/              # Shared business logic (CRITICAL)
+├── crates/                         # Workspace crates (library-first architecture)
+│   ├── code-viz-core/              # Pure business logic (ZERO DEPENDENCIES)
 │   │   ├── src/
 │   │   │   ├── lib.rs
-│   │   │   ├── analysis/          # Analysis engine
-│   │   │   ├── metrics/           # Metric calculations
-│   │   │   └── models/            # Shared data models
+│   │   │   ├── traits/            # Trait abstractions (AppContext, FileSystem, GitProvider)
+│   │   │   ├── analysis/          # Analysis algorithms (pure functions)
+│   │   │   ├── metrics/           # Metric calculations (pure functions)
+│   │   │   └── models/            # Data structures (TreeNode, AnalysisResult)
+│   │   ├── tests/                 # Unit tests (100+ tests, <1s runtime)
 │   │   ├── Cargo.toml
 │   │   └── README.md
-│   ├── code-viz-cli/               # CLI binary (headless testing)
+│   ├── code-viz-commands/          # Orchestration layer (TRAIT-BASED)
 │   │   ├── src/
-│   │   │   └── main.rs            # CLI entry point
-│   │   ├── tests/                 # CLI integration tests
-│   │   │   ├── integration_tests.rs
-│   │   │   └── fixtures/          # Test repositories
+│   │   │   ├── lib.rs
+│   │   │   ├── analyze.rs         # analyze_repository(ctx, fs) -> Result
+│   │   │   ├── dead_code.rs       # calculate_dead_code(ctx, fs) -> Result
+│   │   │   └── export.rs          # export_report(ctx, fs, format) -> Result
+│   │   ├── tests/                 # Command layer tests (50+ tests, ~2s runtime)
+│   │   │   ├── analyze_tests.rs   # Tests with MockContext, MockFileSystem
+│   │   │   └── fixtures/          # Test data (not repositories)
 │   │   ├── Cargo.toml
 │   │   └── README.md
-│   ├── code-viz-tauri/             # Tauri GUI application
+│   ├── code-viz-cli/               # CLI wrapper (THIN PRESENTATION LAYER)
 │   │   ├── src/
-│   │   │   ├── main.rs            # Tauri entry point
-│   │   │   ├── commands/          # IPC command handlers
-│   │   │   └── lib.rs
-│   │   ├── tests/                 # Contract validation tests
-│   │   │   └── contract_tests.rs  # Specta schema validation
+│   │   │   ├── main.rs            # Clap argument parsing + CliContext
+│   │   │   └── formatters/        # Output formatting only
+│   │   ├── tests/                 # Presentation tests only (arg parsing, formatting)
+│   │   ├── Cargo.toml
+│   │   └── README.md
+│   ├── code-viz-tauri/             # Tauri wrapper (THIN PRESENTATION LAYER)
+│   │   ├── src/
+│   │   │   ├── main.rs            # Tauri setup + TauriContext
+│   │   │   ├── commands.rs        # Thin IPC wrappers calling code-viz-commands
+│   │   │   └── context/           # TauriContext, MockContext implementations
+│   │   ├── tests/                 # Contract + IPC wrapper tests
+│   │   │   ├── contract_tests.rs  # Specta schema validation
+│   │   │   └── wrapper_tests.rs   # IPC binding validation
 │   │   ├── Cargo.toml
 │   │   └── tauri.conf.json
-│   └── code-viz-dead-code/         # Dead code detection (specialized)
+│   └── code-viz-dead-code/         # Specialized analysis library
 │       ├── src/
 │       │   └── lib.rs
 │       ├── Cargo.toml
@@ -671,28 +684,33 @@ export function useAnalysis(repoPath: string) {
 
 ## Testing Strategy & Structure
 
-### Test Pyramid Architecture
+### Test Pyramid Architecture (Library-First)
 
-The codebase follows a strict test pyramid to achieve 60% UAT cost reduction:
+The codebase follows a strict library-first test pyramid to achieve 70% UAT cost reduction:
 
 ```
-     /\
-    /E2E\       1 smoke test (critical user flow)
-   /------\     ~30s runtime
-  / CLI IT \    50+ tests (integration via CLI)
- /----------\   ~5s runtime, 10-100x faster than E2E
-/  Contract  \  20+ tests (Rust ↔ TS validation)
-/-------------\ ~2s runtime, catches 80% of bugs
-/     Unit     \ 100+ tests (pure business logic)
----------------- <1s runtime, 90% coverage target
+        /\
+       /E2E\         1 smoke test (GUI validation only)
+      /------\       ~30s runtime
+     /Wrapper \      10 tests (IPC + arg parsing)
+    /  Tests   \     ~5s runtime
+   /------------\
+  /   Command   \    50+ tests (orchestration with mocks)
+ /    Layer      \   ~2s runtime, 0ms per test startup
+/----------------\
+/   Contract     \   20+ tests (Rust ↔ TS validation)
+/-----------------\  ~1s runtime, compile-time safety
+/   Core Library  \ 100+ tests (pure algorithms)
+-------------------- <1s runtime, 0 dependencies
 ```
 
 **Layer Responsibilities:**
 
-1. **Unit Tests** (in-crate `#[cfg(test)]`):
-   - Pure functions, algorithms, transformations
-   - No I/O, no Tauri runtime, no GUI
-   - Target: 90% line coverage for `code-viz-core`
+1. **Core Library Tests** (`crates/code-viz-core/tests/`):
+   - Pure business logic: algorithms, calculations, data structures
+   - Zero external dependencies (no I/O, no traits needed)
+   - Direct function calls: `assert_eq!(calculate_complexity(ast), 5)`
+   - Target: 90% line coverage, <1ms per test
 
 2. **Contract Tests** (`crates/code-viz-tauri/tests/contract_tests.rs`):
    - Specta schema validation (Rust types → TypeScript)
@@ -700,14 +718,19 @@ The codebase follows a strict test pyramid to achieve 60% UAT cost reduction:
    - Target: 100% coverage of all `#[specta::specta]` types
    - **Critical**: Prevents wrapper node bugs (empty string → undefined)
 
-3. **CLI Integration Tests** (`crates/code-viz-cli/tests/`):
-   - Real repository analysis via CLI
-   - JSON output validation
-   - End-to-end logic without GUI overhead
-   - Target: All critical analysis paths
+3. **Command Layer Tests** (`crates/code-viz-commands/tests/`):
+   - Orchestration logic with MockContext, MockFileSystem, MockGit
+   - Event emission verification, progress reporting, error handling
+   - End-to-end business logic without I/O
+   - Target: All command functions, all error paths
 
-4. **E2E Tests** (`tests/e2e/smoke_test.spec.ts`):
-   - Single test: Open app → Analyze → Drill down → Verify
+4. **Wrapper Tests** (in presentation crates):
+   - `code-viz-tauri`: IPC binding correctness (thin layer)
+   - `code-viz-cli`: Argument parsing, output formatting (thin layer)
+   - Target: Presentation-specific behavior only
+
+5. **E2E Tests** (`tests/e2e/smoke_test.spec.ts`):
+   - Single test: Open app → Analyze → Visualize → Drill-down
    - Only validates GUI-specific behavior
    - Target: Minimal (smoke test only)
 

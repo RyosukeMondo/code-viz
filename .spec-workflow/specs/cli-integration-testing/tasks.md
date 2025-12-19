@@ -56,7 +56,7 @@ Restrictions: Tests must be independent (isolated temp directories), must not mo
 Success: cli_analysis_tests.sh executable with test runner; test_simple_analysis() passes with valid fixture; test_empty_repository() handles empty case without crash; test_invalid_path() verifies exit code non-zero; runner shows clear pass/fail summary; all tests complete in <10 seconds; tests can run in any order
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). Run tests with bash tests/cli_analysis_tests.sh and verify all pass. Use log-implementation tool to record artifacts (test functions added, test runner logic, pass/fail results). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 5. Create Rust integration test with detailed validation
+- [-] 5. Create Rust integration test with detailed validation
   - File: crates/code-viz-cli/tests/integration_tests.rs
   - Implement test_cli_output_format() with serde_json parsing
   - Add test_cli_all_required_fields() for TreeNode validation
