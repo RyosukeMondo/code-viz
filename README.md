@@ -272,6 +272,28 @@ Common false positive cases:
 - Subsequent runs use incremental analysis (<1 second)
 - Cache stored in `.code-viz/cache/symbols.db`
 
+## Contract Testing
+
+CodeViz uses contract validation tests to ensure data integrity and interface consistency between the Rust backend and the TypeScript frontend.
+
+### Overview
+
+Contract tests validate that the data models shared between Rust and TypeScript (via Specta) are consistent and that the serialized JSON output matches the expectations of frontend visualization libraries.
+
+**Key Validations:**
+- 🛡️ **Type Safety**: Automatic TypeScript type generation with Specta.
+- 🔄 **Serialization**: Round-trip validation for complex hierarchical data (`TreeNode`).
+- 📈 **Library Compatibility**: Specific validation for ECharts treemap requirements.
+- 🐛 **Regression Testing**: Ensures historical bugs like the "wrapper node bug" don't return.
+
+### Running Contract Tests
+
+```bash
+cargo nextest run --package code-viz-tauri --test contract_tests
+```
+
+For more details, see [crates/code-viz-tauri/tests/README.md](./crates/code-viz-tauri/tests/README.md).
+
 ## Configuration
 
 CodeViz looks for a `.code-viz.toml` file in the project root.

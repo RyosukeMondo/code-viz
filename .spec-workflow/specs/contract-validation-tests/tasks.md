@@ -100,7 +100,7 @@ Restrictions: Test must fail when given path: "" but pass with path: "/" or any 
 Success: test_wrapper_node_bug_regression() specifically tests the exact scenario from WRAPPER_NODE_FIX.md; test has comprehensive documentation explaining the bug; test fails with clear error when given empty path; test prevents regression by validating contract assumptions
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). Read WRAPPER_NODE_FIX.md to understand the bug. After implementation, verify test fails with empty path and passes with valid path. Use log-implementation tool to record artifacts (regression test added, bug documentation, validation logic). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 8. Documentation and knowledge transfer
+- [x] 8. Documentation and knowledge transfer
   - File: crates/code-viz-tauri/tests/README.md (create new)
   - Document contract test purpose, structure, and how to run
   - Add examples of common validation patterns
