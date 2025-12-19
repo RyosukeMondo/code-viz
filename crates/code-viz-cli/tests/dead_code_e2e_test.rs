@@ -343,8 +343,8 @@ fn test_e2e_no_dead_code() {
         .arg("json")
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"dead_functions\": 0"))
-        .stdout(predicate::str::contains("\"dead_code_ratio\": 0"));
+        .stdout(predicate::str::contains("\"deadFunctions\": 0"))
+        .stdout(predicate::str::contains("\"deadCodeRatio\": 0"));
 }
 
 #[test]
