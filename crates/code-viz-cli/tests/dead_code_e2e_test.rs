@@ -171,7 +171,7 @@ fn test_e2e_threshold_violation_dead_code_ratio() {
         .clone();
 
     let json: serde_json::Value = serde_json::from_slice(&output).unwrap();
-    let dead_ratio = json["summary"]["dead_code_ratio"].as_f64().unwrap();
+    let dead_ratio = json["summary"]["deadCodeRatio"].as_f64().unwrap();
 
     // Only test threshold if we actually have dead code
     if dead_ratio > 0.0 {
@@ -208,7 +208,7 @@ fn test_e2e_threshold_violation_dead_functions() {
         .clone();
 
     let json: serde_json::Value = serde_json::from_slice(&output).unwrap();
-    let dead_functions = json["summary"]["dead_functions"].as_u64().unwrap();
+    let dead_functions = json["summary"]["deadFunctions"].as_u64().unwrap();
 
     // Only test threshold if we actually have dead functions
     if dead_functions > 0 {

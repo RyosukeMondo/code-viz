@@ -299,8 +299,8 @@ mod tests {
 
         // Verify it's valid JSON
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed["summary"]["total_files"], 10);
-        assert_eq!(parsed["summary"]["dead_functions"], 5);
+        assert_eq!(parsed["summary"]["totalFiles"], 10);
+        assert_eq!(parsed["summary"]["deadFunctions"], 5);
         assert_eq!(parsed["files"].as_array().unwrap().len(), 2);
     }
 

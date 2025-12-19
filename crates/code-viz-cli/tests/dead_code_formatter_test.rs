@@ -7,7 +7,6 @@ use std::path::PathBuf;
 // We'll compile them into this test file for validation
 
 use serde_json;
-use std::fmt::Write;
 
 /// Format dead code result as pretty-printed JSON
 fn format_json(result: &DeadCodeResult) -> Result<String, String> {
@@ -74,8 +73,8 @@ fn test_format_json() {
 
     // Verify it's valid JSON
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(parsed["summary"]["total_files"], 10);
-    assert_eq!(parsed["summary"]["dead_functions"], 5);
+    assert_eq!(parsed["summary"]["totalFiles"], 10);
+    assert_eq!(parsed["summary"]["deadFunctions"], 5);
     assert_eq!(parsed["files"].as_array().unwrap().len(), 2);
 }
 
@@ -102,12 +101,12 @@ fn test_json_schema_compliance() {
 
     // Verify required fields exist
     assert!(parsed["summary"].is_object());
-    assert!(parsed["summary"]["total_files"].is_number());
-    assert!(parsed["summary"]["files_with_dead_code"].is_number());
-    assert!(parsed["summary"]["dead_functions"].is_number());
-    assert!(parsed["summary"]["dead_classes"].is_number());
-    assert!(parsed["summary"]["total_dead_loc"].is_number());
-    assert!(parsed["summary"]["dead_code_ratio"].is_number());
+    assert!(parsed["summary"]["totalFiles"].is_number());
+    assert!(parsed["summary"]["filesWithDeadCode"].is_number());
+    assert!(parsed["summary"]["deadFunctions"].is_number());
+    assert!(parsed["summary"]["deadClasses"].is_number());
+    assert!(parsed["summary"]["totalDeadLoc"].is_number());
+    assert!(parsed["summary"]["deadCodeRatio"].is_number());
 
     assert!(parsed["files"].is_array());
     let files = parsed["files"].as_array().unwrap();
@@ -116,15 +115,15 @@ fn test_json_schema_compliance() {
     // Check first file structure
     let first_file = &files[0];
     assert!(first_file["path"].is_string());
-    assert!(first_file["dead_code"].is_array());
+    assert!(first_file["deadCode"].is_array());
 
-    let dead_symbols = first_file["dead_code"].as_array().unwrap();
+    let dead_symbols = first_file["deadCode"].as_array().unwrap();
     if !dead_symbols.is_empty() {
         let symbol = &dead_symbols[0];
         assert!(symbol["symbol"].is_string());
         assert!(symbol["kind"].is_string());
-        assert!(symbol["line_start"].is_number());
-        assert!(symbol["line_end"].is_number());
+        assert!(symbol["lineStart"].is_number());
+        assert!(symbol["lineEnd"].is_number());
         assert!(symbol["loc"].is_number());
         assert!(symbol["confidence"].is_number());
         assert!(symbol["reason"].is_string());
