@@ -9,6 +9,7 @@ license = "MIT"
 [dependencies]
 # Core traits and models
 code-viz-core = { path = "../code-viz-core" }
+code-viz-dead-code = { path = "../code-viz-dead-code" }
 
 # Common utilities
 async-trait = { workspace = true }
