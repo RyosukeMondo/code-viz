@@ -34,6 +34,23 @@ jobs:
     - name: Check
       run: cargo check --all-targets --all-features
 
+    - name: Validate Zero Deprecated Code
+      run: |
+        # Fail if any #[deprecated] attributes found in crates/
+        if grep -r "#\[deprecated\]" crates/ --include="*.rs"; then
+          echo "ERROR: Found deprecated code in codebase"
+          exit 1
+        fi
+
+        # Fail if compiler emits deprecation warnings from our own code
+        # Filter to only warnings from crates/code-viz paths (not external deps)
+        if cargo build --all-targets --all-features 2>&1 | grep -i "warning:.*deprecated" | grep "crates/code-viz"; then
+          echo "ERROR: Found deprecation warnings in our codebase"
+          exit 1
+        fi
+
+        echo "SUCCESS: Zero deprecated code found"
+
     - name: Clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
 
