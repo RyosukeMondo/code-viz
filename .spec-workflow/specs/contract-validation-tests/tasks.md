@@ -71,7 +71,7 @@ Restrictions: Must validate JSON structure not Rust types, must check both root 
 Success: test_echarts_treemap_format() validates root node has children array with valid elements; test_all_nodes_have_required_properties() recursively checks all descendants (3+ levels deep); tests fail with descriptive errors indicating which node and field failed; validation covers all ECharts required fields; tests complete in <200ms
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). Review ECharts treemap documentation to confirm required fields. After implementation, use log-implementation tool to record artifacts (validation functions created, ECharts fields checked, recursive validation depth). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 6. Add CI integration and test execution validation
+- [x] 6. Add CI integration and test execution validation
   - File: .github/workflows/test.yml (modify existing) OR create new workflow
   - Add contract test job running cargo nextest run --package code-viz-tauri --test contract_tests
   - Configure job to fail PR if contract tests fail
