@@ -9,5 +9,5 @@ pub mod scanner;
 pub mod traits;
 pub mod mocks;
 
-pub use analyzer::analyze;
+pub use analyzer::{analyze, calculate_summary, process_file};
 pub use models::*;
