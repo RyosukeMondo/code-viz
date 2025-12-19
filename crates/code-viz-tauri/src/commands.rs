@@ -257,7 +257,7 @@ mod integration_tests {
     /// produces JSON that matches the TypeScript contract expected by the frontend.
     #[tokio::test]
     async fn test_analyze_repository_serialization_contract() {
-        use crate::context::MockContext;
+        use code_viz_core::mocks::MockContext;
         let ctx = MockContext::new();
 
         // Use current directory as test subject (code-viz itself)
@@ -362,7 +362,7 @@ mod integration_tests {
     /// {secs_since_epoch: ..., nanos_since_epoch: ...} instead of ISO 8601 string.
     #[tokio::test]
     async fn test_no_raw_systemtime_in_json() {
-        use crate::context::MockContext;
+        use code_viz_core::mocks::MockContext;
         let ctx = MockContext::new();
 
         let current_dir = env::current_dir()

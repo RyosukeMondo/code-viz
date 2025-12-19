@@ -1,38 +1,44 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use code_viz_core::traits::AppContext;
+use crate::traits::AppContext;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 /// Mock implementation of AppContext for unit testing.
 /// Captures emitted events in a thread-safe vector for later verification.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MockContext {
     events: Arc<Mutex<Vec<(String, Value)>>>,
-    app_dir: PathBuf,
+    app_dir: Arc<Mutex<PathBuf>>,
 }
 
 impl MockContext {
-    /// Create a new MockContext with default temp directory.
+    /// Create a new MockContext.
     pub fn new() -> Self {
         Self {
             events: Arc::new(Mutex::new(Vec::new())),
-            app_dir: std::env::temp_dir(),
+            app_dir: Arc::new(Mutex::new(std::env::temp_dir())),
         }
     }
 
-    /// Create a new MockContext with a specific app directory.
-    pub fn with_app_dir(path: PathBuf) -> Self {
-        Self {
-            events: Arc::new(Mutex::new(Vec::new())),
-            app_dir: path,
-        }
+    /// Set a specific app directory.
+    pub fn with_app_dir(self, path: PathBuf) -> Self {
+        *self.app_dir.lock().unwrap() = path;
+        self
     }
 
     /// Get a clone of all captured events.
     pub fn get_events(&self) -> Vec<(String, Value)> {
         self.events.lock().unwrap().clone()
+    }
+
+    /// Get events by name.
+    pub fn get_events_by_name(&self, event_name: &str) -> Vec<Value> {
+        self.events.lock().unwrap().iter()
+            .filter(|(name, _)| name == event_name)
+            .map(|(_, payload)| payload.clone())
+            .collect()
     }
 
     /// Assert that an event with the given name was emitted.
@@ -53,12 +59,6 @@ impl MockContext {
     }
 }
 
-impl Default for MockContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[async_trait]
 impl AppContext for MockContext {
     async fn emit_event(&self, event: &str, payload: Value) -> Result<()> {
@@ -67,7 +67,7 @@ impl AppContext for MockContext {
     }
 
     fn get_app_dir(&self) -> PathBuf {
-        self.app_dir.clone()
+        self.app_dir.lock().unwrap().clone()
     }
 
     async fn report_progress(&self, percentage: f32, message: &str) -> Result<()> {
