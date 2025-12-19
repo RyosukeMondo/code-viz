@@ -1,0 +1,19 @@
+[package]
+name = "code-viz-commands"
+version = "0.1.0"
+edition = "2021"
+authors = ["CodeViz Team"]
+description = "Orchestration layer for code-viz analysis commands"
+license = "MIT"
+
+[dependencies]
+# Core traits and models
+code-viz-core = { path = "../code-viz-core" }
+
+# Common utilities
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["rt", "sync"] }
+tracing = { workspace = true }
