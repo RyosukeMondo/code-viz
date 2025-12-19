@@ -5,6 +5,7 @@
 
 // Public modules
 pub mod commands;
+pub mod context;
 pub mod logging;
 pub mod models;
 pub mod transform;

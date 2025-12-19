@@ -15,6 +15,8 @@ code-viz-dead-code = { path = "../code-viz-dead-code", features = ["specta"] }
 # Tauri and IPC
 tauri = { version = "2.0", features = [] }
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
 
 # Serialization
 serde = { workspace = true }
