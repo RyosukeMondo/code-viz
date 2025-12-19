@@ -12,11 +12,12 @@ description = "Tauri wrapper library for code-viz analysis engine"
 code-viz-core = { path = "../code-viz-core" }
 code-viz-dead-code = { path = "../code-viz-dead-code", features = ["specta"] }
 
-# Tauri and IPC
+# IPC and IPC
 tauri = { version = "2.0", features = [] }
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
+walkdir = { workspace = true }
 
 # Serialization
 serde = { workspace = true }
