@@ -61,6 +61,7 @@ pub enum SymbolKind {
 
 /// Complete result of dead code analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct DeadCodeResult {
     /// Aggregated summary statistics
@@ -150,6 +151,7 @@ impl DeadCodeResult {
 
 /// Summary statistics for dead code analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct DeadCodeSummary {
     /// Total number of files analyzed
@@ -173,6 +175,7 @@ pub struct DeadCodeSummary {
 
 /// Dead code found in a single file
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct FileDeadCode {
     /// File path
@@ -184,6 +187,7 @@ pub struct FileDeadCode {
 
 /// A dead (unreachable) symbol with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct DeadSymbol {
     /// Symbol name
@@ -209,5 +213,6 @@ pub struct DeadSymbol {
 
     /// Last modification time (if available)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "specta", specta(type = Option<String>))]
     pub last_modified: Option<SystemTime>,
 }

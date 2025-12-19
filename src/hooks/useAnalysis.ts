@@ -109,6 +109,16 @@ export function useAnalysis(): UseAnalysisResult {
   // Set up Tauri command hook with callbacks
   const { execute } = useTauriCommand<TreeNode>('analyze_repository', {
     onSuccess: (data) => {
+      // DEBUG: Log received data
+      console.log('[DEBUG] Tauri returned data:', {
+        hasData: !!data,
+        type: typeof data,
+        name: data?.name,
+        loc: data?.loc,
+        complexity: data?.complexity,
+        childrenCount: data?.children?.length,
+        firstChild: data?.children?.[0]
+      });
       // Sync with store on success
       setMetrics(data as TreeNode);
       setLoading(false);

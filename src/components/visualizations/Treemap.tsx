@@ -99,11 +99,13 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       // CRITICAL: Find the original TreeNode from source data using path
       // Don't reconstruct from ECharts data - children would be in wrong format
       const path = params.data.path;
+      const name = params.data.name;
 
-      // Guard: ECharts might create wrapper/container nodes without our custom data
-      if (!path) {
-        console.debug('[Treemap] Clicked node has no path (likely container node), ignoring');
-        console.log('[Treemap] Full params.data:', params.data);
+      // Guard: Ignore clicks on root container or nodes without path
+      // The root container (path="" or undefined) should not be drillable
+      // Only actual children with real paths should be clickable
+      if (path === '' || path === undefined || !name) {
+        console.debug('[Treemap] Clicked on root container (path=""), ignoring - only children are clickable');
         return;
       }
 
@@ -302,12 +304,9 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       series: [
         {
           type: 'treemap',
-          // Show children directly to avoid extra root wrapper level
-          // This prevents clicking on children from returning the root node
-          data: echartsData?.children && echartsData.children.length > 0
-            ? echartsData.children
-            : [echartsData],
-          leafDepth: 1,
+          // Pass single root node - ECharts will show it and all descendants
+          // Remove leafDepth to show all levels (root + children)
+          data: [echartsData],
           roam: false,
           nodeClick: false, // Disable ECharts default click (we handle it manually)
           breadcrumb: {

@@ -59,6 +59,9 @@ Code-Viz is a comprehensive code monitoring and visualization platform designed 
 - **Action Rate**: Percentage of users who delete/refactor code after viewing visualizations (Target: 40%)
 - **Time Savings**: Reduction in code review time for AI-generated PRs (Target: 30% reduction)
 - **Code Health**: Tracked improvement in dead code ratio and complexity scores over 90 days (Target: 20% improvement)
+- **Testing Efficiency**: UAT cost reduction through automated testing (Target: 60% reduction in UAT time)
+- **Bug Detection Speed**: Time to detect bugs in development (Target: Shift from runtime/UAT to compile-time, 100x faster)
+- **Test Iteration Time**: Average time for full test suite (Target: <2 minutes, down from 5+ minutes)
 
 ## Product Principles
 
@@ -85,6 +88,12 @@ Code-Viz is a comprehensive code monitoring and visualization platform designed 
    - Command-line interface takes priority over GUI for automation and scripting
    - Debug mode mandatory for troubleshooting and transparency
    - All features accessible via both CLI and GUI for maximum flexibility
+
+6. **Testing-First Quality Assurance**
+   - Follow test pyramid: 90% fast tests (unit + contract + CLI integration), 10% E2E
+   - Catch bugs at compile-time via contract validation (Rust ↔ TypeScript interface)
+   - Enable rapid iteration through fast, deterministic testing (seconds, not minutes)
+   - Leverage dual-head architecture (CLI + GUI) for comprehensive, cost-effective testing
 
 ## Monitoring & Visibility
 

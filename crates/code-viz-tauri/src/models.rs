@@ -51,6 +51,7 @@ pub struct TreeNode {
 
     /// Last modified timestamp (for cache invalidation and sorting)
     #[serde(serialize_with = "serialize_systemtime")]
+    #[specta(type = String)]
     pub last_modified: SystemTime,
 
     /// Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled

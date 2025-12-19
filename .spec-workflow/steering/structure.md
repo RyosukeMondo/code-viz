@@ -88,30 +88,49 @@ code-viz/
 │   └── types/                      # TypeScript type definitions
 │       └── index.ts
 │
-├── crates/                         # Optional: Workspace crates (if modularizing Rust)
-│   ├── code-viz-analysis/          # Analysis engine as library
+├── crates/                         # Workspace crates (dual-head architecture)
+│   ├── code-viz-core/              # Shared business logic (CRITICAL)
 │   │   ├── src/
-│   │   │   └── lib.rs
+│   │   │   ├── lib.rs
+│   │   │   ├── analysis/          # Analysis engine
+│   │   │   ├── metrics/           # Metric calculations
+│   │   │   └── models/            # Shared data models
 │   │   ├── Cargo.toml
 │   │   └── README.md
-│   ├── code-viz-git/               # Git integration as library
+│   ├── code-viz-cli/               # CLI binary (headless testing)
 │   │   ├── src/
-│   │   │   └── lib.rs
+│   │   │   └── main.rs            # CLI entry point
+│   │   ├── tests/                 # CLI integration tests
+│   │   │   ├── integration_tests.rs
+│   │   │   └── fixtures/          # Test repositories
 │   │   ├── Cargo.toml
 │   │   └── README.md
-│   └── code-viz-models/            # Shared data models
+│   ├── code-viz-tauri/             # Tauri GUI application
+│   │   ├── src/
+│   │   │   ├── main.rs            # Tauri entry point
+│   │   │   ├── commands/          # IPC command handlers
+│   │   │   └── lib.rs
+│   │   ├── tests/                 # Contract validation tests
+│   │   │   └── contract_tests.rs  # Specta schema validation
+│   │   ├── Cargo.toml
+│   │   └── tauri.conf.json
+│   └── code-viz-dead-code/         # Dead code detection (specialized)
 │       ├── src/
 │       │   └── lib.rs
 │       ├── Cargo.toml
 │       └── README.md
 │
-├── tests/                          # Integration and E2E tests
-│   ├── integration/                # Rust integration tests
-│   │   ├── analysis_tests.rs
-│   │   └── git_tests.rs
-│   └── e2e/                        # Playwright E2E tests
-│       ├── treemap.spec.ts
-│       └── timeline.spec.ts
+├── tests/                          # Test pyramid implementation
+│   ├── unit/                       # Unit tests (in-crate #[cfg(test)])
+│   │   └── README.md               # Unit test guidelines
+│   ├── contract/                   # Contract validation tests
+│   │   ├── specta_schema_tests.rs  # Rust → TS type validation
+│   │   └── serialization_tests.rs  # Round-trip tests
+│   ├── integration/                # CLI integration tests
+│   │   ├── cli_analysis_tests.sh   # Shell-based CLI tests
+│   │   └── fixtures/               # Test repositories
+│   └── e2e/                        # Playwright E2E (minimal)
+│       └── smoke_test.spec.ts      # Single critical path test
 │
 ├── benchmarks/                     # Performance benchmarks
 │   ├── analysis_bench.rs
@@ -650,12 +669,74 @@ export function useAnalysis(repoPath: string) {
 - Environment variables synced with Tauri config
 - Build flags for optimization
 
+## Testing Strategy & Structure
+
+### Test Pyramid Architecture
+
+The codebase follows a strict test pyramid to achieve 60% UAT cost reduction:
+
+```
+     /\
+    /E2E\       1 smoke test (critical user flow)
+   /------\     ~30s runtime
+  / CLI IT \    50+ tests (integration via CLI)
+ /----------\   ~5s runtime, 10-100x faster than E2E
+/  Contract  \  20+ tests (Rust ↔ TS validation)
+/-------------\ ~2s runtime, catches 80% of bugs
+/     Unit     \ 100+ tests (pure business logic)
+---------------- <1s runtime, 90% coverage target
+```
+
+**Layer Responsibilities:**
+
+1. **Unit Tests** (in-crate `#[cfg(test)]`):
+   - Pure functions, algorithms, transformations
+   - No I/O, no Tauri runtime, no GUI
+   - Target: 90% line coverage for `code-viz-core`
+
+2. **Contract Tests** (`crates/code-viz-tauri/tests/contract_tests.rs`):
+   - Specta schema validation (Rust types → TypeScript)
+   - Serialization round-trips (ensure data survives IPC)
+   - Target: 100% coverage of all `#[specta::specta]` types
+   - **Critical**: Prevents wrapper node bugs (empty string → undefined)
+
+3. **CLI Integration Tests** (`crates/code-viz-cli/tests/`):
+   - Real repository analysis via CLI
+   - JSON output validation
+   - End-to-end logic without GUI overhead
+   - Target: All critical analysis paths
+
+4. **E2E Tests** (`tests/e2e/smoke_test.spec.ts`):
+   - Single test: Open app → Analyze → Drill down → Verify
+   - Only validates GUI-specific behavior
+   - Target: Minimal (smoke test only)
+
+### Test Execution Speed
+
+| Layer | Count | Runtime | Cost/Run |
+|-------|-------|---------|----------|
+| Unit | 100+ | <1s | $0 (local) |
+| Contract | 20+ | ~2s | $0 (local) |
+| CLI Integration | 50+ | ~5s | $0 (local) |
+| E2E | 1 | ~30s | Low (minimal) |
+| **Total** | **170+** | **<40s** | **Minimal** |
+
+**CI Pipeline**: All tests run in parallel, total CI time <2 minutes (down from 5+ minutes).
+
+## Workspace Crate Benefits
+
+The current workspace structure (`crates/*`) enables:
+
+1. **Shared Core Logic**: `code-viz-core` reused by both CLI and Tauri
+2. **Fast Integration Testing**: CLI tests bypass Tauri/WebView overhead
+3. **Modular Development**: Each crate independently testable
+4. **Clear Boundaries**: Enforced via Cargo dependency graph
+
 ## Future Structure Evolution
 
 As the project grows, consider:
 
-1. **Workspace Crates**: Move `analysis/`, `git/` to `crates/` as standalone libraries
+1. **Trait-Based DI**: Add `AppContext` trait to `code-viz-core` for pure unit testing
 2. **Plugin System**: Add `plugins/` directory for user-extensible metrics
-3. **CLI Binary**: Separate `src-cli/` for command-line interface (reuses backend libs)
-4. **Cloud Backend** (if needed): New crate `code-viz-server/` for remote indexing
-5. **Documentation Site**: `docs-site/` with Docusaurus for user-facing docs
+3. **Cloud Backend** (if needed): New crate `code-viz-server/` for remote indexing
+4. **Documentation Site**: `docs-site/` with Docusaurus for user-facing docs

@@ -336,11 +336,10 @@ describe('Treemap', () => {
 
       expect(mockSetOption).toHaveBeenCalled();
       const optionsArg = mockSetOption.mock.calls[0][0];
-      // When at root level, we show children directly to avoid wrapper layer
-      // This prevents clicking on children from returning the root node
-      expect(optionsArg.series[0].data).toHaveLength(2); // file1.ts and subdir
-      expect(optionsArg.series[0].data[0].name).toBe('file1.ts');
-      expect(optionsArg.series[0].data[1].name).toBe('subdir');
+      // Pass root node wrapped in array
+      expect(optionsArg.series[0].data).toHaveLength(1); // [root]
+      expect(optionsArg.series[0].data[0].name).toBe('root');
+      expect(optionsArg.series[0].data[0].children).toHaveLength(2); // file1.ts and subdir
     });
 
     it('should render pre-filtered data from parent', () => {
@@ -350,10 +349,11 @@ describe('Treemap', () => {
       render(<Treemap data={subdirNode} drillDownPath={['subdir']} />);
 
       expect(mockSetOption).toHaveBeenCalled();
-      // When drilled down, we show the subdirectory's children
+      // When drilled down, we pass the filtered node
       const optionsArg = mockSetOption.mock.calls[0][0];
-      expect(optionsArg.series[0].data).toHaveLength(2); // file2.ts and file3.ts
-      expect(optionsArg.series[0].data[0].name).toBe('file2.ts');
+      expect(optionsArg.series[0].data).toHaveLength(1); // [subdir]
+      expect(optionsArg.series[0].data[0].name).toBe('subdir');
+      expect(optionsArg.series[0].data[0].children).toHaveLength(2); // file2.ts and file3.ts
     });
 
     it('should handle deep drill-down paths', () => {
@@ -632,27 +632,104 @@ describe('Treemap', () => {
       render(<Treemap data={mockTreeData} />);
 
       const optionsArg = mockSetOption.mock.calls[0][0];
-      const echartsData = optionsArg.series[0].data[0];
+      // data contains root node wrapped in array
+      const rootNode = optionsArg.series[0].data[0];
 
-      // Should have transformed fields
-      expect(echartsData).toHaveProperty('name');
-      expect(echartsData).toHaveProperty('value');
-      expect(echartsData).toHaveProperty('complexity');
-      expect(echartsData).toHaveProperty('path');
-      expect(echartsData).toHaveProperty('type');
+      // Should have transformed fields (loc → value)
+      expect(rootNode).toHaveProperty('name');
+      expect(rootNode).toHaveProperty('value'); // ECharts uses 'value' instead of 'loc'
+      expect(rootNode).toHaveProperty('complexity');
+      expect(rootNode).toHaveProperty('path');
+      expect(rootNode).toHaveProperty('type');
+
+      // Verify root values
+      expect(rootNode.name).toBe('root');
+      expect(rootNode.value).toBe(1000); // root LOC
+      expect(rootNode.path).toBe('/root');
+      expect(rootNode.type).toBe('directory');
+      expect(rootNode.children).toHaveLength(2);
     });
 
     it('should preserve children structure in transformation', () => {
       render(<Treemap data={mockTreeData} />);
 
       const optionsArg = mockSetOption.mock.calls[0][0];
-      // data[0] is file1.ts (file), data[1] is subdir (directory with children)
-      const subdirData = optionsArg.series[0].data[1];
+      // data contains root node
+      const rootData = optionsArg.series[0].data[0];
+      expect(rootData.name).toBe('root');
+      expect(rootData.children).toHaveLength(2);
 
+      // First child is file1.ts (no children)
+      expect(rootData.children[0].name).toBe('file1.ts');
+      expect(rootData.children[0].type).toBe('file');
+
+      // Second child is subdir (has children)
+      const subdirData = rootData.children[1];
       expect(subdirData.name).toBe('subdir');
+      expect(subdirData.type).toBe('directory');
       expect(subdirData).toHaveProperty('children');
       expect(Array.isArray(subdirData.children)).toBe(true);
       expect(subdirData.children).toHaveLength(2); // file2.ts and file3.ts
+    });
+
+    /**
+     * CRITICAL REGRESSION TEST: Validate root node structure
+     *
+     * ECharts treemap expects data: [rootNode] where rootNode has name/path/type.
+     * The root node from backend may have path="" (empty string).
+     * Click handler must handle empty path as root and pass correct TreeNode.
+     *
+     * This test validates that:
+     * - We pass a single root node wrapped in array
+     * - Root node has all required properties (name, path, type)
+     * - All descendants recursively have required properties
+     */
+    it('should ensure root node and all descendants have required properties', () => {
+      render(<Treemap data={mockTreeData} />);
+
+      const optionsArg = mockSetOption.mock.calls[0][0];
+      const nodes = optionsArg.series[0].data;
+
+      /**
+       * Recursive validation function
+       * Ensures every node and its descendants have required properties
+       */
+      function validateNode(node: any, nodePath = 'root') {
+        // CRITICAL: Every node must have these properties defined
+        expect(node.name, `${nodePath}: must have name`).toBeDefined();
+        expect(node.path, `${nodePath}: must have path`).toBeDefined();
+        expect(node.type, `${nodePath}: must have type`).toBeDefined();
+
+        // Validate types
+        expect(typeof node.name, `${nodePath}: name must be string`).toBe('string');
+        expect(typeof node.path, `${nodePath}: path must be string`).toBe('string');
+        expect(typeof node.type, `${nodePath}: type must be string`).toBe('string');
+        expect(['file', 'directory'], `${nodePath}: type must be file or directory`).toContain(node.type);
+
+        // Name must not be empty
+        expect(node.name.length, `${nodePath}: name must not be empty`).toBeGreaterThan(0);
+
+        // Path must be defined (can be empty string for root from backend)
+        expect(node.path, `${nodePath}: path must be defined (can be empty string for root)`).not.toBeUndefined();
+
+        // Recursively validate children
+        if (node.children && Array.isArray(node.children)) {
+          node.children.forEach((child: any, i: number) => {
+            validateNode(child, `${nodePath}.children[${i}]`);
+          });
+        }
+      }
+
+      // Validate root node
+      expect(nodes.length, 'Should pass [root] node').toBe(1);
+
+      const rootNode = nodes[0];
+      validateNode(rootNode, 'root');
+
+      // Verify root properties
+      expect(rootNode.name).toBe('root');
+      expect(rootNode.type).toBe('directory');
+      expect(rootNode.children).toHaveLength(2);
     });
   });
 
@@ -1017,29 +1094,33 @@ describe('Treemap', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should ignore clicks on nodes without path (ECharts container nodes)', () => {
+    it('should ignore clicks on root container (empty path)', () => {
       const onNodeClick = vi.fn();
       const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
-      render(<Treemap data={mockTreeData} onNodeClick={onNodeClick} />);
+      // Create mock data with empty path (like backend root node)
+      const rootWithEmptyPath = { ...mockTreeData, path: '' };
+
+      render(<Treemap data={rootWithEmptyPath} onNodeClick={onNodeClick} />);
 
       const clickHandler = mockOn.mock.calls.find((call) => call[0] === 'click')?.[1];
 
-      // Click with no path (ECharts might create container nodes)
+      // Click on root container (empty path, undefined name)
       const echartsClickData = {
         data: {
-          name: 'container',
+          name: undefined,
           value: 1000,
-          // NO path property
+          path: '', // Empty path - this is the root container
         },
       };
 
       clickHandler(echartsClickData);
 
-      // Should log debug message and NOT call onNodeClick
+      // Should log debug message about ignoring root container
       expect(consoleDebugSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Treemap] Clicked node has no path')
+        expect.stringContaining('[Treemap] Clicked on root container')
       );
+      // Should NOT call onNodeClick - root container is not drillable
       expect(onNodeClick).not.toHaveBeenCalled();
 
       consoleDebugSpy.mockRestore();

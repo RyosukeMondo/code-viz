@@ -99,7 +99,13 @@
 
 ### Application Architecture
 
-**Layered Hybrid Architecture** with strict separation of concerns:
+**Dual-Head Hybrid Architecture** with strict separation of concerns:
+
+The architecture follows a dual-head pattern where core business logic is shared between two interfaces:
+- **GUI Head (Tauri)**: Rich visual interface for interactive exploration
+- **CLI Head (Headless)**: Command-line interface for automation, testing, and CI/CD
+
+This enables comprehensive testing without GUI overhead: CLI tests run 10-100x faster than E2E GUI tests.
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -124,7 +130,7 @@
 │  └─────────────────┬────────────────────┘   │
 │                    │                        │
 │  ┌─────────────────▼────────────────────┐   │
-│  │      Analysis Engine                 │   │
+│  │      Analysis Engine (Shared Core)   │   │◄── Reused by CLI
 │  │  ┌─────────┐  ┌──────────────────┐   │   │
 │  │  │Tree-    │  │ Stack-graphs     │   │   │
 │  │  │sitter   │→ │ (Name Resolution)│   │   │
@@ -146,15 +152,23 @@
 │  │  - Parsed ASTs, Metrics Snapshots   │   │
 │  └──────────────────────────────────────┘   │
 └─────────────────────────────────────────────┘
+                 ▲
+                 │ Direct function calls
+         ┌───────┴───────┐
+         │   CLI Binary  │
+         │  (code-viz)   │
+         └───────────────┘
 ```
 
 **Key Architectural Principles:**
 
 1. **SSOT (Single Source of Truth)**: Rust backend defines all data models; TypeScript types auto-generated via tauri-specta
-2. **Contract-Driven**: IPC contracts enforced at compile time, not runtime
-3. **Incremental Processing**: Tree-sitter and stack-graphs minimize re-computation on file changes
-4. **Parallel Execution**: Rayon parallelizes file analysis across CPU cores
-5. **Lazy Visualization**: 3D scenes use LOD (Level of Detail) and culling; 2D charts lazy-load deep nodes
+2. **Contract-Driven Development**: IPC contracts enforced at compile time via Specta, not runtime
+3. **Dual-Head Testability**: Core logic testable via fast CLI, GUI tested minimally for UX only
+4. **Incremental Processing**: Tree-sitter and stack-graphs minimize re-computation on file changes
+5. **Parallel Execution**: Rayon parallelizes file analysis across CPU cores
+6. **Lazy Visualization**: 3D scenes use LOD (Level of Detail) and culling; 2D charts lazy-load deep nodes
+7. **Contract Validation**: Automated tests ensure Rust ↔ TypeScript data contracts never break
 
 ### Data Storage
 
@@ -282,10 +296,34 @@ layout {
   - **rustfmt**: Rust (edition 2021, 100-char line width)
   - **Prettier**: TypeScript/JSON/Markdown
 
-- **Testing Frameworks**:
-  - **Rust**: cargo-nextest (faster test runner), insta (snapshot testing)
-  - **React**: Vitest (unit), Playwright (E2E for Tauri WebView)
-  - **Storybook**: Component visual testing
+- **Testing Frameworks & Strategy**:
+
+  **Test Pyramid Architecture** (90% fast, 10% slow):
+
+  1. **Unit Tests (50% coverage target)**:
+     - **Rust**: cargo-nextest (faster test runner), insta (snapshot testing)
+     - **React**: Vitest for component unit tests
+     - **Speed**: Milliseconds per test
+
+  2. **Contract Validation Tests (100% interface coverage)**:
+     - **Specta Schema Tests**: Validate Rust types generate correct TypeScript
+     - **Serialization Round-trip Tests**: Ensure data survives Rust → JSON → TypeScript
+     - **Speed**: Seconds for full suite
+     - **Critical**: Prevents wrapper node bugs (path: "" → undefined issues)
+
+  3. **CLI Integration Tests (Critical paths)**:
+     - **Location**: `crates/code-viz-cli/tests/`
+     - **Purpose**: Test analysis engine without GUI overhead
+     - **Speed**: 10-100x faster than E2E (no Tauri, no WebView)
+     - **Coverage**: Real repository analysis, JSON output validation
+
+  4. **E2E Tests (Smoke tests only)**:
+     - **Playwright**: Tauri WebView testing
+     - **Scope**: Minimal - critical user flow only (analyze → visualize → drill-down)
+     - **Speed**: Minutes (slow, reserved for essential UX validation)
+
+  5. **Visual Testing**:
+     - **Storybook**: Component visual regression testing
 
 - **Documentation**:
   - **rustdoc**: API docs with examples
@@ -479,7 +517,13 @@ Task: Add a new metric for "cyclomatic complexity" to the analysis engine.
 
 ## Future Technical Enhancements
 
-- **WASM Plugin System**: Allow users to write custom metrics in Rust/C compiled to WASM, sandboxed execution.
-- **GPU Compute Shaders**: Offload complexity calculations to GPU via WebGPU for real-time updates.
-- **Remote Indexing**: Optional cloud-based indexing for teams (with end-to-end encryption).
-- **ML-Based Dead Code Prediction**: Train model on "code that eventually got deleted" to predict future dead code.
+### Near-Term (High ROI)
+- **Trait-Based Dependency Injection**: Introduce `AppContext` trait to decouple business logic from Tauri runtime, enabling pure unit tests without GUI overhead
+- **Comprehensive Contract Tests**: Automated Specta schema validation preventing 80% of Rust ↔ TypeScript bugs at compile-time
+- **CLI Integration Test Suite**: Leverage existing CLI for 6x faster integration testing vs E2E
+
+### Long-Term (Strategic)
+- **WASM Plugin System**: Allow users to write custom metrics in Rust/C compiled to WASM, sandboxed execution
+- **GPU Compute Shaders**: Offload complexity calculations to GPU via WebGPU for real-time updates
+- **Remote Indexing**: Optional cloud-based indexing for teams (with end-to-end encryption)
+- **ML-Based Dead Code Prediction**: Train model on "code that eventually got deleted" to predict future dead code

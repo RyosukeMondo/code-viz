@@ -14,7 +14,7 @@ code-viz-dead-code = { path = "../code-viz-dead-code", features = ["specta"] }
 
 # Tauri and IPC
 tauri = { version = "2.0", features = [] }
-tauri-specta = "2.0.0-rc.20"
+tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 
 # Serialization
 serde = { workspace = true }
@@ -22,7 +22,8 @@ serde_json = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 
 # Type generation
-specta = "2.0.0-rc.20"
+specta = { version = "2.0.0-rc.22", features = ["export"] }
+specta-typescript = "0.0.9"
 
 # Logging
 tracing = { workspace = true }
