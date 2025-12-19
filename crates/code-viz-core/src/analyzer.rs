@@ -1,72 +1,11 @@
-use crate::models::{AnalysisResult, AnalysisConfig, Summary, FileMetrics};
-use crate::scanner::{self, ScanError};
+use crate::models::{Summary, FileMetrics};
+use crate::scanner::ScanError;
 use crate::metrics::{self, MetricsError};
 use crate::cache::CacheError;
 use crate::parser;
-use rayon::prelude::*;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 use thiserror::Error;
 use crate::traits::FileSystem;
-
-/// OLD FUNCTION - DEPRECATED
-/// Use code_viz_commands::analyze_repository() instead
-/// This function is kept only for backward compatibility during migration
-#[deprecated(note = "Use code_viz_commands::analyze_repository() instead")]
-#[tracing::instrument(skip(config), fields(root = %root.display(), exclude_patterns = config.exclude_patterns.len()))]
-pub fn analyze(
-    root: &Path,
-    config: &AnalysisConfig,
-) -> Result<AnalysisResult, AnalysisError> {
-    tracing::warn!("Using deprecated analyze() function. Migrate to code_viz_commands::analyze_repository()");
-
-    tracing::info!("Starting repository analysis");
-
-    let files = scanner::scan_directory(root, &config.exclude_patterns)?;
-    tracing::info!(file_count = files.len(), "Directory scan completed");
-
-    // Use RealFileSystem for backward compatibility
-    let fs = crate::context::RealFileSystem::new();
-
-    // Process files in parallel
-    let mut results: Vec<FileMetrics> = files
-        .par_iter()
-        .filter_map(|path| {
-            process_file_with_fs(path, &fs).map_err(|e| {
-                tracing::warn!(path = %path.display(), error = %e, "Failed to analyze file, skipping");
-                e
-            }).ok()
-        })
-        .collect();
-
-    tracing::debug!(processed_files = results.len(), "File processing completed");
-
-    // Sort results by path for deterministic output
-    results.sort_by(|a, b| a.path.cmp(&b.path));
-
-    let summary = calculate_summary(&results);
-    tracing::info!(
-        total_files = summary.total_files,
-        total_loc = summary.total_loc,
-        total_functions = summary.total_functions,
-        "Analysis completed successfully"
-    );
-
-    Ok(AnalysisResult {
-        summary,
-        files: results,
-        timestamp: SystemTime::now(),
-    })
-}
-
-/// OLD FUNCTION - DEPRECATED
-/// Use code_viz_commands functions instead
-#[deprecated(note = "Use code_viz_commands functions with FileSystem trait instead")]
-#[tracing::instrument(fields(path = %path.display()))]
-pub fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
-    let fs = crate::context::RealFileSystem::new();
-    process_file_with_fs(path, &fs)
-}
 
 /// Process a single file with FileSystem trait (NEW - trait-based)
 #[tracing::instrument(skip(fs), fields(path = %path.display()))]
@@ -162,48 +101,3 @@ pub enum AnalysisError {
     IoError(#[from] std::io::Error),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs::File;
-    use std::io::Write;
-    use tempfile::TempDir;
-
-    #[test]
-    fn test_analyze_repository() {
-        let temp_dir = TempDir::new().unwrap();
-        let root = temp_dir.path();
-
-        // Create a few files
-        let ts_file = root.join("test.ts");
-        let mut f = File::create(&ts_file).unwrap();
-        writeln!(f, "function test() {{ console.log('hi'); }}").unwrap(); // 1 LOC, 1 func
-
-        let js_file = root.join("index.js");
-        let mut f = File::create(&js_file).unwrap();
-        writeln!(f, "// Comment\nconst x = 1;").unwrap(); // 1 LOC, 0 func
-
-        // Ignored file (no extension supported yet or ignored by scanner?)
-        // txt is not supported by process_file language mapping usually unless we add it
-        // and scanner filters extensions anyway.
-        // Scanner supports: .ts, .tsx, .js, .jsx, .rs, .py
-        // We only have parsers for TS/JS/TSX.
-        // If we add .rs file, process_file will fail (get_parser("rust") -> Err), so it should be skipped with warning.
-        let rs_file = root.join("main.rs");
-        File::create(&rs_file).unwrap(); // Empty file
-
-        let config = AnalysisConfig::default();
-        let result = analyze(root, &config).unwrap();
-
-        assert_eq!(result.summary.total_files, 3); // TS, JS, and RS.
-        assert_eq!(result.summary.total_loc, 2);
-        assert_eq!(result.summary.total_functions, 1);
-        
-        let file_names: Vec<_> = result.files.iter()
-            .map(|f| f.path.file_name().unwrap().to_str().unwrap())
-            .collect();
-        assert!(file_names.contains(&"test.ts"));
-        assert!(file_names.contains(&"index.js"));
-        assert!(file_names.contains(&"main.rs"));
-    }
-}
