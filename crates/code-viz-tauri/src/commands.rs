@@ -5,6 +5,8 @@
 
 use crate::models::TreeNode;
 use crate::transform::flat_to_hierarchy;
+use crate::context::TauriContext;
+use code_viz_core::traits::AppContext;
 use code_viz_core::analyze;
 use code_viz_core::AnalysisConfig as CoreAnalysisConfig;
 use code_viz_dead_code::{analyze_dead_code, DeadCodeResult};
@@ -43,6 +45,17 @@ use uuid::Uuid;
 #[tauri::command]
 #[specta::specta]
 pub async fn analyze_repository(
+    app: tauri::AppHandle,
+    path: String,
+    request_id: Option<String>,
+) -> Result<TreeNode, String> {
+    let ctx = TauriContext::new(app);
+    analyze_repository_inner(ctx, path, request_id).await
+}
+
+/// Inner implementation of analyze_repository that uses AppContext
+pub async fn analyze_repository_inner(
+    ctx: impl AppContext,
     path: String,
     request_id: Option<String>,
 ) -> Result<TreeNode, String> {
@@ -56,6 +69,9 @@ pub async fn analyze_repository(
         path = %path,
         "Starting repository analysis"
     );
+
+    ctx.report_progress(0.1, "Validating path").await.ok();
+
     // Validate path exists and is a directory
     let repo_path = PathBuf::from(&path);
     if !repo_path.exists() {
@@ -80,6 +96,8 @@ pub async fn analyze_repository(
         "Using default analysis configuration"
     );
 
+    ctx.report_progress(0.3, "Initial analysis").await.ok();
+
     // Use default configuration (excludes node_modules, target, .git, etc.)
     let config = CoreAnalysisConfig::default();
 
@@ -87,6 +105,8 @@ pub async fn analyze_repository(
         request_id = %req_id,
         "Calling code-viz-core analysis engine"
     );
+
+    ctx.report_progress(0.5, "Scanning files").await.ok();
 
     // Call code-viz-core analysis engine
     let analysis_result = analyze(&repo_path, &config).map_err(|e| {
@@ -97,6 +117,8 @@ pub async fn analyze_repository(
         );
         format!("Analysis failed: {}", e)
     })?;
+
+    ctx.report_progress(0.8, "Processing results").await.ok();
 
     tracing::info!(
         request_id = %req_id,
@@ -111,6 +133,8 @@ pub async fn analyze_repository(
         request_id = %req_id,
         "Repository analysis completed successfully"
     );
+
+    ctx.report_progress(1.0, "Done").await.ok();
 
     Ok(tree)
 }
@@ -233,6 +257,9 @@ mod integration_tests {
     /// produces JSON that matches the TypeScript contract expected by the frontend.
     #[tokio::test]
     async fn test_analyze_repository_serialization_contract() {
+        use crate::context::MockContext;
+        let ctx = MockContext::new();
+
         // Use current directory as test subject (code-viz itself)
         let current_dir = env::current_dir()
             .expect("Failed to get current directory")
@@ -240,7 +267,7 @@ mod integration_tests {
             .to_string();
 
         // Execute the command
-        let result = analyze_repository(current_dir, Some("test-request-id".to_string())).await;
+        let result = analyze_repository_inner(ctx, current_dir, Some("test-request-id".to_string())).await;
 
         // Command should succeed
         assert!(result.is_ok(), "analyze_repository failed: {:?}", result);
@@ -335,12 +362,15 @@ mod integration_tests {
     /// {secs_since_epoch: ..., nanos_since_epoch: ...} instead of ISO 8601 string.
     #[tokio::test]
     async fn test_no_raw_systemtime_in_json() {
+        use crate::context::MockContext;
+        let ctx = MockContext::new();
+
         let current_dir = env::current_dir()
             .expect("Failed to get current directory")
             .to_string_lossy()
             .to_string();
 
-        let result = analyze_repository(current_dir, Some("test-systemtime".to_string())).await;
+        let result = analyze_repository_inner(ctx, current_dir, Some("test-systemtime".to_string())).await;
         assert!(result.is_ok(), "analyze_repository failed");
 
         let tree = result.unwrap();
