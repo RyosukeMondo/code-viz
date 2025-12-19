@@ -46,13 +46,13 @@ async fn test_analyze_repository_with_mock_context() {
     let first_progress = progress_events.first().unwrap().1.as_object().unwrap();
     let first_percentage = first_progress["percentage"].as_f64().unwrap();
     assert!((first_percentage - 0.1).abs() < 1e-6);
-    assert_eq!(first_progress["message"].as_str().unwrap(), "Validating path");
+    assert_eq!(first_progress["message"].as_str().unwrap(), "Scanning directory...");
     
     // Verify the final progress report
     let last_progress = progress_events.last().unwrap().1.as_object().unwrap();
     let last_percentage = last_progress["percentage"].as_f64().unwrap();
     assert!((last_percentage - 1.0).abs() < 1e-6);
-    assert_eq!(last_progress["message"].as_str().unwrap(), "Done");
+    assert_eq!(last_progress["message"].as_str().unwrap(), "Analysis complete");
     
     // Use the utility method for a simple assertion
     ctx.assert_event_emitted("progress");
