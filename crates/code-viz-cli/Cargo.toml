@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+async-trait = { workspace = true }
 code-viz-core = { path = "../code-viz-core" }
 code-viz-dead-code = { path = "../code-viz-dead-code" }
 clap = { workspace = true }

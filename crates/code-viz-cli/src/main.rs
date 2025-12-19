@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 mod commands;
 mod config_loader;
+mod context;
 mod output;
 
 #[derive(Parser)]

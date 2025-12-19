@@ -528,6 +528,7 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "assert_fs",
+ "async-trait",
  "chrono",
  "clap",
  "code-viz-core",
