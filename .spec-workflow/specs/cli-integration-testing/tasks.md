@@ -1,6 +1,6 @@
 # Tasks Document: CLI Integration Testing
 
-- [-] 1. Create test directory structure and basic fixtures
+- [x] 1. Create test directory structure and basic fixtures
   - Files: crates/code-viz-cli/tests/fixtures/{simple-repo, empty-repo}/
   - Create simple-repo with 3 files, 1 subdirectory (known structure)
   - Create empty-repo with no files (edge case)
