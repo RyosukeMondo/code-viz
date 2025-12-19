@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::PathBuf;
 use std::process;
 use thiserror::Error;
@@ -18,14 +17,19 @@ pub enum DeadCodeError {
     InvalidThreshold(String),
 }
 
+use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
+
 pub fn run(
     path: PathBuf,
     format: String,
     min_confidence: u8,
-    exclude: Vec<String>,
+    _exclude: Vec<String>,
     verbose: bool,
     threshold: Option<String>,
     output: Option<PathBuf>,
+    ctx: impl AppContext,
+    fs: impl FileSystem + Clone,
+    git: impl GitProvider,
 ) -> Result<(), DeadCodeError> {
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
@@ -36,14 +40,11 @@ pub fn run(
     }
     let _ = builder.try_init();
 
-    // Build config
-    let mut config = code_viz_dead_code::AnalysisConfig::default();
-
-    // Merge CLI excludes (append to defaults)
-    config.exclude_patterns.extend(exclude);
-
-    // Run dead code analysis
-    let result = code_viz_dead_code::analyze_dead_code(&path, Some(config))?;
+    // Use code-viz-commands to run dead code analysis
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(code_viz_commands::calculate_dead_code(&path, ctx, fs.clone(), git))
+        .map_err(|e| DeadCodeError::IoError(std::io::Error::other(e)))?;
 
     // Filter by minimum confidence
     let filtered_result = if min_confidence > 0 {
@@ -65,7 +66,8 @@ pub fn run(
 
     // Write output
     if let Some(output_path) = output {
-        fs::write(output_path, formatted_output)?;
+        fs.write(&output_path, &formatted_output)
+            .map_err(|e| DeadCodeError::IoError(std::io::Error::other(e)))?;
     } else {
         println!("{}", formatted_output);
     }

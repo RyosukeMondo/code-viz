@@ -1,10 +1,6 @@
-use crate::config_loader;
 use crate::output::{self, MetricsFormatter};
-use code_viz_core::{analyze, AnalysisConfig};
 use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 use thiserror::Error;
 
@@ -40,7 +36,14 @@ pub struct AnalyzeConfig {
     pub dead_code: bool,
 }
 
-pub fn run(config: AnalyzeConfig) -> Result<(), AnalyzeError> {
+use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
+
+pub fn run(
+    config: AnalyzeConfig,
+    ctx: impl AppContext + Clone,
+    fs: impl FileSystem + Clone,
+    git: impl GitProvider,
+) -> Result<(), AnalyzeError> {
     let AnalyzeConfig {
         path,
         format,
@@ -60,56 +63,28 @@ pub fn run(config: AnalyzeConfig) -> Result<(), AnalyzeError> {
     }
     let _ = builder.try_init();
 
-    // Build config
-    let mut config = AnalysisConfig::default();
-
-    // Try to load config from current directory or target path
-    // We prefer current directory as project root
-    let current_dir = env::current_dir()?;
-    // If path is a directory, check it too? 
-    // Logic: Look for .code-viz.toml in current dir.
-    let file_config = config_loader::load_config(&current_dir)?;
-    
-    // Merge file config
-    if let Some(analysis) = file_config.analysis {
-        if let Some(file_excludes) = analysis.exclude {
-            // Replace defaults with config file
-            config.exclude_patterns = file_excludes;
-        }
-    }
-    
-    // Merge output format if not specified via CLI (CLI default is "text", but clap handles defaults)
-    // Wait, clap gives us a value. If user didn't specify --format, we get "text".
-    // How do we know if user specified it?
-    // We don't, unless we use Option<String> in clap.
-    // But `main.rs` uses `default_value = "text"`.
-    // So we assume CLI overrides config.
-    // If user provided config `format = "json"`, and CLI arg is "text" (default), we might override config with default.
-    // This is tricky with clap defaults.
-    // Ideally main.rs should use Option and handle default logic here.
-    // But main.rs is fixed for now.
-    // I'll ignore config output format for now unless I change main.rs.
-    // Or I assume if `format` is "text", we can check config?
-    // No, explicit `--format text` should win.
-    // I'll stick to: CLI > Config. Since CLI always has value, CLI always wins.
-    // This means config `format` is ignored if CLI has default.
-    // That's acceptable for MVP.
-    
-    // Merge CLI excludes (append)
-    config.exclude_patterns.extend(exclude.clone());
-
-    // Run analysis
-    let mut result = analyze(&path, &config)?;
+    // Use code-viz-commands to run analysis
+    let mut result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(code_viz_commands::analyze_repository(&path, ctx.clone(), fs.clone()))
+        .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
 
     // Perform dead code analysis if enabled
     if dead_code {
         log::info!("Running dead code analysis");
-        perform_dead_code_analysis(&path, &mut result.files, &exclude)?;
+        let dead_code_result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(code_viz_commands::calculate_dead_code(&path, ctx, fs.clone(), git))
+            .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
+
+        // Merge dead code info into result files
+        merge_dead_code_results(&mut result.files, dead_code_result);
     }
 
     // Handle baseline comparison
     if let Some(baseline_path) = baseline {
-        let baseline_content = fs::read_to_string(baseline_path)?;
+        let baseline_content = fs.read_to_string(&baseline_path)
+            .map_err(|e| AnalyzeError::IoError(std::io::Error::other(e)))?;
         let baseline: code_viz_core::AnalysisResult = serde_json::from_str(&baseline_content)
             .map_err(|e| AnalyzeError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
 
@@ -153,7 +128,8 @@ pub fn run(config: AnalyzeConfig) -> Result<(), AnalyzeError> {
 
     // Write output
     if let Some(output_path) = output {
-        fs::write(output_path, formatted_output)?;
+        fs.write(&output_path, &formatted_output)
+            .map_err(|e| AnalyzeError::IoError(std::io::Error::other(e)))?;
     } else {
         println!("{}", formatted_output);
     }
@@ -204,28 +180,10 @@ fn check_threshold(threshold_str: &str, files: &[code_viz_core::FileMetrics]) ->
     Ok(())
 }
 
-fn perform_dead_code_analysis(
-    root: &Path,
+fn merge_dead_code_results(
     file_metrics: &mut [code_viz_core::FileMetrics],
-    exclude_patterns: &[String],
-) -> Result<(), AnalyzeError> {
-    // Create config for dead code analysis
-    let dead_code_config = code_viz_dead_code::AnalysisConfig {
-        exclude_patterns: exclude_patterns.to_vec(),
-        enable_cache: true,
-        cache_dir: None,
-    };
-
-    // Run dead code analysis
-    let dead_code_result = code_viz_dead_code::analyze_dead_code(root, Some(dead_code_config))
-        .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
-
-    log::info!(
-        "Dead code analysis complete: {} dead functions, {} dead classes",
-        dead_code_result.summary.dead_functions,
-        dead_code_result.summary.dead_classes
-    );
-
+    dead_code_result: code_viz_dead_code::DeadCodeResult,
+) {
     // Create a map of file -> dead code info for efficient lookup
     let mut dead_code_by_file: HashMap<PathBuf, &code_viz_dead_code::FileDeadCode> =
         HashMap::new();
@@ -259,16 +217,6 @@ fn perform_dead_code_analysis(
             file_metric.dead_function_count = Some(dead_function_count);
             file_metric.dead_code_loc = Some(dead_code_loc);
             file_metric.dead_code_ratio = Some(dead_code_ratio);
-
-            log::debug!(
-                "File {}: {} dead functions, {} dead LOC, {:.2}% dead code ratio",
-                file_metric.path.display(),
-                dead_function_count,
-                dead_code_loc,
-                dead_code_ratio * 100.0
-            );
         }
     }
-
-    Ok(())
 }

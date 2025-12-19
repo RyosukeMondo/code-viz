@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
-use code_viz_core::traits::FileSystem;
+use crate::traits::FileSystem;
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Production implementation of FileSystem that delegates to std::fs and walkdir.
+#[derive(Clone, Copy)]
 pub struct RealFileSystem;
 
 impl RealFileSystem {

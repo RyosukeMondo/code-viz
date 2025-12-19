@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 
 /// CLI implementation of AppContext that prints to stdout/stderr.
+#[derive(Clone)]
 pub struct CliContext {
     verbose: bool,
 }

@@ -531,6 +531,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap",
+ "code-viz-commands",
  "code-viz-core",
  "code-viz-dead-code",
  "colored",
@@ -544,7 +545,22 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
+ "tokio",
  "toml 0.8.2",
+]
+
+[[package]]
+name = "code-viz-commands"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "code-viz-core",
+ "code-viz-dead-code",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -554,6 +570,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bincode",
+ "git2",
  "globset",
  "insta",
  "rayon",
@@ -561,6 +578,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
+ "tokio",
  "tracing",
  "tree-sitter",
  "tree-sitter-cpp",
@@ -618,8 +636,10 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "code-viz-commands",
  "code-viz-core",
  "code-viz-dead-code",
+ "git2",
  "serde",
  "serde_json",
  "specta",
@@ -631,6 +651,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "walkdir",
 ]
 
 [[package]]
@@ -2924,6 +2945,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
+name = "openssl-src"
+version = "300.5.3+3.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6bad8cd0233b63971e232cc9c5e83039375b8586d2312f31fda85db8f888c2"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "openssl-sys"
 version = "0.9.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2931,6 +2961,7 @@ checksum = "82cab2d520aa75e3c58898289429321eb788c3106963d0dc886ec7a5f4adc321"
 dependencies = [
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]

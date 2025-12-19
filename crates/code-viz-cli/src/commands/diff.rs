@@ -1,7 +1,7 @@
 use code_viz_core::AnalysisResult;
+use code_viz_core::traits::FileSystem;
 use colored::Colorize;
 use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -14,9 +14,11 @@ pub enum DiffError {
     ParseError(#[from] serde_json::Error),
 }
 
-pub fn run(old_path: PathBuf, new_path: PathBuf) -> Result<(), DiffError> {
-    let old_json = fs::read_to_string(&old_path)?;
-    let new_json = fs::read_to_string(&new_path)?;
+pub fn run(old_path: PathBuf, new_path: PathBuf, fs: impl FileSystem) -> Result<(), DiffError> {
+    let old_json = fs.read_to_string(&old_path)
+        .map_err(|e| DiffError::IoError(std::io::Error::other(e)))?;
+    let new_json = fs.read_to_string(&new_path)
+        .map_err(|e| DiffError::IoError(std::io::Error::other(e)))?;
 
     let old_result: AnalysisResult = serde_json::from_str(&old_json)?;
     let new_result: AnalysisResult = serde_json::from_str(&new_json)?;

@@ -8,6 +8,7 @@ pub mod parser;
 pub mod scanner;
 pub mod traits;
 pub mod mocks;
+pub mod context;
 
 pub use analyzer::{analyze, calculate_summary, process_file};
 pub use models::*;

@@ -1,6 +1,7 @@
 use crate::config_loader;
 use crate::output::{self, MetricsFormatter};
 use code_viz_core::{analyze, AnalysisConfig, AnalysisResult};
+use code_viz_core::traits::{AppContext, FileSystem};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -27,7 +28,7 @@ pub enum WatchError {
     FormattingFailed(#[from] crate::output::FormatterError),
 }
 
-pub fn run(path: PathBuf, format: String, verbose: bool) -> Result<(), WatchError> {
+pub fn run(path: PathBuf, format: String, verbose: bool, _ctx: impl AppContext, _fs: impl FileSystem) -> Result<(), WatchError> {
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
     if verbose {

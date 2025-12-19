@@ -1,12 +1,13 @@
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use code_viz_core::traits::{Commit, Diff, BlameInfo, GitProvider};
+use crate::traits::{Commit, Diff, BlameInfo, GitProvider};
 use git2::Repository;
 use std::path::Path;
 use tokio::task;
 
 /// Production implementation of GitProvider that uses the git2 crate.
 /// Methods are executed on a blocking thread using tokio::task::spawn_blocking.
+#[derive(Clone, Copy)]
 pub struct RealGit;
 
 impl RealGit {

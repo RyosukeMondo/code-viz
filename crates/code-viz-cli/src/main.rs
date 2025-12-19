@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+use crate::context::CliContext;
+use code_viz_core::context::{RealFileSystem, RealGit};
 
 mod commands;
 mod config_loader;
@@ -128,6 +130,10 @@ fn main() -> anyhow::Result<()> {
             baseline,
             dead_code,
         } => {
+            let ctx = CliContext::new(verbose);
+            let fs = RealFileSystem::new();
+            let git = RealGit::new();
+            
             commands::analyze::run(commands::analyze::AnalyzeConfig {
                 path,
                 format,
@@ -137,21 +143,25 @@ fn main() -> anyhow::Result<()> {
                 output,
                 baseline,
                 dead_code,
-            })?;
+            }, ctx, fs, git)?;
         }
         Commands::Watch {
             path,
             format,
             verbose,
         } => {
-            commands::watch::run(path, format, verbose)?;
+            let ctx = CliContext::new(verbose);
+            let fs = RealFileSystem::new();
+            commands::watch::run(path, format, verbose, ctx, fs)?;
         }
         Commands::Diff { old, new } => {
-            commands::diff::run(old, new)?;
+            let fs = RealFileSystem::new();
+            commands::diff::run(old, new, fs)?;
         }
         Commands::Config { subcommand } => match subcommand {
             ConfigSubcommand::Init => {
-                commands::config::run_init()?;
+                let fs = RealFileSystem::new();
+                commands::config::run_init(fs)?;
             }
         },
         Commands::DeadCode {
@@ -163,7 +173,11 @@ fn main() -> anyhow::Result<()> {
             threshold,
             output,
         } => {
-            commands::dead_code::run(path, format, min_confidence, exclude, verbose, threshold, output)?;
+            let ctx = CliContext::new(verbose);
+            let fs = RealFileSystem::new();
+            let git = RealGit::new();
+
+            commands::dead_code::run(path, format, min_confidence, exclude, verbose, threshold, output, ctx, fs, git)?;
         }
     }
 
