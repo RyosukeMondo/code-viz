@@ -14,7 +14,7 @@ Restrictions: Fixtures must be deterministic (no timestamps, no random data), si
 Success: tests/fixtures/simple-repo/ created with 3 .rs files and src/ subdirectory; empty-repo/ exists as empty directory; fixtures committed to Git; can manually run CLI on simple-repo without errors; file structures are deterministic
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). After creating fixtures, verify CLI can analyze simple-repo with cargo run --bin code-viz -- analyze tests/fixtures/simple-repo. Use log-implementation tool to record artifacts (fixture paths, file counts, size). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 2. Create expected JSON outputs for fixtures
+- [x] 2. Create expected JSON outputs for fixtures
   - Files: crates/code-viz-cli/tests/expected/{simple-repo.json, empty-repo.json}
   - Generate expected outputs by running current CLI on fixtures
   - Validate JSON structure matches TreeNode schema
