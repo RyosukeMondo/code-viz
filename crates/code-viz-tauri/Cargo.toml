@@ -18,11 +18,13 @@ tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
 walkdir = { workspace = true }
+git2 = { workspace = true }
 
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["rt", "sync"] }
 
 # Type generation
 specta = { version = "2.0.0-rc.22", features = ["export"] }

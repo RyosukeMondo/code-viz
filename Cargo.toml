@@ -22,6 +22,7 @@ tree-sitter = "0.20"
 rayon = "1.8"
 thiserror = "1.0"
 walkdir = "2.4"
+git2 = { version = "0.18", features = ["vendored-openssl"] }
 globset = "0.4"
 anyhow = "1.0"
 async-trait = "0.1"
