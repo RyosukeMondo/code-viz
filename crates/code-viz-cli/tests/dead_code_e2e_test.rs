@@ -48,10 +48,10 @@ fn test_e2e_dead_code_json_output() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"summary\""))
-        .stdout(predicate::str::contains("\"dead_functions\""))
-        .stdout(predicate::str::contains("\"dead_classes\""))
-        .stdout(predicate::str::contains("\"total_dead_loc\""))
-        .stdout(predicate::str::contains("\"dead_code_ratio\""))
+        .stdout(predicate::str::contains("\"deadFunctions\""))
+        .stdout(predicate::str::contains("\"deadClasses\""))
+        .stdout(predicate::str::contains("\"totalDeadLoc\""))
+        .stdout(predicate::str::contains("\"deadCodeRatio\""))
         .stdout(predicate::str::contains("\"files\""));
 }
 
@@ -111,8 +111,8 @@ fn test_e2e_min_confidence_filter() {
     let low_json: serde_json::Value = serde_json::from_slice(&output_low).unwrap();
 
     // High confidence filter should have fewer or equal dead symbols
-    let high_dead_funcs = high_json["summary"]["dead_functions"].as_u64().unwrap();
-    let low_dead_funcs = low_json["summary"]["dead_functions"].as_u64().unwrap();
+    let high_dead_funcs = high_json["summary"]["deadFunctions"].as_u64().unwrap();
+    let low_dead_funcs = low_json["summary"]["deadFunctions"].as_u64().unwrap();
 
     assert!(
         high_dead_funcs <= low_dead_funcs,
@@ -289,7 +289,7 @@ fn test_e2e_exclude_patterns() {
         .clone();
 
     let json: serde_json::Value = serde_json::from_slice(&output).unwrap();
-    let files_analyzed = json["summary"]["total_files"].as_u64().unwrap();
+    let files_analyzed = json["summary"]["totalFiles"].as_u64().unwrap();
 
     // Should have analyzed some files but not the tests directory
     assert!(files_analyzed > 0, "Should analyze at least some files");
@@ -324,7 +324,7 @@ fn test_e2e_empty_directory() {
         .arg("json")
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"total_files\": 0"));
+        .stdout(predicate::str::contains("\"totalFiles\": 0"));
 }
 
 #[test]
@@ -417,27 +417,27 @@ fn test_e2e_json_schema_validation() {
     // Validate JSON structure matches expected schema
     assert!(json.is_object());
     assert!(json["summary"].is_object());
-    assert!(json["summary"]["total_files"].is_number());
-    assert!(json["summary"]["files_with_dead_code"].is_number());
-    assert!(json["summary"]["dead_functions"].is_number());
-    assert!(json["summary"]["dead_classes"].is_number());
-    assert!(json["summary"]["total_dead_loc"].is_number());
-    assert!(json["summary"]["dead_code_ratio"].is_number());
+    assert!(json["summary"]["totalFiles"].is_number());
+    assert!(json["summary"]["filesWithDeadCode"].is_number());
+    assert!(json["summary"]["deadFunctions"].is_number());
+    assert!(json["summary"]["deadClasses"].is_number());
+    assert!(json["summary"]["totalDeadLoc"].is_number());
+    assert!(json["summary"]["deadCodeRatio"].is_number());
     assert!(json["files"].is_array());
 
     // Validate each file entry has correct structure
     if let Some(files) = json["files"].as_array() {
         for file in files {
             assert!(file["path"].is_string());
-            assert!(file["dead_code"].is_array());
+            assert!(file["deadCode"].is_array());
 
             // Validate each dead symbol has correct structure
-            if let Some(symbols) = file["dead_code"].as_array() {
+            if let Some(symbols) = file["deadCode"].as_array() {
                 for symbol in symbols {
                     assert!(symbol["symbol"].is_string());
                     assert!(symbol["kind"].is_string());
-                    assert!(symbol["line_start"].is_number());
-                    assert!(symbol["line_end"].is_number());
+                    assert!(symbol["lineStart"].is_number());
+                    assert!(symbol["lineEnd"].is_number());
                     assert!(symbol["confidence"].is_number());
                     assert!(symbol["reason"].is_string());
                 }
