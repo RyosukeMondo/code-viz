@@ -10,6 +10,13 @@ pub fn scan_directory(
 ) -> Result<Vec<PathBuf>, ScanError> {
     tracing::info!("Starting directory scan");
 
+    if !path.exists() {
+        return Err(ScanError::NotFound(path.to_path_buf()));
+    }
+    if !path.is_dir() {
+        return Err(ScanError::NotADirectory(path.to_path_buf()));
+    }
+
     let mut builder = GlobSetBuilder::new();
     for pattern in exclude_patterns {
         builder.add(Glob::new(pattern).map_err(|e| {
@@ -134,6 +141,12 @@ fn is_hidden(entry: &DirEntry) -> bool {
 
 #[derive(Debug, Error)]
 pub enum ScanError {
+    #[error("Path not found: {0}")]
+    NotFound(PathBuf),
+
+    #[error("Path is not a directory: {0}")]
+    NotADirectory(PathBuf),
+
     #[error("Invalid pattern: {0}")]
     InvalidPattern(String),
 
