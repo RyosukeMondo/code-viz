@@ -14,7 +14,7 @@ Restrictions: Do not add test implementations yet (only structure), must use thi
 Success: File created with ValidationError enum covering MissingField, InvalidValue, and SchemaMismatch variants; three empty test modules created with descriptive doc comments; compiles without errors; follows existing project test structure patterns
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). After completing implementation and testing, use the log-implementation tool to record detailed implementation with artifacts (error types created, test modules added, file location). Then mark task as complete in tasks.md (change [-] to [x])._
 
-- [ ] 2. Create test fixtures and helper utilities
+- [x] 2. Create test fixtures and helper utilities
   - File: crates/code-viz-tauri/tests/helpers/validation_utils.rs
   - Implement create_test_tree() function generating sample TreeNode
   - Add assert_required_fields() helper for recursive validation

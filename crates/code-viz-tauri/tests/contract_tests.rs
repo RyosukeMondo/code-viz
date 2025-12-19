@@ -11,6 +11,8 @@ pub enum ValidationError {
     SchemaMismatch(String),
 }
 
+mod helpers;
+
 /// Tests for Specta schema validation
 /// Ensures that the Rust types correctly generate the expected TypeScript schemas
 mod specta_schema_tests {
