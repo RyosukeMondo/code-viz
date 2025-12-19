@@ -152,7 +152,8 @@ fn main() -> anyhow::Result<()> {
         } => {
             let ctx = CliContext::new(verbose);
             let fs = RealFileSystem::new();
-            commands::watch::run(path, format, verbose, ctx, fs)?;
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(commands::watch::run(path, format, verbose, ctx, fs))?;
         }
         Commands::Diff { old, new } => {
             let fs = RealFileSystem::new();

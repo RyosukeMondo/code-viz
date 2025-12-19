@@ -4,26 +4,35 @@ use crate::metrics::{self, MetricsError};
 use crate::cache::CacheError;
 use crate::parser;
 use rayon::prelude::*;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use thiserror::Error;
+use crate::traits::FileSystem;
 
+/// OLD FUNCTION - DEPRECATED
+/// Use code_viz_commands::analyze_repository() instead
+/// This function is kept only for backward compatibility during migration
+#[deprecated(note = "Use code_viz_commands::analyze_repository() instead")]
 #[tracing::instrument(skip(config), fields(root = %root.display(), exclude_patterns = config.exclude_patterns.len()))]
 pub fn analyze(
     root: &Path,
     config: &AnalysisConfig,
 ) -> Result<AnalysisResult, AnalysisError> {
+    tracing::warn!("Using deprecated analyze() function. Migrate to code_viz_commands::analyze_repository()");
+
     tracing::info!("Starting repository analysis");
 
     let files = scanner::scan_directory(root, &config.exclude_patterns)?;
     tracing::info!(file_count = files.len(), "Directory scan completed");
 
+    // Use RealFileSystem for backward compatibility
+    let fs = crate::context::RealFileSystem::new();
+
     // Process files in parallel
     let mut results: Vec<FileMetrics> = files
         .par_iter()
         .filter_map(|path| {
-            process_file(path).map_err(|e| {
+            process_file_with_fs(path, &fs).map_err(|e| {
                 tracing::warn!(path = %path.display(), error = %e, "Failed to analyze file, skipping");
                 e
             }).ok()
@@ -50,18 +59,24 @@ pub fn analyze(
     })
 }
 
+/// OLD FUNCTION - DEPRECATED
+/// Use code_viz_commands functions instead
+#[deprecated(note = "Use code_viz_commands functions with FileSystem trait instead")]
 #[tracing::instrument(fields(path = %path.display()))]
 pub fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
+    let fs = crate::context::RealFileSystem::new();
+    process_file_with_fs(path, &fs)
+}
+
+/// Process a single file with FileSystem trait (NEW - trait-based)
+#[tracing::instrument(skip(fs), fields(path = %path.display()))]
+pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMetrics, AnalysisError> {
     tracing::debug!("Processing file");
 
     let extension = path.extension()
         .and_then(|e| e.to_str())
         .ok_or_else(|| AnalysisError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No extension")))?;
 
-    // Map extension to language (simple mapping for now, or let get_parser handle it)
-    // get_parser handles "ts", "js", "tsx", etc.
-    // We assume the extension *is* the language key for get_parser, or we map it.
-    // parser::get_parser handles "typescript" | "ts", etc.
     let language_key = match extension {
         "ts" => "typescript",
         "tsx" => "tsx",
@@ -79,10 +94,11 @@ pub fn process_file(path: &Path) -> Result<FileMetrics, AnalysisError> {
     let parser = parser::get_parser(language_key)
         .map_err(|e| AnalysisError::ParseFailed { path: path.to_path_buf(), source: e })?;
 
-    let source = fs::read_to_string(path)?;
+    let source = fs.read_to_string(path)
+        .map_err(|e| AnalysisError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
     tracing::debug!(source_size = source.len(), "File read successfully");
 
-    let metrics = metrics::calculate_metrics(path, &source, parser.as_ref())
+    let metrics = metrics::calculate_metrics(path, &source, parser.as_ref(), None)
         .map_err(AnalysisError::MetricsFailed)?;
 
     tracing::debug!(loc = metrics.loc, functions = metrics.function_count, "Metrics calculated");

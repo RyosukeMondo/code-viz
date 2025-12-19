@@ -1,6 +1,5 @@
 use crate::models::FileMetrics;
 use crate::parser::LanguageParser;
-use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 use thiserror::Error;
@@ -9,6 +8,7 @@ pub fn calculate_metrics(
     path: &Path,
     source: &str,
     parser: &dyn LanguageParser,
+    last_modified: Option<SystemTime>,
 ) -> Result<FileMetrics, MetricsError> {
     let tree = parser.parse(source).map_err(MetricsError::ParseFailed)?;
     let function_count = parser.count_functions(&tree);
@@ -16,11 +16,9 @@ pub fn calculate_metrics(
 
     let loc = calculate_loc(source, &comment_ranges);
     let size_bytes = source.len() as u64;
-    
-    // Handle file metadata
-    let last_modified = fs::metadata(path)
-        .and_then(|m| m.modified())
-        .unwrap_or_else(|_| SystemTime::now()); // Fallback if file doesn't exist (e.g. tests) or no permission
+
+    // Use provided last_modified or fallback to now()
+    let last_modified = last_modified.unwrap_or_else(SystemTime::now);
 
     Ok(FileMetrics {
         path: path.to_path_buf(),
@@ -201,7 +199,7 @@ fn main() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
         
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.loc, 4);
     }
 
@@ -219,7 +217,7 @@ fn main() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
         
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.loc, 0);
     }
 
@@ -229,7 +227,7 @@ fn main() {
         let source = "let x = 1; // Comment";
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.loc, 1);
     }
 
@@ -244,7 +242,7 @@ fn main() {
         "#;
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.loc, 0);
     }
     
@@ -255,7 +253,7 @@ fn main() {
         let source = "/* c */ let x = 1;";
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.loc, 1);
     }
     
@@ -276,7 +274,7 @@ fn main() {
         // Total: 2
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.loc, 2);
     }
 
@@ -286,25 +284,37 @@ fn main() {
         let source = "function a() {} function b() {}";
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.function_count, 2);
     }
     
     #[test]
-    fn test_file_metadata() {
+    fn test_file_metadata_defaults_to_now() {
         let parser = get_parser("typescript").unwrap();
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("test.ts");
         let source = "let x = 1;";
-        
-        // Write file to verify metadata reading (though implementation falls back to now() if fail)
-        // But to test `fs::metadata` call, we should write it.
-        std::fs::write(&path, source).unwrap();
-        
-        let metrics = calculate_metrics(&path, source, parser.as_ref()).unwrap();
+
+        // When last_modified is None, it should default to now()
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
         assert_eq!(metrics.size_bytes, source.len() as u64);
-        // last_modified should be close to now
+
+        // last_modified should be close to now (within 1 second)
         let duration = SystemTime::now().duration_since(metrics.last_modified).unwrap();
-        assert!(duration.as_secs() < 5);
+        assert!(duration.as_secs() < 1);
+    }
+
+    #[test]
+    fn test_file_metadata_with_provided_time() {
+        let parser = get_parser("typescript").unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("test.ts");
+        let source = "let x = 1;";
+
+        // When last_modified is provided, it should use that value
+        let provided_time = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1000000);
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), Some(provided_time)).unwrap();
+
+        assert_eq!(metrics.last_modified, provided_time);
     }
 }

@@ -1,7 +1,9 @@
 use crate::config_loader;
 use crate::output::{self, MetricsFormatter};
-use code_viz_core::{analyze, AnalysisConfig, AnalysisResult};
+use code_viz_commands::analyze_repository;
+use code_viz_core::models::{AnalysisConfig, AnalysisResult};
 use code_viz_core::traits::{AppContext, FileSystem};
+use code_viz_core::analyzer::{process_file_with_fs, calculate_summary};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -16,7 +18,7 @@ pub enum WatchError {
     NotifyError(#[from] notify::Error),
 
     #[error("Analysis failed: {0}")]
-    AnalysisError(#[from] code_viz_core::analyzer::AnalysisError),
+    AnalysisError(#[from] anyhow::Error),
 
     #[error("Config error: {0}")]
     ConfigError(#[from] crate::config_loader::ConfigError),
@@ -28,7 +30,7 @@ pub enum WatchError {
     FormattingFailed(#[from] crate::output::FormatterError),
 }
 
-pub fn run(path: PathBuf, format: String, verbose: bool, _ctx: impl AppContext, _fs: impl FileSystem) -> Result<(), WatchError> {
+pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppContext + Clone, fs: impl FileSystem + Clone) -> Result<(), WatchError> {
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
     if verbose {
@@ -52,7 +54,7 @@ pub fn run(path: PathBuf, format: String, verbose: bool, _ctx: impl AppContext, 
     if format != "json" {
         println!("Performing initial analysis...");
     }
-    let mut current_result = analyze(&path, &config)?;
+    let mut current_result = analyze_repository(&path, ctx.clone(), fs.clone()).await?;
     print_output(&current_result, &format)?;
 
     // Setup channel
@@ -112,7 +114,7 @@ pub fn run(path: PathBuf, format: String, verbose: bool, _ctx: impl AppContext, 
                         }
 
                         if !changed_paths.is_empty() {
-                            handle_changes(&mut current_result, changed_paths, &format)?;
+                            handle_changes(&mut current_result, changed_paths, &format, &fs)?;
                         }
                     }
                     Err(e) => eprintln!("Watch error: {}", e),
@@ -144,6 +146,7 @@ fn handle_changes(
     result: &mut AnalysisResult,
     paths: HashSet<PathBuf>,
     format: &str,
+    fs: &impl FileSystem,
 ) -> Result<(), WatchError> {
     let mut updated = false;
 
@@ -151,7 +154,7 @@ fn handle_changes(
         // Check if file exists (modification/creation) or deleted
         if path.exists() {
             // Re-analyze file
-            match code_viz_core::analyzer::process_file(&path) {
+            match process_file_with_fs(&path, fs) {
                 Ok(metrics) => {
                     // Update result.files
                     if let Some(existing) = result.files.iter_mut().find(|f| f.path == metrics.path) {
@@ -195,7 +198,7 @@ fn handle_changes(
 
     if updated {
         // Re-calculate summary
-        result.summary = code_viz_core::analyzer::calculate_summary(&result.files);
+        result.summary = calculate_summary(&result.files);
         result.timestamp = SystemTime::now();
 
         if format == "json" {

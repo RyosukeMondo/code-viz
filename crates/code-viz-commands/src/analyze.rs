@@ -94,7 +94,7 @@ async fn analyze_single_file(path: &Path, fs: &impl FileSystem) -> Result<FileMe
     let source = fs.read_to_string(path)
         .with_context(|| format!("Failed to read file: {}", path.display()))?;
 
-    let metrics = metrics::calculate_metrics(path, &source, parser.as_ref())
+    let metrics = metrics::calculate_metrics(path, &source, parser.as_ref(), None)
         .with_context(|| format!("Failed to calculate metrics for: {}", path.display()))?;
 
     Ok(metrics)
