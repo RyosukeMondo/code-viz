@@ -86,7 +86,7 @@ Restrictions: Must not break existing CI jobs, must use cargo nextest (already i
 Success: CI job runs contract tests on all PRs; failed contract tests block PR merging; tests complete in <5 seconds (with assertion/timeout); job appears in GitHub PR status checks; CI configuration follows existing project patterns; documentation updated to mention contract tests in CI
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). After implementation, create test PR to verify contract tests run and status check appears. Use log-implementation tool to record artifacts (CI job added, timeout configured, integration verified). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 7. Add regression test for wrapper node bug
+- [x] 7. Add regression test for wrapper node bug
   - File: crates/code-viz-tauri/tests/contract_tests.rs (add to serialization_tests module)
   - Create test_wrapper_node_bug_regression() specifically testing path: "" scenario
   - Document the bug in test comments with reference to WRAPPER_NODE_FIX.md

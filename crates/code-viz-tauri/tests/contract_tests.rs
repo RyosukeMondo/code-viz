@@ -125,6 +125,35 @@ mod serialization_tests {
         assert_eq!(json["children"][0]["name"], "src");
         assert!(json["children"][0]["children"].is_array());
     }
+
+    #[test]
+    fn test_wrapper_node_bug_regression() {
+        // REGRESSION TEST for Wrapper Node Bug
+        // 
+        // Historical Context:
+        // ECharts with leafDepth: 1 created a wrapper container with undefined properties
+        // when passed a single-item array where the item had an empty path.
+        // This test ensures that our TreeNode serialization never produces empty paths
+        // for nodes, even the root (which should be "." or similar).
+        // 
+        // Reference: WRAPPER_NODE_FIX.md
+        
+        let mut node = validation_utils::create_test_tree();
+        
+        // Root node in create_test_tree() has path "." - this is valid
+        let json_valid = serde_json::to_value(&node).unwrap();
+        assert_ne!(json_valid["path"], "", "Valid root should not have empty path string");
+        
+        // Forcing an empty path should be caught by our validation helper
+        node.path = std::path::PathBuf::from("");
+        let json_invalid = serde_json::to_value(&node).unwrap();
+        
+        let result = std::panic::catch_unwind(|| {
+            validation_utils::assert_required_fields(&json_invalid);
+        });
+        
+        assert!(result.is_err(), "Regression: Path must not be empty string to avoid ECharts wrapper node bug");
+    }
 }
 
 /// Tests for ECharts compatibility validation
