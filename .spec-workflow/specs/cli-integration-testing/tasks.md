@@ -28,7 +28,7 @@ Restrictions: Expected outputs must match actual CLI output exactly (byte-for-by
 Success: simple-repo.json and empty-repo.json created in tests/expected/; files are valid JSON parseable by jq; contain TreeNode structure with all required fields; simple-repo.json has 3+ file nodes; empty-repo.json represents empty analysis result; files are formatted for easy diffs
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). Generate expected outputs with: cargo run --bin code-viz -- analyze tests/fixtures/simple-repo --format json | jq . > tests/expected/simple-repo.json. Validate with jq -e '.name' tests/expected/simple-repo.json. Use log-implementation tool to record artifacts (expected files created, validation commands). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 3. Create shell test utilities and framework
+- [x] 3. Create shell test utilities and framework
   - File: crates/code-viz-cli/tests/helpers/test_utils.sh
   - Implement build_cli(), run_cli_test(), validate_json() functions
   - Add compare_json_files() for diffing actual vs expected
