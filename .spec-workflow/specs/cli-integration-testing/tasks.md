@@ -42,7 +42,7 @@ Restrictions: Must use portable bash (no bashisms requiring bash 5+), must check
 Success: test_utils.sh created with 4+ utility functions; build_cli() compiles CLI and caches result; run_cli_test() executes CLI and compares with expected output; validate_json() uses jq to check JSON validity; compare_json_files() shows clear diff on mismatch; all functions have error handling
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). Test each utility function manually. Use log-implementation tool to record artifacts (functions created, utilities functionality, error handling). Mark complete in tasks.md (change [-] to [x])._
 
-- [ ] 4. Create shell-based integration test script
+- [x] 4. Create shell-based integration test script
   - File: crates/code-viz-cli/tests/cli_analysis_tests.sh
   - Implement test_simple_analysis(), test_empty_repository(), test_invalid_path()
   - Add test runner that executes all tests and reports results
