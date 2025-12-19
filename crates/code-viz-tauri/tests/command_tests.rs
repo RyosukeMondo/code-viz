@@ -1,5 +1,6 @@
 use code_viz_tauri::commands::analyze_repository_inner;
-use code_viz_tauri::context::MockContext;
+use code_viz_tauri::context::RealFileSystem;
+use code_viz_core::mocks::MockContext;
 use std::env;
 
 /// Unit test for analyze_repository_inner using MockContext.
@@ -7,18 +8,20 @@ use std::env;
 /// and returns the analysis results without requiring a full Tauri runtime.
 #[tokio::test]
 async fn test_analyze_repository_with_mock_context() {
-    // 1. Setup MockContext
+    // 1. Setup MockContext and RealFileSystem
     let ctx = MockContext::new();
-    
+    let fs = RealFileSystem::new();
+
     // 2. Prepare arguments (use current directory for analysis)
     let current_dir = env::current_dir()
         .expect("Failed to get current directory")
         .to_string_lossy()
         .to_string();
-    
+
     // 3. Execute the command inner function
     let result = analyze_repository_inner(
         ctx.clone(),
+        fs,
         current_dir,
         Some("test-request-id".to_string())
     ).await;
@@ -59,8 +62,8 @@ async fn test_analyze_repository_with_mock_context() {
 #[tokio::test]
 async fn test_mock_context_app_dir() {
     let custom_path = std::env::temp_dir().join("code-viz-test-dir");
-    let ctx = MockContext::with_app_dir(custom_path.clone());
-    
+    let ctx = MockContext::new().with_app_dir(custom_path.clone());
+
     use code_viz_core::traits::AppContext;
     assert_eq!(ctx.get_app_dir(), custom_path);
 }
