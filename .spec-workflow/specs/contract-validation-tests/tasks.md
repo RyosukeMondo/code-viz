@@ -28,7 +28,7 @@ Restrictions: Test fixtures must have non-empty paths for all nodes, must use re
 Success: create_test_tree() generates valid TreeNode with 3+ children, multiple depth levels, various node types; assert_required_fields() recursively validates JSON objects; fixtures are deterministic (same output every run); helpers compile and are usable from parent test module
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). After completing implementation, use the log-implementation tool to record artifacts (functions created: create_test_tree signature, assert_required_fields signature, file location). Then mark task as complete in tasks.md (change [-] to [x])._
 
-- [-] 3. Implement Specta schema validation tests
+- [x] 3. Implement Specta schema validation tests
   - File: crates/code-viz-tauri/tests/contract_tests.rs (specta_schema_tests module)
   - Add test_validate_tree_node_schema() to validate TreeNode Specta schema
   - Add test_all_specta_types_coverage() to ensure 100% coverage
@@ -42,7 +42,7 @@ Restrictions: Tests must not modify production code, must validate schema struct
 Success: test_validate_tree_node_schema() passes and validates all required fields exist in schema; test_all_specta_types_coverage() identifies all types with #[specta::specta] annotation; tests fail if required field removed from TreeNode; clear error messages on failure; tests execute in milliseconds
 **Instructions**: First mark this task as in-progress in tasks.md (change [ ] to [-]). After implementing tests, verify they pass with cargo nextest run. Use log-implementation tool to record artifacts (test functions added, fields validated, execution time). Then mark task as complete in tasks.md (change [-] to [x])._
 
-- [ ] 4. Implement serialization round-trip validation tests
+- [-] 4. Implement serialization round-trip validation tests
   - File: crates/code-viz-tauri/tests/contract_tests.rs (serialization_tests module)
   - Add test_tree_node_serialization_round_trip() for Rust → JSON → Rust
   - Add test_no_empty_string_paths() to prevent wrapper node bug

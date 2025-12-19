@@ -62,7 +62,69 @@ mod specta_schema_tests {
 /// Tests for serialization round-trip validation
 /// Ensures that data can be correctly serialized and deserialized via IPC
 mod serialization_tests {
-    // TODO: Implement serialization round-trip validation tests
+    use super::helpers::validation_utils;
+    use code_viz_tauri::models::TreeNode;
+    use serde_json;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_tree_node_serialization_round_trip() {
+        // Create test subject
+        let original = validation_utils::create_test_tree();
+
+        // Serialize to JSON Value
+        let json_value = serde_json::to_value(&original).expect("Failed to serialize TreeNode");
+
+        // Deserialize back to Rust
+        let deserialized: TreeNode = serde_json::from_value(json_value).expect("Failed to deserialize TreeNode");
+
+        // Verify equality
+        assert_eq!(original.id, deserialized.id);
+        assert_eq!(original.name, deserialized.name);
+        assert_eq!(original.path, deserialized.path);
+        assert_eq!(original.loc, deserialized.loc);
+        assert_eq!(original.complexity, deserialized.complexity);
+        assert_eq!(original.node_type, deserialized.node_type);
+        assert_eq!(original.dead_code_ratio, deserialized.dead_code_ratio);
+        assert_eq!(original.children.len(), deserialized.children.len());
+    }
+
+    #[test]
+    fn test_no_empty_string_paths() {
+        // Create valid tree
+        let valid_tree = validation_utils::create_test_tree();
+        let json_valid = serde_json::to_value(&valid_tree).unwrap();
+        
+        // This should not panic
+        validation_utils::assert_required_fields(&json_valid);
+
+        // Create invalid tree with empty path
+        let mut invalid_node = validation_utils::create_test_tree();
+        invalid_node.path = PathBuf::from(""); // INVALID
+        
+        let json_invalid = serde_json::to_value(&invalid_node).unwrap();
+        
+        // This should fail (using catch_unwind because assert_required_fields panics)
+        let result = std::panic::catch_unwind(|| {
+            validation_utils::assert_required_fields(&json_invalid);
+        });
+        
+        assert!(result.is_err(), "Validation should have failed for empty path");
+    }
+
+    #[test]
+    fn test_recursive_children_validation() {
+        let tree = validation_utils::create_test_tree();
+        let json = serde_json::to_value(&tree).unwrap();
+
+        // Use helper to recursively validate all fields
+        validation_utils::assert_required_fields(&json);
+        
+        // Verify root node from helper data
+        assert_eq!(json["name"], "root");
+        assert_eq!(json["children"][0]["name"], "src");
+        assert!(json["children"][0]["children"].is_array());
+    }
 }
 
 /// Tests for ECharts compatibility validation

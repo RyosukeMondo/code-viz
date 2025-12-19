@@ -3,7 +3,7 @@
 //! This module defines the TreeNode structure used for hierarchical
 //! visualization of code metrics in the frontend.
 
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, Deserializer};
 use specta::Type;
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -16,6 +16,18 @@ where
     let datetime: chrono::DateTime<chrono::Utc> = (*time).into();
     // Use true parameter to force Z suffix instead of +00:00
     serializer.serialize_str(&datetime.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+}
+
+/// Deserialize SystemTime from ISO 8601 string
+fn deserialize_systemtime<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let datetime = chrono::DateTime::parse_from_rfc3339(&s)
+        .map_err(serde::de::Error::custom)?
+        .with_timezone(&chrono::Utc);
+    Ok(datetime.into())
 }
 
 /// Hierarchical node representing a file or directory in the codebase tree
@@ -50,7 +62,7 @@ pub struct TreeNode {
     pub children: Vec<TreeNode>,
 
     /// Last modified timestamp (for cache invalidation and sorting)
-    #[serde(serialize_with = "serialize_systemtime")]
+    #[serde(serialize_with = "serialize_systemtime", deserialize_with = "deserialize_systemtime")]
     #[specta(type = String)]
     pub last_modified: SystemTime,
 
