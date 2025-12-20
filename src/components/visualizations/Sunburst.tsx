@@ -52,20 +52,32 @@ const Sunburst: React.FC<TreemapProps> = memo(({
     return treeNodeToECharts(data);
   }, [data]);
 
-  // Click handler - center click goes back, other clicks drill down
+  // Click handler - center always goes back, clicking current node goes up
   const handleClick = useCallback((params: any) => {
     console.log('[Sunburst] Click params:', params);
+    console.log('[Sunburst] Current data:', { name: data?.name, path: data?.path });
 
-    // Check if clicking on center (root/first level)
-    // If dataIndex is 0 or undefined, it's the center
-    if (!params.data || params.dataIndex === undefined || params.dataIndex === 0) {
-      console.log('[Sunburst] Center clicked - navigating back');
+    // ALWAYS navigate back if no data (center click) OR clicking on root level
+    if (!params.data || params.dataIndex === 0) {
+      console.log('[Sunburst] Center/root clicked - navigating back');
       if (onNavigateBack) {
         onNavigateBack();
       }
       return;
     }
 
+    // Check if clicking on the current directory (same as data)
+    // If so, navigate up instead of trying to drill into itself
+    if (params.data && data &&
+        (params.data.name === data.name && params.data.path === data.path)) {
+      console.log('[Sunburst] Clicked current directory - navigating back');
+      if (onNavigateBack) {
+        onNavigateBack();
+      }
+      return;
+    }
+
+    // Normal drill-down for other nodes
     if (params.data && onNodeClick) {
       const clickedNode: TreeNode = {
         id: params.data.path || params.data.name,
@@ -81,7 +93,7 @@ const Sunburst: React.FC<TreemapProps> = memo(({
       console.log('[Sunburst] Calling onNodeClick with:', clickedNode);
       onNodeClick(clickedNode);
     }
-  }, [onNodeClick, onNavigateBack]);
+  }, [data, onNodeClick, onNavigateBack]);
 
   // Hover handler
   const handleMouseOver = useCallback((params: any) => {
@@ -174,16 +186,23 @@ const Sunburst: React.FC<TreemapProps> = memo(({
           },
           levels: [
             {
-              // Center circle - clickable to go back
+              // Center circle - ALWAYS clickable to go back
               label: {
                 show: true,
                 fontSize: 14,
                 fontWeight: 'bold',
                 formatter: () => '← Back',
+                color: '#fff',
               },
               itemStyle: {
                 color: '#4b5563',
                 borderWidth: 3,
+                borderColor: '#374151',
+              },
+              emphasis: {
+                itemStyle: {
+                  color: '#1f2937',
+                },
               },
             },
             {
