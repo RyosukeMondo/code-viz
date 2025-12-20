@@ -157,6 +157,9 @@ const Sunburst: React.FC<TreemapProps> = memo(({
           type: 'sunburst',
           data: [echartsData],
           radius: [0, '90%'], // Start from center (0) for back button visibility
+          // Only show outer circle - zoom to clicked node for cleaner view
+          nodeClick: 'rootToNode', // Click zooms to that node (shows only its children)
+          sort: 'desc', // Sort by size (largest first)
           label: {
             rotate: 'radial',
             fontSize: 10,
