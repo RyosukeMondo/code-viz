@@ -156,7 +156,7 @@ const Sunburst: React.FC<TreemapProps> = memo(({
         {
           type: 'sunburst',
           data: [echartsData],
-          radius: ['20%', '90%'],
+          radius: [0, '90%'], // Start from center (0) for back button visibility
           label: {
             rotate: 'radial',
             fontSize: 10,
@@ -186,10 +186,12 @@ const Sunburst: React.FC<TreemapProps> = memo(({
           },
           levels: [
             {
-              // Center circle - ALWAYS clickable to go back
+              // Center circle - ALWAYS clickable (smaller, always visible)
+              r0: 0,
+              r: '12%', // Small center circle for back button
               label: {
                 show: true,
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 'bold',
                 formatter: () => '← Back',
                 color: '#fff',
@@ -206,22 +208,23 @@ const Sunburst: React.FC<TreemapProps> = memo(({
               },
             },
             {
-              r0: '20%',
-              r: '40%',
+              // First data level - starts after center with gap
+              r0: '15%',
+              r: '35%',
               label: {
                 rotate: 0,
                 fontSize: 11,
               },
             },
             {
-              r0: '40%',
-              r: '70%',
+              r0: '35%',
+              r: '65%',
               label: {
                 fontSize: 10,
               },
             },
             {
-              r0: '70%',
+              r0: '65%',
               r: '90%',
               label: {
                 position: 'outside',
