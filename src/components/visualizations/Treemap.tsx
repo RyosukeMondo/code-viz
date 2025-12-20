@@ -70,7 +70,16 @@ const TreemapComponent: React.FC<TreemapProps> = ({
   // Memoize ECharts transformation (expensive for large datasets)
   const echartsData = useMemo(() => {
     if (!data) return null;
-    return treeNodeToECharts(data);
+    const transformed = treeNodeToECharts(data);
+    console.log('[Treemap] Transformed echartsData root:', {
+      name: transformed.name,
+      path: transformed.path,
+      type: transformed.type,
+      value: transformed.value,
+      complexity: transformed.complexity,
+      childrenCount: transformed.children?.length
+    });
+    return transformed;
   }, [data]);
 
   // Calculate file count to determine if we need lazy rendering
@@ -84,36 +93,25 @@ const TreemapComponent: React.FC<TreemapProps> = ({
 
   // Memoize event handlers to prevent unnecessary re-renders
   const handleClick = useCallback((params: any) => {
-    console.log('[Treemap] Click event (RESTORED WORKING VERSION):', {
-      hasData: !!params.data,
-      dataKeys: params.data ? Object.keys(params.data) : [],
-      'params.data.name': params.data?.name,
-      'params.data.path': params.data?.path,
-      'params.data.type': params.data?.type,
-      'params.data.value': params.data?.value,
-      'params.data.complexity': params.data?.complexity,
-    });
+    console.log('[Treemap] FULL params object:', params);
+    console.log('[Treemap] params.treePathInfo:', params.treePathInfo);
 
-    if (params.data && onNodeClick) {
-      // Convert ECharts data back to TreeNode format for the callback
+    // ECharts treemap stores actual node data in the last item of treePathInfo array
+    const actualNode = params.treePathInfo?.[params.treePathInfo.length - 1];
+
+    if (actualNode && onNodeClick) {
       const clickedNode: TreeNode = {
-        id: params.data.path || params.data.name,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
-        lastModified: '', // Not available in ECharts data
+        id: actualNode.path || actualNode.name,
+        name: actualNode.name,
+        path: actualNode.path,
+        loc: actualNode.value,
+        complexity: actualNode.complexity,
+        type: actualNode.type,
+        children: actualNode.children || [],
+        lastModified: '',
       };
 
-      console.log('[Treemap] Calling onNodeClick with:', {
-        name: clickedNode.name,
-        path: clickedNode.path,
-        type: clickedNode.type,
-        loc: clickedNode.loc,
-      });
-
+      console.log('[Treemap] ✅ Extracted node from treePathInfo:', clickedNode);
       onNodeClick(clickedNode);
     }
   }, [onNodeClick]);
