@@ -1,74 +1,53 @@
-//! Data models for visualization
+//! Tauri-specific type wrappers with specta support
 //!
-//! This module defines the TreeNode structure used for hierarchical
-//! visualization of code metrics in the frontend.
+//! This module re-exports types from code-viz-api and adds Tauri-specific
+//! features like TypeScript type generation via specta.
 
-use serde::{Deserialize, Serialize, Serializer, Deserializer};
+use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-/// Serialize SystemTime as ISO 8601 string with Z suffix for UTC
-fn serialize_systemtime<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let datetime: chrono::DateTime<chrono::Utc> = (*time).into();
-    // Use true parameter to force Z suffix instead of +00:00
-    serializer.serialize_str(&datetime.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
-}
+// Re-export the serialization functions from code-viz-api
+pub use code_viz_api::models::{serialize_systemtime, deserialize_systemtime};
 
-/// Deserialize SystemTime from ISO 8601 string
-fn deserialize_systemtime<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    let datetime = chrono::DateTime::parse_from_rfc3339(&s)
-        .map_err(serde::de::Error::custom)?
-        .with_timezone(&chrono::Utc);
-    Ok(datetime.into())
-}
-
-/// Hierarchical node representing a file or directory in the codebase tree
+/// TreeNode with specta Type derive for TypeScript generation
 ///
-/// This structure extends the core FileMetrics with hierarchical relationships
-/// and visualization-specific fields for rendering in the treemap UI.
+/// This wraps code_viz_api::TreeNode and adds Tauri-specific annotations.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TreeNode {
-    /// Unique identifier for this node (typically the full path)
     pub id: String,
-
-    /// Display name (file/directory name without full path)
     pub name: String,
-
-    /// Full path from repository root
     pub path: PathBuf,
-
-    /// Lines of code (for files) or sum of children (for directories)
     pub loc: usize,
-
-    /// Complexity score (0-100 scale, calculated as loc/10 for MVP)
-    /// This is a placeholder metric; future versions may use cyclomatic complexity
     pub complexity: u32,
-
-    /// Node type: "file" or "directory"
     #[serde(rename = "type")]
     pub node_type: String,
-
-    /// Child nodes (empty for files, contains children for directories)
     #[serde(default)]
     pub children: Vec<TreeNode>,
-
-    /// Last modified timestamp (for cache invalidation and sorting)
     #[serde(serialize_with = "serialize_systemtime", deserialize_with = "deserialize_systemtime")]
     #[specta(type = String)]
     pub last_modified: SystemTime,
-
-    /// Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dead_code_ratio: Option<f64>,
+}
+
+/// Convert from code_viz_api::TreeNode to Tauri TreeNode
+impl From<code_viz_api::TreeNode> for TreeNode {
+    fn from(api_node: code_viz_api::TreeNode) -> Self {
+        Self {
+            id: api_node.id,
+            name: api_node.name,
+            path: api_node.path,
+            loc: api_node.loc,
+            complexity: api_node.complexity,
+            node_type: api_node.node_type,
+            children: api_node.children.into_iter().map(Into::into).collect(),
+            last_modified: api_node.last_modified,
+            dead_code_ratio: api_node.dead_code_ratio,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -77,12 +56,11 @@ mod tests {
     use std::time::UNIX_EPOCH;
 
     #[test]
-    fn test_treenode_serialization_format() {
-        // Create a TreeNode with known values
-        let node = TreeNode {
-            id: "test.ts".to_string(),
-            name: "test.ts".to_string(),
-            path: PathBuf::from("test.ts"),
+    fn test_conversion_from_api_tree_node() {
+        let api_node = code_viz_api::TreeNode {
+            id: "test.rs".to_string(),
+            name: "test.rs".to_string(),
+            path: PathBuf::from("test.rs"),
             loc: 100,
             complexity: 10,
             node_type: "file".to_string(),
@@ -91,137 +69,33 @@ mod tests {
             dead_code_ratio: None,
         };
 
-        // Debug: Print the actual JSON to see PathBuf serialization
-        let json_str = serde_json::to_string_pretty(&node).expect("Failed to serialize");
-        println!("Serialized JSON:\n{}", json_str);
+        let tauri_node: TreeNode = api_node.into();
 
-        // Serialize to JSON
-        let json = serde_json::to_value(&node).expect("Failed to serialize TreeNode");
+        assert_eq!(tauri_node.id, "test.rs");
+        assert_eq!(tauri_node.loc, 100);
+        assert_eq!(tauri_node.complexity, 10);
+    }
 
-        // CRITICAL: Verify lastModified is a string, not an object
+    #[test]
+    fn test_tauri_node_serialization() {
+        let node = TreeNode {
+            id: "test.rs".to_string(),
+            name: "test.rs".to_string(),
+            path: PathBuf::from("test.rs"),
+            loc: 100,
+            complexity: 10,
+            node_type: "file".to_string(),
+            children: vec![],
+            last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
+            dead_code_ratio: None,
+        };
+
+        let json = serde_json::to_value(&node).expect("Failed to serialize");
+
+        // Verify lastModified is a string (not object)
         assert!(
             json["lastModified"].is_string(),
-            "lastModified must be serialized as ISO 8601 string, not object. Got: {:?}",
-            json["lastModified"]
-        );
-
-        // Verify it's a valid ISO 8601 timestamp
-        let timestamp_str = json["lastModified"].as_str().unwrap();
-        assert!(
-            timestamp_str.ends_with('Z'),
-            "Timestamp must be in UTC (end with Z): {}",
-            timestamp_str
-        );
-        assert!(
-            timestamp_str.contains('T'),
-            "Timestamp must be ISO 8601 format (contain T): {}",
-            timestamp_str
-        );
-
-        // Verify other fields are correct types
-        assert_eq!(json["loc"].as_u64().unwrap(), 100);
-        assert_eq!(json["complexity"].as_u64().unwrap(), 10);
-        assert_eq!(json["type"].as_str().unwrap(), "file");
-        assert_eq!(json["name"].as_str().unwrap(), "test.ts");
-    }
-
-    #[test]
-    fn test_treenode_with_children_serialization() {
-        let child = TreeNode {
-            id: "child.ts".to_string(),
-            name: "child.ts".to_string(),
-            path: PathBuf::from("src/child.ts"),
-            loc: 50,
-            complexity: 5,
-            node_type: "file".to_string(),
-            children: vec![],
-            last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
-            dead_code_ratio: Some(0.15),
-        };
-
-        let parent = TreeNode {
-            id: "src".to_string(),
-            name: "src".to_string(),
-            path: PathBuf::from("src"),
-            loc: 50,
-            complexity: 5,
-            node_type: "directory".to_string(),
-            children: vec![child],
-            last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
-            dead_code_ratio: Some(0.15),
-        };
-
-        let json = serde_json::to_value(&parent).expect("Failed to serialize");
-
-        // Verify parent timestamp
-        assert!(json["lastModified"].is_string());
-
-        // Verify child timestamp (nested)
-        assert!(json["children"][0]["lastModified"].is_string());
-
-        // Verify deadCodeRatio is present and correct
-        assert_eq!(json["deadCodeRatio"].as_f64().unwrap(), 0.15);
-        assert_eq!(json["children"][0]["deadCodeRatio"].as_f64().unwrap(), 0.15);
-    }
-
-    #[test]
-    fn test_treenode_roundtrip_serialization() {
-        let original = TreeNode {
-            id: "test.ts".to_string(),
-            name: "test.ts".to_string(),
-            path: PathBuf::from("test.ts"),
-            loc: 100,
-            complexity: 10,
-            node_type: "file".to_string(),
-            children: vec![],
-            last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
-            dead_code_ratio: Some(0.25),
-        };
-
-        // Serialize
-        let json_str = serde_json::to_string(&original).expect("Failed to serialize");
-
-        // Verify JSON contains ISO timestamp string (not object)
-        assert!(
-            !json_str.contains("secs_since_epoch"),
-            "Serialized JSON should not contain raw SystemTime fields: {}",
-            json_str
-        );
-        assert!(
-            json_str.contains("lastModified"),
-            "Serialized JSON must contain lastModified field"
-        );
-
-        // Verify it looks like ISO 8601
-        let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
-        let timestamp = json["lastModified"].as_str().unwrap();
-        assert!(
-            timestamp.len() >= 20,
-            "ISO 8601 timestamp should be at least 20 chars: {}",
-            timestamp
-        );
-    }
-
-    #[test]
-    fn test_dead_code_ratio_optional() {
-        let without_dead_code = TreeNode {
-            id: "test.ts".to_string(),
-            name: "test.ts".to_string(),
-            path: PathBuf::from("test.ts"),
-            loc: 100,
-            complexity: 10,
-            node_type: "file".to_string(),
-            children: vec![],
-            last_modified: SystemTime::now(),
-            dead_code_ratio: None,
-        };
-
-        let json = serde_json::to_value(&without_dead_code).unwrap();
-
-        // When None, deadCodeRatio should be omitted (not null)
-        assert!(
-            json.get("deadCodeRatio").is_none(),
-            "deadCodeRatio should be omitted when None, not serialized as null"
+            "lastModified must be ISO 8601 string"
         );
     }
 }

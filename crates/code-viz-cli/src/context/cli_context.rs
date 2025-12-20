@@ -15,16 +15,6 @@ impl CliContext {
     pub fn new(verbose: bool) -> Self {
         Self { verbose }
     }
-
-    /// Create a new non-verbose CliContext.
-    pub fn new_normal() -> Self {
-        Self { verbose: false }
-    }
-
-    /// Create a new verbose CliContext.
-    pub fn new_verbose() -> Self {
-        Self { verbose: true }
-    }
 }
 
 #[async_trait]

@@ -1,0 +1,38 @@
+[package]
+name = "code-viz-web"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Shared API layer (SSOT)
+code-viz-api = { path = "../code-viz-api" }
+code-viz-core = { path = "../code-viz-core" }
+code-viz-dead-code = { path = "../code-viz-dead-code" }
+
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1.42", features = ["full"] }
+tower = { version = "0.4" }
+tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Async
+async-trait = "0.1"
+
+# File system
+walkdir = "2.4"
+git2 = { version = "0.18", features = ["vendored-openssl"] }
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }

@@ -8,6 +8,9 @@ repository.workspace = true
 description = "Tauri wrapper library for code-viz analysis engine"
 
 [dependencies]
+# Shared API layer (SSOT)
+code-viz-api = { path = "../code-viz-api" }
+
 # Core analysis engine
 code-viz-core = { path = "../code-viz-core" }
 code-viz-commands = { path = "../code-viz-commands" }

@@ -1,0 +1,31 @@
+[package]
+name = "code-viz-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+code-viz-commands = { path = "../code-viz-commands" }
+code-viz-core = { path = "../code-viz-core" }
+code-viz-dead-code = { path = "../code-viz-dead-code" }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Date/time for SystemTime serialization
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async
+tokio = { version = "1.42", features = ["full"] }
+async-trait = "0.1"
+
+# Logging
+tracing = "0.1"
+
+[dev-dependencies]
+# For contract testing
+insta = { version = "1.41", features = ["json"] }

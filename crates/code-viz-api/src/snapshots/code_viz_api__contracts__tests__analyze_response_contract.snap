@@ -1,0 +1,16 @@
+---
+source: crates/code-viz-api/src/contracts.rs
+expression: json
+---
+{
+  "tree": {
+    "children": [],
+    "complexity": 10,
+    "id": "test.rs",
+    "lastModified": "2009-02-13T23:31:30.000Z",
+    "loc": 100,
+    "name": "test.rs",
+    "path": "test.rs",
+    "type": "file"
+  }
+}

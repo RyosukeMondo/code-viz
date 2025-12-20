@@ -265,7 +265,7 @@ impl LanguageParser for CppParser {
         let query = QUERY.get_or_init(|| {
             Query::new(
                 tree_sitter_cpp::language(),
-                "(function_declaration) @f"
+                "(function_definition) @f"
             ).expect("Invalid C++ query")
         });
         

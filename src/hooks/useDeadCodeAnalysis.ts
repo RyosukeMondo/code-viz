@@ -1,16 +1,16 @@
 /**
  * Hook for dead code analysis execution
  *
- * This hook orchestrates calling the analyze_dead_code Tauri command
- * and synchronizing results with the global analysis store. It provides
- * a simple interface for triggering dead code analysis and tracking its state.
+ * This hook orchestrates calling the dead code analysis API (Tauri IPC or HTTP REST)
+ * and synchronizing results with the global analysis store. It automatically
+ * detects whether to use Tauri or Web mode.
  *
  * @module hooks/useDeadCodeAnalysis
  */
 
-import { useCallback, useRef } from 'react';
-import { useTauriCommand } from './useTauriCommand';
+import { useCallback, useState } from 'react';
 import { useAnalysisStore } from '../store/analysisStore';
+import { analyzeDeadCode } from '../api/client';
 import type { DeadCodeResult } from '../types/bindings';
 
 /**
@@ -29,7 +29,7 @@ interface UseDeadCodeAnalysisResult {
   /**
    * Execute dead code analysis on the specified repository path
    * @param path - Absolute path to the repository root directory
-   * @param minConfidence - Minimum confidence score (0-100) for dead code inclusion (default: 80)
+   * @param minConfidence - Minimum confidence score (0-100) for dead code inclusion (default: 70)
    */
   analyze: (path: string, minConfidence?: number) => Promise<void>;
 
@@ -47,46 +47,10 @@ interface UseDeadCodeAnalysisResult {
  * Hook for executing dead code analysis and managing state
  *
  * This hook provides a high-level interface for analyzing dead code in repositories.
- * It automatically syncs analysis results with the global Zustand store and provides
- * convenient methods for triggering and refreshing analysis. The hook handles cleanup
- * on unmount and concurrent request cancellation.
+ * It automatically syncs analysis results with the global Zustand store and uses
+ * the appropriate backend (Tauri IPC or HTTP REST).
  *
  * @returns Dead code analysis state and control functions
- *
- * @example
- * ```typescript
- * function DeadCodePanel() {
- *   const { results, loading, error, analyze } = useDeadCodeAnalysis();
- *   const [path, setPath] = useState('/path/to/repo');
- *
- *   const handleAnalyze = () => {
- *     analyze(path, 80); // Analyze with 80% minimum confidence
- *   };
- *
- *   if (loading) return <div>Analyzing dead code...</div>;
- *   if (error) return <div>Error: {error}</div>;
- *   if (!results) return <div>Click analyze to start</div>;
- *
- *   return <div>Dead functions: {results.summary.deadFunctions}</div>;
- * }
- * ```
- *
- * @example
- * ```typescript
- * // With refetch for auto-refresh
- * function DeadCodeViewWithRefresh() {
- *   const { results, analyze, refetch } = useDeadCodeAnalysis();
- *
- *   useEffect(() => {
- *     if (results) {
- *       const interval = setInterval(() => refetch(), 60000); // Refresh every minute
- *       return () => clearInterval(interval);
- *     }
- *   }, [results, refetch]);
- *
- *   return <DeadCodeList results={results} />;
- * }
- * ```
  */
 export function useDeadCodeAnalysis(): UseDeadCodeAnalysisResult {
   // Get store state and actions
@@ -94,90 +58,89 @@ export function useDeadCodeAnalysis(): UseDeadCodeAnalysisResult {
   const setDeadCodeResults = useAnalysisStore((state) => state.setDeadCodeResults);
   const setDeadCodeLoading = useAnalysisStore((state) => state.setDeadCodeLoading);
   const setDeadCodeError = useAnalysisStore((state) => state.setDeadCodeError);
-  const resetDeadCode = useAnalysisStore((state) => state.resetDeadCode);
+  const resetStore = useAnalysisStore((state) => state.reset);
 
-  // Track the last analyzed path and confidence for refetch functionality
-  const lastParamsRef = useRef<{ path: string; minConfidence: number } | null>(null);
-
-  // Set up Tauri command hook with callbacks
-  const { execute } = useTauriCommand<DeadCodeResult>('analyze_dead_code_command', {
-    onSuccess: (data) => {
-      console.log('[useDeadCodeAnalysis] Analysis succeeded, syncing with store');
-      // Sync with store on success
-      setDeadCodeResults(data as DeadCodeResult);
-      setDeadCodeLoading(false);
-    },
-    onError: (errorMessage) => {
-      console.error('[useDeadCodeAnalysis] Analysis failed:', errorMessage);
-      // Sync error state with store
-      setDeadCodeError(errorMessage);
-      setDeadCodeLoading(false);
-    },
-  });
+  // Track the last analyzed parameters for refetch functionality
+  const [lastParams, setLastParams] = useState<{
+    path: string;
+    minConfidence: number;
+  } | null>(null);
 
   /**
-   * Execute dead code analysis on the specified repository path
+   * Execute dead code analysis
    */
   const analyze = useCallback(
-    async (path: string, minConfidence: number = 80) => {
-      console.log('[useDeadCodeAnalysis] analyze() called with path:', path, 'minConfidence:', minConfidence);
+    async (path: string, minConfidence: number = 70) => {
+      console.log('[useDeadCodeAnalysis] analyze() called', { path, minConfidence });
 
-      // Validate path
+      // Validate inputs
       if (!path || typeof path !== 'string') {
         console.error('[useDeadCodeAnalysis] Invalid path:', path);
         setDeadCodeError('Invalid repository path');
         return;
       }
 
-      // Validate minConfidence
       if (minConfidence < 0 || minConfidence > 100) {
         console.error('[useDeadCodeAnalysis] Invalid minConfidence:', minConfidence);
-        setDeadCodeError('Confidence score must be between 0 and 100');
+        setDeadCodeError('Confidence must be between 0 and 100');
         return;
       }
 
       // Store parameters for refetch
-      lastParamsRef.current = { path, minConfidence };
+      setLastParams({ path, minConfidence });
 
       // Update store loading state
-      console.log('[useDeadCodeAnalysis] Setting loading state to true');
       setDeadCodeLoading(true);
+      setDeadCodeError(null);
 
-      // Execute command (callbacks will handle success/error)
-      console.log('[useDeadCodeAnalysis] Calling execute with args:', { path, min_confidence: minConfidence });
       try {
-        await execute({ path, min_confidence: minConfidence });
-        console.log('[useDeadCodeAnalysis] execute() completed');
+        console.log('[useDeadCodeAnalysis] Calling API client');
+        // Generate request ID (optional)
+        const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Use unified API client (auto-detects Tauri vs Web)
+        const results = await analyzeDeadCode(path, minConfidence, requestId);
+
+        console.log('[useDeadCodeAnalysis] API returned results:', {
+          hasResults: !!results,
+          deadFunctions: results?.summary?.deadFunctions,
+          filesCount: results?.files?.length,
+        });
+
+        // Sync with store on success
+        setDeadCodeResults(results);
+        setDeadCodeLoading(false);
       } catch (error) {
-        console.error('[useDeadCodeAnalysis] execute() threw error:', error);
-        setDeadCodeError(error instanceof Error ? error.message : String(error));
+        console.error('[useDeadCodeAnalysis] API call failed:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setDeadCodeError(errorMessage);
         setDeadCodeLoading(false);
       }
     },
-    [execute, setDeadCodeLoading, setDeadCodeError]
+    [setDeadCodeResults, setDeadCodeLoading, setDeadCodeError]
   );
 
   /**
-   * Re-run the most recent analysis with the same parameters
+   * Re-run the most recent analysis
    */
   const refetch = useCallback(async () => {
-    const lastParams = lastParamsRef.current;
-
     if (!lastParams) {
       setDeadCodeError('No previous analysis to refetch');
       return;
     }
 
     await analyze(lastParams.path, lastParams.minConfidence);
-  }, [analyze, setDeadCodeError]);
+  }, [analyze, lastParams, setDeadCodeError]);
 
   /**
    * Reset all dead code analysis state
    */
   const reset = useCallback(() => {
-    resetDeadCode();
-    lastParamsRef.current = null;
-  }, [resetDeadCode]);
+    resetStore();
+    setLastParams(null);
+  }, [resetStore]);
 
   return {
     results: deadCodeResults,

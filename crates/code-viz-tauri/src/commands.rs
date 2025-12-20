@@ -1,45 +1,16 @@
-//! Tauri command definitions for frontend IPC communication
+//! Tauri command definitions - thin wrappers around shared API
 //!
-//! This module contains Tauri commands that expose the code-viz-core
-//! analysis functionality to the frontend.
+//! This module contains Tauri IPC commands that wrap the shared code-viz-api handlers.
+//! All business logic lives in code-viz-api (SSOT), these are just transport adapters.
 
 use crate::models::TreeNode;
-use crate::transform::flat_to_hierarchy;
-use crate::context::{TauriContext, RealFileSystem};
-use code_viz_core::traits::AppContext;
-use code_viz_commands;
+use crate::context::{TauriContext, RealFileSystem, RealGit};
 use code_viz_dead_code::DeadCodeResult;
-use std::path::PathBuf;
 
-/// Analyzes a repository and returns hierarchical tree structure for visualization
+/// Analyze a repository - Tauri IPC wrapper
 ///
-/// This command wraps the code-viz-core analysis engine, converting the flat
-/// file metrics output into a hierarchical TreeNode structure suitable for
-/// rendering as a treemap.
-///
-/// # Arguments
-/// * `path` - Absolute path to the repository root directory
-/// * `request_id` - Optional UUID for correlating frontend and backend logs
-///
-/// # Returns
-/// * `Result<TreeNode, String>` - Root TreeNode on success, error message on failure
-///
-/// # Errors
-/// Returns error if:
-/// - Path does not exist or is not accessible
-/// - Analysis engine encounters critical failure
-/// - Path is not a valid directory
-///
-/// # Examples
-/// ```typescript
-/// import { invoke } from '@tauri-apps/api/tauri';
-///
-/// const requestId = crypto.randomUUID();
-/// const tree = await invoke<TreeNode>('analyze_repository', {
-///   path: '/home/user/my-project',
-///   requestId: requestId
-/// });
-/// ```
+/// This command is a thin wrapper around code_viz_api::analyze_repository_handler.
+/// It provides Tauri-specific context and converts the result to Tauri's TreeNode type.
 #[tauri::command]
 #[specta::specta]
 pub async fn analyze_repository(
@@ -49,60 +20,19 @@ pub async fn analyze_repository(
 ) -> Result<TreeNode, String> {
     let ctx = TauriContext::new(app);
     let fs = RealFileSystem::new();
-    analyze_repository_inner(ctx, fs, path, request_id).await
-}
 
-/// Inner implementation of analyze_repository that uses traits
-pub async fn analyze_repository_inner(
-    ctx: impl AppContext,
-    fs: impl code_viz_core::traits::FileSystem,
-    path: String,
-    _request_id: Option<String>,
-) -> Result<TreeNode, String> {
-    let repo_path = PathBuf::from(&path);
-    
-    // Call the framework-agnostic command layer
-    let analysis_result = code_viz_commands::analyze_repository(&repo_path, ctx, fs)
+    // Call the shared SSOT handler
+    let api_tree = code_viz_api::analyze_repository_handler(ctx, fs, path, request_id)
         .await
-        .map_err(|e| format!("Analysis failed: {}", e))?;
+        .map_err(|e| e.to_user_message())?;
 
-    // Transform flat file metrics to hierarchical tree (presentation concern)
-    let tree = flat_to_hierarchy(analysis_result.files);
-
-    Ok(tree)
+    // Convert API TreeNode to Tauri TreeNode (adds specta Type for TS generation)
+    Ok(api_tree.into())
 }
 
-/// Analyzes dead code in a repository and returns filtered results
+/// Analyze dead code - Tauri IPC wrapper
 ///
-/// This command wraps the code-viz-dead-code analysis engine, performing
-/// reachability analysis to identify unreachable (dead) code symbols.
-/// Results are filtered by confidence score to reduce false positives.
-///
-/// # Arguments
-/// * `path` - Absolute path to the repository root directory
-/// * `min_confidence` - Minimum confidence score (0-100) for dead code inclusion
-/// * `request_id` - Optional UUID for correlating frontend and backend logs
-///
-/// # Returns
-/// * `Result<DeadCodeResult, String>` - Dead code analysis result on success, error message on failure
-///
-/// # Errors
-/// Returns error if:
-/// - Path does not exist or is not accessible
-/// - Dead code analysis engine encounters critical failure
-/// - Path is not a valid directory
-///
-/// # Examples
-/// ```typescript
-/// import { invoke } from '@tauri-apps/api/tauri';
-///
-/// const requestId = crypto.randomUUID();
-/// const result = await invoke<DeadCodeResult>('analyze_dead_code_command', {
-///   path: '/home/user/my-project',
-///   minConfidence: 80,
-///   requestId: requestId
-/// });
-/// ```
+/// This command is a thin wrapper around code_viz_api::analyze_dead_code_handler.
 #[tauri::command]
 #[specta::specta]
 pub async fn analyze_dead_code_command(
@@ -113,29 +43,12 @@ pub async fn analyze_dead_code_command(
 ) -> Result<DeadCodeResult, String> {
     let ctx = TauriContext::new(app);
     let fs = RealFileSystem::new();
-    let git = crate::context::RealGit::new();
-    analyze_dead_code_inner(ctx, fs, git, path, min_confidence, request_id).await
-}
+    let git = RealGit::new();
 
-/// Inner implementation of analyze_dead_code that uses traits
-pub async fn analyze_dead_code_inner(
-    ctx: impl AppContext,
-    fs: impl code_viz_core::traits::FileSystem,
-    git: impl code_viz_core::traits::GitProvider,
-    path: String,
-    min_confidence: u8,
-    _request_id: Option<String>,
-) -> Result<DeadCodeResult, String> {
-    let repo_path = PathBuf::from(&path);
-    
-    let analysis_result = code_viz_commands::calculate_dead_code(&repo_path, ctx, fs, git)
+    // Call the shared SSOT handler
+    code_viz_api::analyze_dead_code_handler(ctx, fs, git, path, min_confidence, request_id)
         .await
-        .map_err(|e| format!("Dead code analysis failed: {}", e))?;
-
-    // Filter by confidence score (presentation concern)
-    let filtered_result = analysis_result.filter_by_confidence(min_confidence);
-
-    Ok(filtered_result)
+        .map_err(|e| e.to_user_message())
 }
 
 #[cfg(test)]
@@ -144,197 +57,37 @@ mod integration_tests {
     use serde_json;
     use std::env;
 
-    /// Integration test: Verify analyze_repository returns valid serializable TreeNode
-    ///
-    /// This test ensures that the entire command pipeline (analysis → transformation → serialization)
-    /// produces JSON that matches the TypeScript contract expected by the frontend.
-    #[tokio::test]
-    async fn test_analyze_repository_serialization_contract() {
-        use code_viz_core::mocks::MockContext;
-        let ctx = MockContext::new();
-        let fs = RealFileSystem::new();
+    /// Verify Tauri TreeNode serialization matches code-viz-api contract
+    #[test]
+    fn test_tree_node_contract_consistency() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        use std::path::PathBuf;
 
-        // Use current directory as test subject (code-viz itself)
-        let current_dir = env::current_dir()
-            .expect("Failed to get current directory")
-            .to_string_lossy()
-            .to_string();
+        // Create both API and Tauri tree nodes with same data
+        let api_node = code_viz_api::TreeNode {
+            id: "test.rs".to_string(),
+            name: "test.rs".to_string(),
+            path: PathBuf::from("test.rs"),
+            loc: 100,
+            complexity: 10,
+            node_type: "file".to_string(),
+            children: vec![],
+            last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
+            dead_code_ratio: None,
+        };
 
-        // Execute the command
-        let result = analyze_repository_inner(ctx, fs, current_dir, Some("test-request-id".to_string())).await;
+        let tauri_node: TreeNode = api_node.clone().into();
 
-        // Command should succeed
-        assert!(result.is_ok(), "analyze_repository failed: {:?}", result);
+        // Both should serialize to identical JSON
+        let api_json = serde_json::to_value(&api_node).unwrap();
+        let tauri_json = serde_json::to_value(&tauri_node).unwrap();
 
-        let tree = result.unwrap();
+        assert_eq!(api_json["id"], tauri_json["id"]);
+        assert_eq!(api_json["loc"], tauri_json["loc"]);
+        assert_eq!(api_json["lastModified"], tauri_json["lastModified"]);
 
-        // Verify basic structure
-        assert!(!tree.name.is_empty(), "TreeNode name should not be empty");
-        assert!(tree.loc > 0, "TreeNode LOC should be positive");
-        assert!(tree.complexity > 0, "TreeNode complexity should be positive");
-
-        // CRITICAL: Serialize to JSON and verify structure
-        let json_value = serde_json::to_value(&tree).expect("Failed to serialize TreeNode to JSON");
-
-        // Verify required fields exist and have correct types
-        assert!(
-            json_value["id"].is_string(),
-            "id must be a string, got: {:?}",
-            json_value["id"]
-        );
-        assert!(
-            json_value["name"].is_string(),
-            "name must be a string, got: {:?}",
-            json_value["name"]
-        );
-        assert!(
-            json_value["path"].is_string(),
-            "path must be a string, got: {:?}",
-            json_value["path"]
-        );
-        assert!(
-            json_value["loc"].is_number(),
-            "loc must be a number, got: {:?}",
-            json_value["loc"]
-        );
-        assert!(
-            json_value["complexity"].is_number(),
-            "complexity must be a number, got: {:?}",
-            json_value["complexity"]
-        );
-        assert!(
-            json_value["type"].is_string(),
-            "type must be a string, got: {:?}",
-            json_value["type"]
-        );
-
-        // CRITICAL: Verify lastModified is serialized as ISO 8601 string, NOT raw object
-        assert!(
-            json_value["lastModified"].is_string(),
-            "lastModified MUST be a string (ISO 8601), not an object. Got: {:?}",
-            json_value["lastModified"]
-        );
-
-        // Verify ISO 8601 format
-        let timestamp_str = json_value["lastModified"]
-            .as_str()
-            .expect("lastModified should be a string");
-        assert!(
-            timestamp_str.contains('T'),
-            "lastModified must be ISO 8601 format (contain T): {}",
-            timestamp_str
-        );
-        assert!(
-            timestamp_str.ends_with('Z'),
-            "lastModified must use Z for UTC (not +00:00): {}",
-            timestamp_str
-        );
-
-        // Verify children array exists (even if empty for files)
-        assert!(
-            json_value["children"].is_array(),
-            "children must be an array, got: {:?}",
-            json_value["children"]
-        );
-
-        // If there are children, verify they also have proper serialization
-        if let Some(children) = json_value["children"].as_array() {
-            if !children.is_empty() {
-                let first_child = &children[0];
-                assert!(
-                    first_child["lastModified"].is_string(),
-                    "Child node lastModified must also be a string, got: {:?}",
-                    first_child["lastModified"]
-                );
-            }
-        }
-    }
-
-    /// Integration test: Verify serialized JSON contains no raw SystemTime objects
-    ///
-    /// This test catches regressions where SystemTime might serialize as
-    /// {secs_since_epoch: ..., nanos_since_epoch: ...} instead of ISO 8601 string.
-    #[tokio::test]
-    async fn test_no_raw_systemtime_in_json() {
-        use code_viz_core::mocks::MockContext;
-        let ctx = MockContext::new();
-        let fs = RealFileSystem::new();
-
-        let current_dir = env::current_dir()
-            .expect("Failed to get current directory")
-            .to_string_lossy()
-            .to_string();
-
-        let result = analyze_repository_inner(ctx, fs, current_dir, Some("test-systemtime".to_string())).await;
-        assert!(result.is_ok(), "analyze_repository failed");
-
-        let tree = result.unwrap();
-        let json_str = serde_json::to_string(&tree).expect("Failed to serialize to JSON string");
-
-        // CRITICAL: JSON should never contain raw SystemTime fields
-        assert!(
-            !json_str.contains("secs_since_epoch"),
-            "JSON contains raw SystemTime field 'secs_since_epoch'. This breaks TypeScript contract!"
-        );
-        assert!(
-            !json_str.contains("nanos_since_epoch"),
-            "JSON contains raw SystemTime field 'nanos_since_epoch'. This breaks TypeScript contract!"
-        );
-
-        // Verify it does contain the expected field name
-        assert!(
-            json_str.contains("lastModified"),
-            "JSON must contain 'lastModified' field"
-        );
-    }
-
-    /// Integration test: Verify dead code command serialization
-    ///
-    /// Tests that dead code results serialize correctly and include proper timestamps
-    #[tokio::test]
-    async fn test_analyze_dead_code_serialization() {
-        use code_viz_core::mocks::{MockContext, MockGit};
-        let ctx = MockContext::new();
-        let fs = RealFileSystem::new();
-        let git = MockGit::new();
-
-        let current_dir = env::current_dir()
-            .expect("Failed to get current directory")
-            .to_string_lossy()
-            .to_string();
-
-        // Call with min_confidence of 70
-        let result =
-            analyze_dead_code_inner(ctx, fs, git, current_dir, 70, Some("test-dead-code".to_string())).await;
-
-        // Command should succeed
-        assert!(
-            result.is_ok(),
-            "analyze_dead_code_command failed: {:?}",
-            result
-        );
-
-        let dead_code_result = result.unwrap();
-
-        // Verify serialization works
-        let json_value =
-            serde_json::to_value(&dead_code_result).expect("Failed to serialize DeadCodeResult");
-
-        // Verify basic structure
-        assert!(
-            json_value["summary"].is_object(),
-            "summary must be an object"
-        );
-        assert!(
-            json_value["files"].is_array(),
-            "files must be an array"
-        );
-
-        // Verify no raw SystemTime objects in the entire result
-        let json_str = serde_json::to_string(&dead_code_result).expect("Failed to serialize");
-        assert!(
-            !json_str.contains("secs_since_epoch"),
-            "DeadCodeResult JSON should not contain raw SystemTime fields"
-        );
+        // CRITICAL: Both must serialize lastModified as ISO 8601 string
+        assert!(api_json["lastModified"].is_string());
+        assert!(tauri_json["lastModified"].is_string());
     }
 }

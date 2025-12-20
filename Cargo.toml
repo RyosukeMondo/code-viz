@@ -6,6 +6,8 @@ members = [
     "crates/code-viz-tauri",
     "crates/code-viz-commands",
     "crates/code-viz-dead-code",
+    "crates/code-viz-api",
+    "crates/code-viz-web",
     "src-tauri",
 ]
 

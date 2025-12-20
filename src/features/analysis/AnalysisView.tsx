@@ -21,7 +21,9 @@ import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { DetailPanel } from '@/components/common/DetailPanel';
 import { DeadCodePanel } from '@/components/common/DeadCodePanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { AnalysisLoadingSkeleton } from '@/components/common/LoadingSkeleton';
+import { DataDebugger } from '@/components/common/DataDebugger';
+import { ProgressBar } from '@/components/common/ProgressBar';
+import { TreeView } from '@/components/common/TreeView';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { useDeadCodeAnalysis } from '@/hooks/useDeadCodeAnalysis';
 import {
@@ -45,6 +47,9 @@ export function AnalysisView() {
       return '';
     }
   });
+
+  // Local state for view mode
+  const [showTreeView, setShowTreeView] = useState(false);
 
   // Analysis hook for executing repository analysis
   const { data, loading, error, analyze, reset } = useAnalysis();
@@ -437,10 +442,37 @@ export function AnalysisView() {
           </div>
         )}
 
-        {/* Loading State - Enhanced Skeleton */}
+        {/* Loading State - Enhanced Skeleton with Progress */}
         {loading && (
-          <div data-testid="loading-state">
-            <AnalysisLoadingSkeleton />
+          <div data-testid="loading-state" className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900">
+            <div className="max-w-2xl w-full px-8">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+                  <svg
+                    className="animate-spin h-8 w-8 text-blue-600 dark:text-blue-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Analyzing Repository
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  This may take a few moments for large codebases...
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              <ProgressBar progress={50} message="Processing files..." indeterminate={true} />
+
+              <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                Check the browser console for detailed progress
+              </div>
+            </div>
           </div>
         )}
 
@@ -617,6 +649,44 @@ export function AnalysisView() {
             onClose={handleDeadCodePanelClose}
           />
         )}
+
+        {/* View Toggle Button (when data available) */}
+        {data && !loading && !error && (
+          <button
+            onClick={() => setShowTreeView(!showTreeView)}
+            className="fixed bottom-4 left-4 z-40 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg
+                     hover:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500
+                     transition-colors flex items-center gap-2"
+            title="Toggle between Treemap and Tree View"
+          >
+            <span>{showTreeView ? '📊 Treemap' : '🌳 Tree View'}</span>
+          </button>
+        )}
+
+        {/* Tree View Modal */}
+        {showTreeView && data && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Tree View - Debugging
+                </h3>
+                <button
+                  onClick={() => setShowTreeView(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto p-6">
+                <TreeView data={currentTreeNode} maxDepth={10} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Data Debugger */}
+        <DataDebugger data={data} />
       </main>
     </div>
   );

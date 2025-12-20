@@ -28,6 +28,7 @@ pub enum AnalyzeError {
 pub struct AnalyzeConfig {
     pub path: PathBuf,
     pub format: String,
+    #[allow(dead_code)]
     pub exclude: Vec<String>,
     pub verbose: bool,
     pub threshold: Option<String>,
@@ -47,7 +48,7 @@ pub fn run(
     let AnalyzeConfig {
         path,
         format,
-        exclude,
+        exclude: _,
         verbose,
         threshold,
         output,
