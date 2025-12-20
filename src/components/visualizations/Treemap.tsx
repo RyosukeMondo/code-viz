@@ -299,9 +299,12 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       series: [
         {
           type: 'treemap',
-          // Pass single root node - ECharts will show it and all descendants
-          // Remove leafDepth to show all levels (root + children)
-          data: [echartsData],
+          // Show children directly to avoid extra root wrapper level
+          // This prevents clicking on children from returning the root node
+          data: echartsData?.children && echartsData.children.length > 0
+            ? echartsData.children
+            : [echartsData],
+          leafDepth: 1,
           roam: false,
           nodeClick: false, // Disable ECharts default click (we handle it manually)
           breadcrumb: {
