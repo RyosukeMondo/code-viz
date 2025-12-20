@@ -12,7 +12,7 @@
  * - Responsive to window resize
  */
 
-import React, { useEffect, useRef, memo, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, memo, useMemo, useCallback, useState } from 'react';
 import * as echarts from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
 import { SunburstChart } from 'echarts/charts';
@@ -22,7 +22,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { TreemapProps, TreeNode } from '../../types';
-import { treeNodeToECharts } from '../../utils/treeTransform';
+import { treeNodeToEChartsWithDepth } from '../../utils/treeTransform';
 import { getComplexityLabel } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
 
@@ -45,12 +45,27 @@ const Sunburst: React.FC<TreemapProps> = memo(({
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
+  const [depth, setDepth] = useState(1);
 
-  // Transform data to ECharts format
+  // Transform data to ECharts format with controlled depth
   const echartsData = useMemo(() => {
     if (!data) return null;
-    return treeNodeToECharts(data);
-  }, [data]);
+    return treeNodeToEChartsWithDepth(data, depth);
+  }, [data, depth]);
+
+  // Recursive helper to find a node by path/name anywhere in the tree
+  const findNodeInTree = useCallback((root: TreeNode, targetPath: string, targetName: string): TreeNode | null => {
+    if (root.path === targetPath || root.name === targetName) {
+      return root;
+    }
+    if (root.children) {
+      for (const child of root.children) {
+        const found = findNodeInTree(child, targetPath, targetName);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, []);
 
   // Click handler - center always goes back, clicking current node goes up
   const handleClick = useCallback((params: any) => {
@@ -78,22 +93,19 @@ const Sunburst: React.FC<TreemapProps> = memo(({
     }
 
     // Normal drill-down for other nodes
-    if (params.data && onNodeClick) {
-      const clickedNode: TreeNode = {
-        id: params.data.path || params.data.name,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
-        lastModified: '',
-      };
+    if (params.data && onNodeClick && data) {
+      // Recursively search for the clicked node in the full tree (supports depth > 1)
+      // The params.data is from ECharts (depth-limited), but we need the full node with all descendants
+      const clickedNode = findNodeInTree(data, params.data.path, params.data.name);
 
-      console.log('[Sunburst] Calling onNodeClick with:', clickedNode);
-      onNodeClick(clickedNode);
+      if (clickedNode) {
+        console.log('[Sunburst] Calling onNodeClick with full node:', clickedNode);
+        onNodeClick(clickedNode);
+      } else {
+        console.warn('[Sunburst] Could not find clicked node in original data');
+      }
     }
-  }, [data, onNodeClick, onNavigateBack]);
+  }, [data, onNodeClick, onNavigateBack, findNodeInTree]);
 
   // Hover handler
   const handleMouseOver = useCallback((params: any) => {
@@ -276,16 +288,59 @@ const Sunburst: React.FC<TreemapProps> = memo(({
   }, []);
 
   return (
-    <div
-      ref={chartRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        minHeight: '400px',
-      }}
-      role="img"
-      aria-label="Sunburst chart visualization of code metrics"
-    />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* Depth control slider - positioned top-left to avoid covering DetailPanel */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          zIndex: 1000,
+          background: 'rgba(255, 255, 255, 0.9)',
+          padding: '8px 12px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        <label
+          htmlFor="depth-slider"
+          style={{
+            fontSize: '12px',
+            fontWeight: '500',
+            color: '#374151',
+          }}
+        >
+          Depth: {depth}
+        </label>
+        <input
+          id="depth-slider"
+          type="range"
+          min="1"
+          max="4"
+          value={depth}
+          onChange={(e) => setDepth(Number(e.target.value))}
+          style={{
+            width: '100px',
+            cursor: 'pointer',
+          }}
+        />
+      </div>
+
+      {/* Chart container */}
+      <div
+        ref={chartRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          minHeight: '400px',
+        }}
+        role="img"
+        aria-label="Sunburst chart visualization of code metrics"
+      />
+    </div>
   );
 });
 

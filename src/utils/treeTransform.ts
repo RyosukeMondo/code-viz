@@ -15,6 +15,66 @@ import { complexityToColor } from './colors';
 const transformCache = new WeakMap<TreeNode, EChartsTreemapNode>();
 
 /**
+ * Converts a TreeNode to ECharts format with controlled depth
+ *
+ * This function transforms the node and its descendants up to a specified depth.
+ * This allows controlling how many levels of the hierarchy are visible.
+ *
+ * @param node - The TreeNode to transform
+ * @param maxDepth - Maximum depth to traverse (1 = immediate children only, 2 = grandchildren, etc.)
+ * @param currentDepth - Current recursion depth (internal use)
+ * @returns ECharts-compatible node with children up to maxDepth
+ */
+export function treeNodeToEChartsWithDepth(
+  node: TreeNode,
+  maxDepth: number = 1,
+  currentDepth: number = 0
+): EChartsTreemapNode {
+  if (!node) {
+    throw new Error('Cannot transform null or undefined node');
+  }
+
+  // Base node properties
+  const echartsNode: EChartsTreemapNode = {
+    name: node.name,
+    value: node.loc,
+    complexity: node.complexity,
+    path: node.path,
+    type: node.type,
+  };
+
+  // Add color based on complexity score for files only
+  if (node.type === 'file') {
+    echartsNode.itemStyle = {
+      color: complexityToColor(node.complexity),
+    };
+  }
+
+  // Recursively transform children up to maxDepth
+  if (node.children && node.children.length > 0 && currentDepth < maxDepth) {
+    echartsNode.children = node.children.map(child =>
+      treeNodeToEChartsWithDepth(child, maxDepth, currentDepth + 1)
+    );
+  }
+
+  return echartsNode;
+}
+
+/**
+ * Converts a TreeNode to ECharts format with ONLY immediate children (shallow, non-recursive)
+ *
+ * This function transforms only the current node and its direct children,
+ * without recursively processing grandchildren. This is useful for visualizations
+ * like Sunburst where we want to show one level at a time.
+ *
+ * @param node - The TreeNode to transform
+ * @returns ECharts-compatible node with only immediate children
+ */
+export function treeNodeToEChartsShallow(node: TreeNode): EChartsTreemapNode {
+  return treeNodeToEChartsWithDepth(node, 1);
+}
+
+/**
  * Converts a TreeNode to ECharts treemap data format
  *
  * This function recursively transforms the hierarchical TreeNode structure
