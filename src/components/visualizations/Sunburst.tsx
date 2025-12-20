@@ -41,6 +41,7 @@ const Sunburst: React.FC<TreemapProps> = memo(({
   data,
   onNodeClick,
   onNodeHover,
+  onNavigateBack,
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
@@ -51,9 +52,19 @@ const Sunburst: React.FC<TreemapProps> = memo(({
     return treeNodeToECharts(data);
   }, [data]);
 
-  // Click handler
+  // Click handler - center click goes back, other clicks drill down
   const handleClick = useCallback((params: any) => {
     console.log('[Sunburst] Click params:', params);
+
+    // Check if clicking on center (root/first level)
+    // If dataIndex is 0 or undefined, it's the center
+    if (!params.data || params.dataIndex === undefined || params.dataIndex === 0) {
+      console.log('[Sunburst] Center clicked - navigating back');
+      if (onNavigateBack) {
+        onNavigateBack();
+      }
+      return;
+    }
 
     if (params.data && onNodeClick) {
       const clickedNode: TreeNode = {
@@ -70,7 +81,7 @@ const Sunburst: React.FC<TreemapProps> = memo(({
       console.log('[Sunburst] Calling onNodeClick with:', clickedNode);
       onNodeClick(clickedNode);
     }
-  }, [onNodeClick]);
+  }, [onNodeClick, onNavigateBack]);
 
   // Hover handler
   const handleMouseOver = useCallback((params: any) => {
@@ -133,10 +144,22 @@ const Sunburst: React.FC<TreemapProps> = memo(({
         {
           type: 'sunburst',
           data: [echartsData],
-          radius: ['15%', '90%'],
+          radius: ['20%', '90%'],
           label: {
             rotate: 'radial',
-            fontSize: 11,
+            fontSize: 10,
+            minAngle: 15, // Only show label if segment is large enough (15 degrees)
+            formatter: (params: any) => {
+              // Only show labels for directories or larger files
+              if (params.data && params.data.type === 'directory') {
+                return params.name;
+              }
+              // For files, only show if they're reasonably large
+              if (params.data && params.data.value > 500) {
+                return params.name;
+              }
+              return ''; // Hide small file labels
+            },
           },
           itemStyle: {
             borderWidth: 2,
@@ -144,26 +167,47 @@ const Sunburst: React.FC<TreemapProps> = memo(({
           },
           emphasis: {
             focus: 'ancestor',
+            label: {
+              show: true,
+              fontSize: 12,
+            },
           },
           levels: [
-            {},
             {
-              r0: '15%',
-              r: '35%',
+              // Center circle - clickable to go back
               label: {
-                rotate: 0,
+                show: true,
+                fontSize: 14,
+                fontWeight: 'bold',
+                formatter: () => '← Back',
+              },
+              itemStyle: {
+                color: '#4b5563',
+                borderWidth: 3,
               },
             },
             {
-              r0: '35%',
-              r: '65%',
+              r0: '20%',
+              r: '40%',
+              label: {
+                rotate: 0,
+                fontSize: 11,
+              },
             },
             {
-              r0: '65%',
+              r0: '40%',
+              r: '70%',
+              label: {
+                fontSize: 10,
+              },
+            },
+            {
+              r0: '70%',
               r: '90%',
               label: {
                 position: 'outside',
                 silent: false,
+                fontSize: 9,
               },
             },
           ],

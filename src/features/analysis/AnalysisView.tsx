@@ -16,9 +16,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Treemap } from '@/components/visualizations/Treemap';
 import Sunburst from '@/components/visualizations/Sunburst';
-import CirclePacking from '@/components/visualizations/CirclePacking';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { DetailPanel } from '@/components/common/DetailPanel';
 import { DeadCodePanel } from '@/components/common/DeadCodePanel';
@@ -37,8 +35,6 @@ import {
 import type { TreeNode } from '@/types/bindings';
 import { filterByPath } from '@/utils/treeTransform';
 
-type VisualizationType = 'treemap' | 'sunburst' | 'circlepacking';
-
 /**
  * AnalysisView - Main feature component for code analysis and visualization
  */
@@ -54,9 +50,6 @@ export function AnalysisView() {
 
   // Local state for view mode
   const [showTreeView, setShowTreeView] = useState(false);
-
-  // Local state for visualization type
-  const [visualizationType, setVisualizationType] = useState<VisualizationType>('treemap');
 
   // Analysis hook for executing repository analysis
   const { data, loading, error, analyze, reset } = useAnalysis();
@@ -631,57 +624,13 @@ export function AnalysisView() {
             )}
           >
             <div data-testid="visualization-container" className="h-full p-6">
-              <div className="h-full max-w-7xl mx-auto flex flex-col gap-4">
-                {/* Visualization Type Selector */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <label htmlFor="viz-type" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Visualization:
-                    </label>
-                    <select
-                      id="viz-type"
-                      value={visualizationType}
-                      onChange={(e) => setVisualizationType(e.target.value as VisualizationType)}
-                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg
-                               bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                               text-sm"
-                    >
-                      <option value="treemap">Treemap</option>
-                      <option value="sunburst">Sunburst</option>
-                      <option value="circlepacking">Circle Packing</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Visualization Component */}
-                <div className="flex-1">
-                  {visualizationType === 'treemap' && (
-                    <Treemap
-                      data={currentTreeNode}
-                      drillDownPath={drillDownPath}
-                      onNodeClick={handleNodeClick}
-                      onNodeHover={handleNodeHover}
-                      onNavigateBack={handleNavigateBack}
-                      width="100%"
-                      height="100%"
-                    />
-                  )}
-                  {visualizationType === 'sunburst' && (
-                    <Sunburst
-                      data={currentTreeNode}
-                      onNodeClick={handleNodeClick}
-                      onNodeHover={handleNodeHover}
-                    />
-                  )}
-                  {visualizationType === 'circlepacking' && (
-                    <CirclePacking
-                      data={currentTreeNode}
-                      onNodeClick={handleNodeClick}
-                      onNodeHover={handleNodeHover}
-                    />
-                  )}
-                </div>
+              <div className="h-full max-w-7xl mx-auto">
+                <Sunburst
+                  data={currentTreeNode}
+                  onNodeClick={handleNodeClick}
+                  onNodeHover={handleNodeHover}
+                  onNavigateBack={handleNavigateBack}
+                />
               </div>
             </div>
           </ErrorBoundary>
