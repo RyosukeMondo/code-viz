@@ -38,10 +38,11 @@ pub fn scan_directory(
     // Use ignore::WalkBuilder which respects .gitignore, .ignore, etc.
     let walker = WalkBuilder::new(path)
         .follow_links(false)
-        .git_ignore(true) // Respect .gitignore files
+        .git_ignore(true) // Respect .gitignore files in git repos
         .git_global(true) // Respect global gitignore
         .git_exclude(true) // Respect .git/info/exclude
-        .hidden(true) // Skip hidden files/dirs (except .ts/.js which we'll handle)
+        .add_custom_ignore_filename(".gitignore") // Also respect .gitignore in non-git dirs
+        .hidden(true) // Skip hidden files/dirs
         .build()
         .filter_map(|result| result.ok()) // Skip errors, log them separately
         .filter(move |entry| {
@@ -239,28 +240,130 @@ mod tests {
     #[cfg(unix)]
     fn test_scan_permission_denied() {
         use std::os::unix::fs::PermissionsExt;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let locked_dir = root.join("locked");
         fs::create_dir(&locked_dir).unwrap();
         File::create(locked_dir.join("secret.ts")).unwrap();
-        
+
         // Remove read permissions
         let mut perms = fs::metadata(&locked_dir).unwrap().permissions();
         perms.set_mode(0o000);
         fs::set_permissions(&locked_dir, perms).unwrap();
-        
+
         let result = scan_directory(root, &[]);
-        
+
         // Restore permissions so tempdir cleanup works
         let mut perms = fs::metadata(&locked_dir).unwrap().permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&locked_dir, perms).unwrap();
-        
+
         // It should not fail, just return empty list (or list without secret.ts)
         let files = result.unwrap();
         assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_gitignore_respected() {
+        use std::io::Write;
+
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+
+        // Create .gitignore file
+        let gitignore_path = root.join(".gitignore");
+        let mut gitignore = File::create(&gitignore_path).unwrap();
+        writeln!(gitignore, "node_modules/").unwrap();
+        writeln!(gitignore, "*.log").unwrap();
+        writeln!(gitignore, "build/").unwrap();
+        drop(gitignore);
+
+        // Create directory structure
+        let node_modules = root.join("node_modules");
+        fs::create_dir(&node_modules).unwrap();
+        File::create(node_modules.join("package.js")).unwrap();
+
+        let build = root.join("build");
+        fs::create_dir(&build).unwrap();
+        File::create(build.join("output.js")).unwrap();
+
+        // These should be scanned
+        File::create(root.join("main.ts")).unwrap();
+        File::create(root.join("app.js")).unwrap();
+
+        // These should be ignored by .gitignore
+        File::create(root.join("debug.log")).unwrap();
+        File::create(root.join("error.log")).unwrap();
+
+        // Run scan
+        let result = scan_directory(root, &[]).unwrap();
+
+        // Verify only non-ignored files are included
+        let file_names: Vec<_> = result.iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
+
+        println!("Found files: {:?}", file_names);
+
+        // Should find main.ts and app.js
+        assert!(file_names.contains(&"main.ts"), "main.ts should be included");
+        assert!(file_names.contains(&"app.js"), "app.js should be included");
+
+        // Should NOT find files in node_modules, build, or .log files
+        assert!(!file_names.contains(&"package.js"), "node_modules/package.js should be ignored");
+        assert!(!file_names.contains(&"output.js"), "build/output.js should be ignored");
+        assert!(!file_names.contains(&"debug.log"), "debug.log should be ignored");
+        assert!(!file_names.contains(&"error.log"), "error.log should be ignored");
+
+        assert_eq!(result.len(), 2, "Should only find 2 files (main.ts, app.js)");
+    }
+
+    #[test]
+    fn test_nested_gitignore() {
+        use std::io::Write;
+
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+
+        // Root .gitignore
+        let mut root_gitignore = File::create(root.join(".gitignore")).unwrap();
+        writeln!(root_gitignore, "*.tmp").unwrap();
+        drop(root_gitignore);
+
+        // Create src directory with its own .gitignore
+        let src = root.join("src");
+        fs::create_dir(&src).unwrap();
+        let mut src_gitignore = File::create(src.join(".gitignore")).unwrap();
+        writeln!(src_gitignore, "test/").unwrap();
+        drop(src_gitignore);
+
+        // Create test directory inside src
+        let test = src.join("test");
+        fs::create_dir(&test).unwrap();
+        File::create(test.join("test.ts")).unwrap();
+
+        // Create files
+        File::create(root.join("main.ts")).unwrap();
+        File::create(root.join("temp.tmp")).unwrap(); // Ignored by root .gitignore
+        File::create(src.join("app.ts")).unwrap();
+
+        let result = scan_directory(root, &[]).unwrap();
+        let file_names: Vec<_> = result.iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
+
+        println!("Found files: {:?}", file_names);
+
+        // Should find main.ts and app.ts
+        assert!(file_names.contains(&"main.ts"));
+        assert!(file_names.contains(&"app.ts"));
+
+        // Should NOT find temp.tmp (ignored by root) or test.ts (ignored by src/.gitignore)
+        assert!(!file_names.contains(&"temp.tmp"), "temp.tmp should be ignored by root .gitignore");
+        assert!(!file_names.contains(&"test.ts"), "test/ dir should be ignored by src/.gitignore");
+
+        assert_eq!(result.len(), 2, "Should only find 2 files");
     }
 }
