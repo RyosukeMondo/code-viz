@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use crate::traits::FileSystem;
+use crate::scanner::scan_directory;
 use std::fs;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
 /// Production implementation of FileSystem that delegates to std::fs and walkdir.
 #[derive(Clone, Copy)]
@@ -22,17 +22,10 @@ impl FileSystem for RealFileSystem {
     }
 
     fn read_dir_recursive(&self, path: &Path) -> Result<Vec<PathBuf>> {
-        let mut files = Vec::new();
-        for entry in WalkDir::new(path)
-            .follow_links(true)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            if entry.file_type().is_file() {
-                files.push(entry.path().to_path_buf());
-            }
-        }
-        Ok(files)
+        // Use scan_directory which respects .gitignore files
+        // No additional exclude patterns (empty array)
+        scan_directory(path, &[])
+            .map_err(|e| anyhow::anyhow!("Failed to scan directory: {}", e))
     }
 
     fn write(&self, path: &Path, content: &str) -> Result<()> {

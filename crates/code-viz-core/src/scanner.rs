@@ -366,4 +366,43 @@ mod tests {
 
         assert_eq!(result.len(), 2, "Should only find 2 files");
     }
+
+    #[test]
+    #[ignore] // Run with: cargo test -- --ignored
+    fn test_real_repo_gitignore() {
+        // Test on the actual code-viz repository
+        let repo_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
+
+        println!("Testing on real repo: {}", repo_path.display());
+
+        let result = scan_directory(repo_path, &[]).unwrap();
+
+        println!("Total files found: {}", result.len());
+
+        // Check for node_modules files - should be ZERO
+        let node_modules_files: Vec<_> = result.iter()
+            .filter(|p| p.to_string_lossy().contains("node_modules"))
+            .collect();
+
+        println!("Files in node_modules: {}", node_modules_files.len());
+        if !node_modules_files.is_empty() {
+            println!("First 5 node_modules files:");
+            for f in node_modules_files.iter().take(5) {
+                println!("  - {}", f.display());
+            }
+        }
+
+        // Check for target/ files - should be ZERO
+        let target_files: Vec<_> = result.iter()
+            .filter(|p| p.to_string_lossy().contains("/target/"))
+            .collect();
+
+        println!("Files in target/: {}", target_files.len());
+
+        assert_eq!(node_modules_files.len(), 0, "node_modules should be excluded by .gitignore");
+        assert_eq!(target_files.len(), 0, "target/ should be excluded by .gitignore");
+
+        // Reasonable file count for this repo (should be < 500 without node_modules/target)
+        assert!(result.len() < 500, "File count too high: {} (node_modules likely included)", result.len());
+    }
 }
