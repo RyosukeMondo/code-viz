@@ -657,6 +657,7 @@ dependencies = [
  "bincode",
  "git2",
  "globset",
+ "ignore",
  "insta",
  "rayon",
  "serde",

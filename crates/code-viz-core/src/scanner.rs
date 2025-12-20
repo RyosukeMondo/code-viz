@@ -1,7 +1,7 @@
 use globset::{Glob, GlobSetBuilder};
+use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use walkdir::{DirEntry, WalkDir};
 
 #[tracing::instrument(skip(exclude_patterns), fields(path = %path.display(), pattern_count = exclude_patterns.len()))]
 pub fn scan_directory(
@@ -35,35 +35,30 @@ pub fn scan_directory(
 
     let root_path = path.to_path_buf(); // Capture for closure
 
-    let walker = WalkDir::new(path)
+    // Use ignore::WalkBuilder which respects .gitignore, .ignore, etc.
+    let walker = WalkBuilder::new(path)
         .follow_links(false)
-        .into_iter()
-        .filter_entry(move |e| {
-            if e.depth() == 0 {
+        .git_ignore(true) // Respect .gitignore files
+        .git_global(true) // Respect global gitignore
+        .git_exclude(true) // Respect .git/info/exclude
+        .hidden(true) // Skip hidden files/dirs (except .ts/.js which we'll handle)
+        .build()
+        .filter_map(|result| result.ok()) // Skip errors, log them separately
+        .filter(move |entry| {
+            let path = entry.path();
+
+            // Allow root directory
+            if entry.depth() == 0 {
                 return true;
             }
-            let path = e.path();
-            // Skip hidden directories/files, but allow .ts/.js if they are hidden (unlikely but per spec)
-            // Standard "skip hidden" logic:
-            if is_hidden(e) {
-                 // Exception: .ts/.js files
-                 if let Some(ext) = path.extension() {
-                     let ext_str = ext.to_string_lossy();
-                     if ext_str == "ts" || ext_str == "js" {
-                         return true; // Keep it
-                     }
-                 }
-                 return false; // Skip hidden
+
+            // Check additional exclude patterns (on top of gitignore)
+            let relative_path = path.strip_prefix(&root_path).unwrap_or(path);
+            if glob_set.is_match(relative_path) {
+                return false;
             }
 
-            // Check exclusions
-            // globset matches against paths. We should match relative path if possible, or name.
-            // Usually exclusions are like "node_modules/**".
-            // Let's assume patterns match against the path.
-
-            // Strip root prefix to match against relative patterns
-            let relative_path = path.strip_prefix(&root_path).unwrap_or(path);
-            !glob_set.is_match(relative_path)
+            true
         });
 
     let mut files = Vec::new();
@@ -71,50 +66,46 @@ pub fn scan_directory(
     let mut skipped_permission = 0;
 
     for entry in walker {
-        match entry {
-            Ok(entry) => {
-                let path = entry.path();
-                if path.is_dir() {
+        let path = entry.path();
+
+        // Skip directories
+        if path.is_dir() {
+            continue;
+        }
+
+        // Check file size > 10MB
+        // Use std::fs::metadata directly since ignore::DirEntry might not have metadata cached
+        match std::fs::metadata(path) {
+            Ok(metadata) => {
+                if metadata.len() > 10 * 1024 * 1024 {
+                    tracing::warn!(
+                        path = %path.display(),
+                        size_mb = metadata.len() / (1024 * 1024),
+                        "Skipping large file (>10MB)"
+                    );
+                    skipped_large += 1;
                     continue;
-                }
-
-                // Check file size > 10MB
-                match entry.metadata() {
-                    Ok(metadata) => {
-                        if metadata.len() > 10 * 1024 * 1024 {
-                            tracing::warn!(path = %path.display(), size_mb = metadata.len() / (1024 * 1024), "Skipping large file (>10MB)");
-                            skipped_large += 1;
-                            continue;
-                        }
-                    }
-                    Err(e) => {
-                         tracing::warn!(path = %path.display(), error = %e, "Failed to get metadata, skipping");
-                         continue;
-                    }
-                }
-
-                // Filter by extension
-                if let Some(ext) = path.extension() {
-                    let ext_str = ext.to_string_lossy();
-                    match ext_str.as_ref() {
-                        "ts" | "tsx" | "js" | "jsx" | "rs" | "py" | "go" | "cpp" | "cc" | "cxx" | "hpp" | "h" => {
-                             files.push(path.to_path_buf());
-                        }
-                        _ => {}
-                    }
                 }
             }
             Err(e) => {
-                // Handle permission errors gracefully
-                if let Some(io_err) = e.io_error() {
-                    if io_err.kind() == std::io::ErrorKind::PermissionDenied {
-                        tracing::warn!(error = %e, "Permission denied while scanning");
-                        skipped_permission += 1;
-                        continue;
-                    }
+                if e.kind() == std::io::ErrorKind::PermissionDenied {
+                    tracing::warn!(path = %path.display(), "Permission denied");
+                    skipped_permission += 1;
+                } else {
+                    tracing::warn!(path = %path.display(), error = %e, "Failed to get metadata");
                 }
-                // Other errors might be strictly IO or loops
-                tracing::warn!(error = %e, "Error scanning entry");
+                continue;
+            }
+        }
+
+        // Filter by extension
+        if let Some(ext) = path.extension() {
+            let ext_str = ext.to_string_lossy();
+            match ext_str.as_ref() {
+                "ts" | "tsx" | "js" | "jsx" | "rs" | "py" | "go" | "cpp" | "cc" | "cxx" | "hpp" | "h" => {
+                    files.push(path.to_path_buf());
+                }
+                _ => {}
             }
         }
     }
@@ -129,14 +120,6 @@ pub fn scan_directory(
     );
 
     Ok(files)
-}
-
-fn is_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| s.starts_with('.') && s != "." && s != "..")
-        .unwrap_or(false)
 }
 
 #[derive(Debug, Error)]

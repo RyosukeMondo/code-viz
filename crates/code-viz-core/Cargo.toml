@@ -13,6 +13,7 @@ rayon = { workspace = true }
 thiserror = { workspace = true }
 walkdir = { workspace = true }
 globset = { workspace = true }
+ignore = "0.4"
 tracing = { workspace = true }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
