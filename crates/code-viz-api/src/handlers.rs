@@ -182,7 +182,8 @@ mod tests {
             .to_string_lossy()
             .to_string();
 
-        let result = analyze_repository_handler(ctx, fs, current_dir, None).await;
+        let git = code_viz_core::context::RealGit::new();
+        let result = analyze_repository_handler(ctx, fs, git, current_dir, None).await;
         assert!(result.is_ok(), "Handler should succeed: {:?}", result);
     }
 

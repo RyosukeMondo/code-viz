@@ -67,7 +67,7 @@ pub fn run(
     // Use code-viz-commands to run analysis
     let mut result = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(code_viz_commands::analyze_repository(&path, ctx.clone(), fs.clone()))
+        .block_on(code_viz_commands::analyze_repository(&path, ctx.clone(), fs.clone(), &code_viz_core::context::RealGit::new()))
         .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
 
     // Perform dead code analysis if enabled

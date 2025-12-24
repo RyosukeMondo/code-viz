@@ -54,7 +54,8 @@ pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppCont
     if format != "json" {
         println!("Performing initial analysis...");
     }
-    let mut current_result = analyze_repository(&path, ctx.clone(), fs.clone()).await?;
+    let git = code_viz_core::context::RealGit::new();
+    let mut current_result = analyze_repository(&path, ctx.clone(), fs.clone(), &git).await?;
     print_output(&current_result, &format)?;
 
     // Setup channel

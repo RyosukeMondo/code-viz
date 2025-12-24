@@ -80,7 +80,8 @@ pub async fn post_analyze(
     let fs = RealFileSystem::new();
 
     // Call the shared SSOT handler (same as Tauri uses)
-    let tree = analyze_repository_handler(ctx, fs, req.path, req.request_id).await?;
+    let git = code_viz_core::context::RealGit::new();
+    let tree = analyze_repository_handler(ctx, fs, git, req.path, req.request_id).await?;
 
     Ok(Json(tree))
 }
