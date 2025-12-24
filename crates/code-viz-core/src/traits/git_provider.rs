@@ -33,6 +33,8 @@ pub struct BlameLine {
     pub author: String,
 }
 
+use std::collections::HashMap;
+
 /// GitProvider abstracts Git operations required for analysis.
 #[async_trait]
 pub trait GitProvider: Send + Sync {
@@ -44,4 +46,11 @@ pub trait GitProvider: Send + Sync {
 
     /// Get blame information for a specific file.
     async fn get_blame(&self, file_path: &Path) -> Result<BlameInfo>;
+
+    async fn get_churn_summary(
+        &self,
+        path: &Path,
+        from: Option<&str>,
+        to: &str,
+    ) -> Result<HashMap<PathBuf, (usize, usize)>>;
 }

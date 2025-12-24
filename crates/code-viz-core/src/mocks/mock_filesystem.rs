@@ -61,7 +61,8 @@ impl FileSystem for MockFileSystem {
     fn read_dir_recursive(&self, path: &Path) -> Result<Vec<PathBuf>> {
         self.reads.lock().unwrap().push(path.to_path_buf());
         let files = self.files.lock().unwrap();
-        let result: Vec<PathBuf> = files.keys()
+        let result: Vec<PathBuf> = files
+            .keys()
             .filter(|p| p.starts_with(path))
             .cloned()
             .collect();

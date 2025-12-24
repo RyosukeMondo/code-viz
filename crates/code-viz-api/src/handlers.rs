@@ -80,6 +80,7 @@ where
             &repo_path,
             self.ctx.clone(),
             self.fs.clone(),
+            &self.git.clone(),
         )
         .await
         .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
@@ -119,19 +120,21 @@ where
 ///
 /// These are convenience wrappers for simple function-based APIs.
 /// Useful for Tauri which prefers free functions.
-pub async fn analyze_repository_handler<C, F>(
+pub async fn analyze_repository_handler<C, F, G>(
     ctx: C,
     fs: F,
+    git: G,
     path: String,
     _request_id: Option<String>,
 ) -> Result<TreeNode, ApiError>
 where
     C: AppContext,
     F: FileSystem,
+    G: GitProvider,
 {
     let repo_path = PathBuf::from(&path);
 
-    let analysis_result = code_viz_commands::analyze_repository(&repo_path, ctx, fs)
+    let analysis_result = code_viz_commands::analyze_repository(&repo_path, ctx, fs, &git)
         .await
         .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
 

@@ -1,8 +1,39 @@
-use crate::models::FileMetrics;
+use crate::models::{CodeChurn, FileMetrics};
 use crate::parser::LanguageParser;
+use crate::traits::GitProvider;
 use std::path::Path;
 use std::time::SystemTime;
 use thiserror::Error;
+
+use std::collections::HashMap;
+
+pub async fn calculate_churn_summary(
+    git_provider: &impl GitProvider,
+    path: &Path,
+) -> Result<HashMap<PathBuf, CodeChurn>, MetricsError> {
+    let summary = git_provider
+        .get_churn_summary(path, Some("HEAD~1"), "HEAD")
+        .await
+        .map_err(|e| {
+            tracing::warn!("Could not get churn summary: {}", e);
+            MetricsError::GitError(e.to_string())
+        })?;
+
+    let result = summary
+        .into_iter()
+        .map(|(path, (added, deleted))| {
+            (
+                path,
+                CodeChurn {
+                    added_lines: added,
+                    deleted_lines: deleted,
+                },
+            )
+        })
+        .collect();
+
+    Ok(result)
+}
 
 pub fn calculate_metrics(
     path: &Path,
@@ -30,6 +61,7 @@ pub fn calculate_metrics(
         dead_function_count: None,
         dead_code_loc: None,
         dead_code_ratio: None,
+        code_churn: None,
     })
 }
 
@@ -120,6 +152,8 @@ fn is_in_range(row: usize, col: usize, range: &tree_sitter::Range) -> bool {
     true
 }
 
+use std::path::PathBuf;
+
 #[derive(Debug, Error)]
 pub enum MetricsError {
     #[error("Parse failed: {0}")]
@@ -127,6 +161,9 @@ pub enum MetricsError {
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Git error: {0}")]
+    GitError(String),
 }
 
 #[cfg(test)]

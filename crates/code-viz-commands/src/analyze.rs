@@ -1,9 +1,11 @@
+use crate::churn::calculate_code_churn;
+use crate::shared::scan_and_filter_files;
 use anyhow::{Context, Result};
-use code_viz_core::traits::{AppContext, FileSystem};
 use code_viz_core::models::{AnalysisResult, FileMetrics};
-use code_viz_core::{calculate_summary, parser, metrics};
+use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
+use code_viz_core::{calculate_summary, metrics, parser};
 use serde_json::json;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::SystemTime;
 
 /// Orchestrate repository analysis using trait-based dependencies.
@@ -11,39 +13,40 @@ pub async fn analyze_repository(
     path: &Path,
     ctx: impl AppContext,
     fs: impl FileSystem,
+    git: &impl GitProvider,
 ) -> Result<AnalysisResult> {
     ctx.report_progress(0.1, "Scanning directory...").await?;
 
-    // 1. Scan directory
-    let all_files = fs.read_dir_recursive(path)
-        .with_context(|| format!("Failed to scan directory: {}", path.display()))?;
-    
-    // 2. Filter supported files
-    let supported_files: Vec<PathBuf> = all_files.into_iter()
-        .filter(|p| {
-            if let Some(ext) = p.extension() {
-                let ext_str = ext.to_string_lossy();
-                matches!(ext_str.as_ref(), "ts" | "tsx" | "js" | "jsx" | "rs" | "py" | "go" | "cpp" | "cc" | "cxx" | "hpp" | "h")
-            } else {
-                false
-            }
-        })
-        .collect();
+    // 1. Scan and filter files
+    let supported_files = scan_and_filter_files(&fs, path)?;
 
     let total_files = supported_files.len();
-    ctx.report_progress(0.2, &format!("Found {} files to analyze", total_files)).await?;
+    ctx.report_progress(0.2, &format!("Found {} files to analyze", total_files))
+        .await?;
 
-    // 3. Process files
+    // 3. Calculate churn
+    let churn_map = calculate_code_churn(path, &ctx, &fs, git).await?;
+
+    // 4. Process files
     let mut results = Vec::new();
     for (i, file_path) in supported_files.iter().enumerate() {
         // Periodic progress reporting
         if total_files > 0 && i % (total_files / 10).max(1) == 0 {
             let percentage = 0.2 + (i as f32 / total_files as f32) * 0.7;
-            ctx.report_progress(percentage, &format!("Analyzing files ({}/{})", i, total_files)).await?;
+            ctx.report_progress(
+                percentage,
+                &format!("Analyzing files ({}/{})", i, total_files),
+            )
+            .await?;
         }
 
         match analyze_single_file(file_path, &fs).await {
-            Ok(metrics) => results.push(metrics),
+            Ok(mut metrics) => {
+                if let Some(churn) = churn_map.get(file_path) {
+                    metrics.code_churn = Some(churn.clone());
+                }
+                results.push(metrics)
+            }
             Err(e) => {
                 // Log error but continue with other files
                 // In a real app, we might want to report this to the UI

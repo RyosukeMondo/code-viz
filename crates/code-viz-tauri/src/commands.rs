@@ -20,9 +20,10 @@ pub async fn analyze_repository(
 ) -> Result<TreeNode, String> {
     let ctx = TauriContext::new(app);
     let fs = RealFileSystem::new();
+    let git = RealGit::new();
 
     // Call the shared SSOT handler
-    let api_tree = code_viz_api::analyze_repository_handler(ctx, fs, path, request_id)
+    let api_tree = code_viz_api::analyze_repository_handler(ctx, fs, git, path, request_id)
         .await
         .map_err(|e| e.to_user_message())?;
 

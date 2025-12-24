@@ -33,6 +33,17 @@ pub struct FileMetrics {
     /// Ratio of dead code to total code (only present when dead code analysis enabled)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dead_code_ratio: Option<f64>,
+
+    /// Code churn metrics (only present when git analysis is enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_churn: Option<CodeChurn>,
+}
+
+/// Represents code churn for a file.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct CodeChurn {
+    pub added_lines: usize,
+    pub deleted_lines: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

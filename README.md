@@ -17,6 +17,22 @@ CodeViz is a fast, parallelized CLI tool for analyzing codebase metrics (LOC, fu
 - ⚙️ **CI Integration**: Threshold enforcement and baseline comparison (fail CI on regression).
 - 📈 **Formats**: Output to JSON, CSV, or human-readable text.
 
+## Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Architecture](docs/architecture/)** - System architecture, design decisions, and diagrams
+  - [Architecture Overview](docs/architecture/ARCHITECTURE.md) - Trait-based DI architecture
+  - [Frontend-Backend Architecture](docs/architecture/diagrams/FRONTEND_BACKEND_ARCHITECTURE.md) - Full stack architecture with React + Tauri
+  - [Component Interaction](docs/architecture/diagrams/COMPONENT_INTERACTION.md) - Component flow and data flow diagrams
+- **[Guides](docs/guides/)** - Development workflows and feature guides
+  - [Fast Iteration Guide](docs/guides/development/fast-iteration.md) - Quick development workflow
+  - [Tauri CLI Guide](docs/guides/development/tauri-cli.md) - Tauri command reference
+- **[Testing](docs/testing/)** - Testing strategy and coverage reports
+- **[Troubleshooting](docs/troubleshooting/)** - Common issues and fixes
+
+See the [documentation index](docs/README.md) for the complete documentation structure.
+
 ## Installation
 
 ### From Source

@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use crate::traits::{Commit, Diff, BlameInfo, GitProvider};
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 /// Mock implementation of GitProvider for unit testing.
@@ -10,6 +11,8 @@ use std::sync::{Arc, Mutex};
 pub struct MockGit {
     commits: Arc<Mutex<Vec<Commit>>>,
     diffs: Arc<Mutex<Vec<(String, Option<String>, String)>>>,
+    mock_diffs: Arc<Mutex<HashMap<PathBuf, Diff>>>,
+    churn_summary: Arc<Mutex<HashMap<PathBuf, (usize, usize)>>>,
 }
 
 impl MockGit {
@@ -18,6 +21,8 @@ impl MockGit {
         Self {
             commits: Arc::new(Mutex::new(Vec::new())),
             diffs: Arc::new(Mutex::new(Vec::new())),
+            mock_diffs: Arc::new(Mutex::new(HashMap::new())),
+            churn_summary: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -42,6 +47,20 @@ impl MockGit {
             message: message.to_string(),
         })
     }
+
+    /// Add a mock diff for a specific file.
+    pub fn with_diff(self, path: &str, diff: Diff) -> Self {
+        self.mock_diffs
+            .lock()
+            .unwrap()
+            .insert(PathBuf::from(path), diff);
+        self
+    }
+
+    pub fn with_churn_summary(self, summary: HashMap<PathBuf, (usize, usize)>) -> Self {
+        *self.churn_summary.lock().unwrap() = summary;
+        self
+    }
 }
 
 #[async_trait]
@@ -54,14 +73,28 @@ impl GitProvider for MockGit {
         self.diffs.lock().unwrap().push((
             path.display().to_string(),
             from.map(|s| s.to_string()),
-            to.to_string()
+            to.to_string(),
         ));
-        Ok(Diff {
-            content: "Mock diff content".to_string(),
-        })
+
+        if let Some(diff) = self.mock_diffs.lock().unwrap().get(path) {
+            Ok(diff.clone())
+        } else {
+            Ok(Diff {
+                content: "".to_string(),
+            })
+        }
     }
 
     async fn get_blame(&self, _file_path: &Path) -> Result<BlameInfo> {
         Err(anyhow!("Mock blame not implemented"))
+    }
+
+    async fn get_churn_summary(
+        &self,
+        _path: &Path,
+        _from: Option<&str>,
+        _to: &str,
+    ) -> Result<HashMap<PathBuf, (usize, usize)>> {
+        Ok(self.churn_summary.lock().unwrap().clone())
     }
 }

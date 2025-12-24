@@ -2,7 +2,8 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use crate::traits::{Commit, Diff, BlameInfo, GitProvider};
 use git2::Repository;
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tokio::task;
 
 /// Production implementation of GitProvider that uses the git2 crate.
@@ -59,5 +60,16 @@ impl GitProvider for RealGit {
     async fn get_blame(&self, _file_path: &Path) -> Result<BlameInfo> {
         // TODO: Implement actual blame using git2
         Err(anyhow!("Blame implementation pending"))
+    }
+
+    async fn get_churn_summary(
+        &self,
+        _path: &Path,
+        _from: Option<&str>,
+        _to: &str,
+    ) -> Result<HashMap<PathBuf, (usize, usize)>> {
+        // TODO: Implement actual churn calculation using git2
+        // For now, return empty map (no churn data)
+        Ok(HashMap::new())
     }
 }
