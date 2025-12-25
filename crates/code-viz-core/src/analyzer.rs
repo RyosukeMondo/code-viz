@@ -1,3 +1,5 @@
+pub mod ai_commit_analyzer;
+
 use crate::models::{Summary, FileMetrics};
 use crate::scanner::ScanError;
 use crate::metrics::{self, MetricsError};

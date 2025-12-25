@@ -75,6 +75,10 @@ pub struct AnalysisResult {
     /// Results of code duplication analysis (if enabled)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duplication: Option<DuplicationAnalysis>,
+
+    /// AI commit analysis (only present when enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ai_commit_analysis: Option<AICommitAnalysis>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -139,4 +143,19 @@ impl Default for AnalysisConfig {
             enable_dead_code: false,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AICommitAnalysis {
+    /// Total number of commits scanned
+    pub total_commits: usize,
+
+    /// Number of commits identified as AI-generated
+    pub ai_generated_count: usize,
+
+    /// Confidence score for each AI-generated commit (SHA, score)
+    pub confidence_scores: Vec<(String, u8)>,
+
+    /// List of patterns that were detected
+    pub patterns_detected: Vec<String>,
 }

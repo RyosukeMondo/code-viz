@@ -58,6 +58,10 @@ enum Commands {
         /// Minimum number of lines for a code block to be considered a duplicate
         #[arg(long, default_value = "5")]
         min_duplicate_lines: usize,
+
+        /// Enable AI commit analysis
+        #[arg(long)]
+        ai_commits: bool,
     },
     /// Watch a directory for changes and re-analyze
     Watch {
@@ -124,7 +128,8 @@ enum ConfigSubcommand {
     Init,
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
@@ -139,11 +144,12 @@ fn main() -> anyhow::Result<()> {
             dead_code,
             duplicates,
             min_duplicate_lines,
+            ai_commits,
         } => {
             let ctx = CliContext::new(verbose);
             let fs = RealFileSystem::new();
             let git = RealGit::new();
-            
+
             commands::analyze::run(commands::analyze::AnalyzeConfig {
                 path,
                 format,
@@ -155,7 +161,8 @@ fn main() -> anyhow::Result<()> {
                 dead_code,
                 duplicates,
                 min_duplicate_lines,
-            }, ctx, fs, git)?;
+                ai_commits,
+            }, ctx, fs, git).await?;
         }
         Commands::Watch {
             path,
@@ -164,8 +171,7 @@ fn main() -> anyhow::Result<()> {
         } => {
             let ctx = CliContext::new(verbose);
             let fs = RealFileSystem::new();
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(commands::watch::run(path, format, verbose, ctx, fs))?;
+            commands::watch::run(path, format, verbose, ctx, fs).await?;
         }
         Commands::Diff { old, new } => {
             let fs = RealFileSystem::new();
@@ -190,7 +196,7 @@ fn main() -> anyhow::Result<()> {
             let fs = RealFileSystem::new();
             let git = RealGit::new();
 
-            commands::dead_code::run(path, format, min_confidence, exclude, verbose, threshold, output, ctx, fs, git)?;
+            commands::dead_code::run(path, format, min_confidence, exclude, verbose, threshold, output, ctx, fs, git).await?;
         }
     }
 

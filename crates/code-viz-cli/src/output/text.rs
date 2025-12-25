@@ -32,6 +32,23 @@ impl MetricsFormatter for TextFormatter {
             ).map_err(|_| FormatterError::FormattingFailed)?;
         }
 
+        if let Some(ai_analysis) = &result.ai_commit_analysis {
+            writeln!(output).map_err(|_| FormatterError::FormattingFailed)?;
+            writeln!(output, "AI Commit Analysis").map_err(|_| FormatterError::FormattingFailed)?;
+            writeln!(output, "==================").map_err(|_| FormatterError::FormattingFailed)?;
+            writeln!(output, "Total Commits Scanned: {}", ai_analysis.total_commits).map_err(|_| FormatterError::FormattingFailed)?;
+            writeln!(output, "AI-Generated Commits: {} ({:.1}%)", ai_analysis.ai_generated_count, if ai_analysis.total_commits > 0 { (ai_analysis.ai_generated_count as f32 / ai_analysis.total_commits as f32) * 100.0 } else { 0.0 }).map_err(|_| FormatterError::FormattingFailed)?;
+
+            if !ai_analysis.confidence_scores.is_empty() {
+                writeln!(output, "\nCommits with Highest Confidence:").map_err(|_| FormatterError::FormattingFailed)?;
+                let mut scores = ai_analysis.confidence_scores.clone();
+                scores.sort_by(|a, b| b.1.cmp(&a.1));
+                for (sha, score) in scores.iter().take(5) {
+                    writeln!(output, "  - {} ({}% confidence)", &sha[..7], score).map_err(|_| FormatterError::FormattingFailed)?;
+                }
+            }
+        }
+
         Ok(output)
     }
 }

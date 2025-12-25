@@ -19,7 +19,7 @@ pub enum DeadCodeError {
 
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 
-pub fn run(
+pub async fn run(
     path: PathBuf,
     format: String,
     min_confidence: u8,
@@ -41,9 +41,8 @@ pub fn run(
     let _ = builder.try_init();
 
     // Use code-viz-commands to run dead code analysis
-    let result = tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(code_viz_commands::calculate_dead_code(&path, ctx, fs.clone(), git))
+    let result = code_viz_commands::calculate_dead_code(&path, ctx, fs.clone(), git)
+        .await
         .map_err(|e| DeadCodeError::IoError(std::io::Error::other(e)))?;
 
     // Filter by minimum confidence

@@ -7,7 +7,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum AnalyzeError {
     #[error("Analysis failed: {0}")]
-    AnalysisFailed(#[from] code_viz_core::analyzer::AnalysisError),
+    AnalysisFailed(String),
 
     #[error("Formatting failed: {0}")]
     FormattingFailed(#[from] crate::output::FormatterError),
@@ -23,6 +23,9 @@ pub enum AnalyzeError {
 
     #[error("Dead code analysis failed: {0}")]
     DeadCodeFailed(String),
+
+    #[error("AI commit analysis failed: {0}")]
+    AICommitAnalysisFailed(String),
 }
 
 pub struct AnalyzeConfig {
@@ -37,16 +40,17 @@ pub struct AnalyzeConfig {
     pub dead_code: bool,
     pub duplicates: bool,
     pub min_duplicate_lines: usize,
+    pub ai_commits: bool,
 }
 
 use code_viz_commands::analyze::DuplicationConfig;
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 
-pub fn run(
+pub async fn run(
     config: AnalyzeConfig,
     ctx: impl AppContext + Clone,
     fs: impl FileSystem + Clone,
-    git: impl GitProvider,
+    git: impl GitProvider + Clone,
 ) -> Result<(), AnalyzeError> {
     let AnalyzeConfig {
         path,
@@ -59,6 +63,7 @@ pub fn run(
         dead_code,
         duplicates,
         min_duplicate_lines,
+        ai_commits,
     } = config;
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
@@ -84,21 +89,29 @@ pub fn run(
             &path,
             ctx.clone(),
             fs.clone(),
-            &code_viz_core::context::RealGit::new(),
+            &git,
             duplication_config,
         ))
-        .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
+        .map_err(|e| AnalyzeError::AnalysisFailed(e.to_string()))?;
 
     // Perform dead code analysis if enabled
     if dead_code {
         log::info!("Running dead code analysis");
-        let dead_code_result = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(code_viz_commands::calculate_dead_code(&path, ctx, fs.clone(), git))
+        let dead_code_result = code_viz_commands::calculate_dead_code(&path, ctx.clone(), fs.clone(), git.clone())
+            .await
             .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
 
         // Merge dead code info into result files
         merge_dead_code_results(&mut result.files, dead_code_result);
+    }
+
+    // Perform AI commit analysis if enabled
+    if ai_commits {
+        log::info!("Running AI commit analysis");
+        let ai_commit_result = code_viz_commands::analyze_ai_commits(&path, ctx, git)
+            .await
+            .map_err(|e| AnalyzeError::AICommitAnalysisFailed(e.to_string()))?;
+        result.ai_commit_analysis = Some(ai_commit_result);
     }
 
     // Handle baseline comparison

@@ -1,8 +1,9 @@
 use crate::churn::calculate_code_churn;
 use crate::shared::scan_and_filter_files;
 use anyhow::{Context, Result};
+use code_viz_core::analyzer;
 use code_viz_core::duplication::DuplicationDetector;
-use code_viz_core::models::{AnalysisResult, FileMetrics};
+use code_viz_core::models::{AICommitAnalysis, AnalysisResult, FileMetrics};
 use code_viz_core::parser::LanguageParser;
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 use code_viz_core::{calculate_summary, coupling, metrics, parser};
@@ -105,6 +106,7 @@ pub async fn analyze_repository(
         files: results,
         timestamp: SystemTime::now(),
         duplication,
+        ai_commit_analysis: None,
     };
 
     ctx.emit_event("analysis_complete", json!(final_result))
@@ -136,4 +138,17 @@ async fn analyze_single_file_with_source(path: &Path, source: &str) -> Result<Fi
 
     metrics::calculate_metrics(path, source, parser.as_ref(), None)
         .with_context(|| format!("Failed to calculate metrics for: {}", path.display()))
+}
+
+pub async fn analyze_ai_commits(
+    path: &Path,
+    ctx: impl AppContext,
+    git: impl GitProvider,
+) -> Result<AICommitAnalysis> {
+    ctx.report_progress(0.1, "Analyzing AI commits...")
+        .await?;
+    let result = analyzer::ai_commit_analyzer::analyze_ai_commits(&git, path).await?;
+    ctx.report_progress(1.0, "AI commit analysis complete")
+        .await?;
+    Ok(result)
 }

@@ -63,6 +63,7 @@ mod tests {
             summary,
             files,
             timestamp: SystemTime::now(),
+            ai_commit_analysis: None,
         }
     }
 

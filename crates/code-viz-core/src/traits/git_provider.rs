@@ -41,7 +41,7 @@ use std::collections::HashMap;
 
 /// GitProvider abstracts Git operations required for analysis.
 #[async_trait]
-pub trait GitProvider: Send + Sync {
+pub trait GitProvider: Send + Sync + Clone {
     /// Get the commit history for a given repository path.
     async fn get_history(&self, path: &Path) -> Result<Vec<Commit>>;
 
