@@ -26,11 +26,13 @@ pub struct BlameInfo {
 }
 
 /// Represents a single line in a Git blame report.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BlameLine {
     pub line_number: usize,
     pub commit_sha: String,
     pub author: String,
+    pub author_email: String,
+    pub timestamp: i64,
 }
 
 use std::collections::HashMap;

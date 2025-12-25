@@ -13,6 +13,7 @@ pub struct MockGit {
     diffs: Arc<Mutex<Vec<(String, Option<String>, String)>>>,
     mock_diffs: Arc<Mutex<HashMap<PathBuf, Diff>>>,
     churn_summary: Arc<Mutex<HashMap<PathBuf, (usize, usize)>>>,
+    blames: Arc<Mutex<Vec<BlameInfo>>>,
 }
 
 impl MockGit {
@@ -23,6 +24,7 @@ impl MockGit {
             diffs: Arc::new(Mutex::new(Vec::new())),
             mock_diffs: Arc::new(Mutex::new(HashMap::new())),
             churn_summary: Arc::new(Mutex::new(HashMap::new())),
+            blames: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -61,6 +63,12 @@ impl MockGit {
         *self.churn_summary.lock().unwrap() = summary;
         self
     }
+
+    /// Add blame information to the mock git provider.
+    pub fn with_blame(self, blame: BlameInfo) -> Self {
+        self.blames.lock().unwrap().push(blame);
+        self
+    }
 }
 
 #[async_trait]
@@ -85,8 +93,20 @@ impl GitProvider for MockGit {
         }
     }
 
-    async fn get_blame(&self, _file_path: &Path) -> Result<BlameInfo> {
-        Err(anyhow!("Mock blame not implemented"))
+    async fn get_blame(&self, file_path: &Path) -> Result<BlameInfo> {
+        let blames = self.blames.lock().unwrap();
+        let file_path_buf = file_path.to_path_buf();
+
+        for blame in blames.iter() {
+            if blame.file_path == file_path_buf {
+                return Ok(blame.clone());
+            }
+        }
+
+        Err(anyhow!(
+            "No mock blame data found for file '{}'",
+            file_path.display()
+        ))
     }
 
     async fn get_churn_summary(
