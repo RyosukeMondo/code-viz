@@ -57,4 +57,7 @@ pub trait GitProvider: Send + Sync + Clone {
         from: Option<&str>,
         to: &str,
     ) -> Result<HashMap<PathBuf, (usize, usize)>>;
+
+    /// Get the content of a file at a specific revision.
+    async fn get_file_content_at_revision(&self, file_path: &Path, sha: &str) -> Result<String>;
 }

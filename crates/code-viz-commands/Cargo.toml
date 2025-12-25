@@ -18,3 +18,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt", "sync", "macros", "rt-multi-thread"] }
 tracing = { workspace = true }
+chrono = { version = "0.4.42", features = ["serde"] }

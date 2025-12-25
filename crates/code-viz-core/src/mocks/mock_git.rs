@@ -16,6 +16,7 @@ pub struct MockGit {
     blames: Arc<Mutex<Vec<BlameInfo>>>,
     diff_calls: Arc<Mutex<Vec<(String, Option<String>, String)>>>,
     mock_diff: Arc<Mutex<Option<Diff>>>,
+    file_contents: Arc<Mutex<HashMap<(PathBuf, String), String>>>,
 }
 
 impl MockGit {
@@ -29,6 +30,7 @@ impl MockGit {
             blames: Arc::new(Mutex::new(Vec::new())),
             diff_calls: Arc::new(Mutex::new(Vec::new())),
             mock_diff: Arc::new(Mutex::new(None)),
+            file_contents: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -77,6 +79,15 @@ impl MockGit {
     /// Add blame information to the mock git provider.
     pub fn with_blame(self, blame: BlameInfo) -> Self {
         self.blames.lock().unwrap().push(blame);
+        self
+    }
+
+    /// Add mock file content for a specific revision.
+    pub fn with_file_content(self, path: &Path, sha: &str, content: &str) -> Self {
+        self.file_contents
+            .lock()
+            .unwrap()
+            .insert((path.to_path_buf(), sha.to_string()), content.to_string());
         self
     }
 }
@@ -128,5 +139,15 @@ impl GitProvider for MockGit {
         _to: &str,
     ) -> Result<HashMap<PathBuf, (usize, usize)>> {
         Ok(self.churn_summary.lock().unwrap().clone())
+    }
+
+    async fn get_file_content_at_revision(&self, file_path: &Path, sha: &str) -> Result<String> {
+        let key = (file_path.to_path_buf(), sha.to_string());
+        let contents = self.file_contents.lock().unwrap();
+        
+        contents
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| anyhow!("Mock content not found for {}@{}", file_path.display(), sha))
     }
 }

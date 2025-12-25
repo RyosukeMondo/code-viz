@@ -22,28 +22,55 @@ impl RealGit {
 #[async_trait]
 impl GitProvider for RealGit {
     async fn get_history(&self, path: &Path) -> Result<Vec<Commit>> {
-        let repo_path = path.to_path_buf();
+        let path = path.to_path_buf();
         task::spawn_blocking(move || {
-            let repo = Repository::open(&repo_path)
-                .with_context(|| format!("Failed to open repository at {}", repo_path.display()))?;
-            
-            let mut revwalk = repo.revwalk()
-                .context("Failed to create revwalk")?;
-            revwalk.push_head()
-                .context("Failed to push HEAD to revwalk")?;
+            let repo = Repository::discover(&path)
+                .with_context(|| format!("Failed to discover repository at {}", path.display()))?;
+
+            let workdir = repo.workdir().context("Repository is bare")?;
+            let relative_path = path.strip_prefix(workdir)
+                .with_context(|| "File path is not inside the repository workdir")?;
+
+            let mut revwalk = repo.revwalk().context("Failed to create revwalk")?;
+            revwalk.push_head().context("Failed to push HEAD to revwalk")?;
+            revwalk.set_sorting(git2::Sort::TIME)?;
 
             let mut commits = Vec::new();
-            for id in revwalk {
-                let id = id.context("Failed to get commit ID")?;
-                let commit = repo.find_commit(id)
-                    .context("Failed to find commit")?;
-                
-                commits.push(Commit {
-                    sha: commit.id().to_string(),
-                    author: commit.author().name().unwrap_or("Unknown").to_string(),
-                    timestamp: commit.time().seconds(),
-                    message: commit.message().unwrap_or("").to_string(),
-                });
+
+            for oid_result in revwalk {
+                let oid = oid_result.context("Failed to get commit ID")?;
+                let commit = repo.find_commit(oid).context("Failed to find commit")?;
+                let tree = commit.tree().context("Failed to get commit tree")?;
+
+                let mut path_changed = false;
+                if let Some(parent) = commit.parents().next() {
+                    let parent_tree = parent.tree().context("Failed to get parent tree")?;
+                    let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)
+                        .context("Failed to create diff")?;
+
+                    for delta in diff.deltas() {
+                        if let Some(p) = delta.new_file().path() {
+                            if p == relative_path {
+                                path_changed = true;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    // Initial commit, check if the file exists in the tree
+                    if tree.get_path(relative_path).is_ok() {
+                        path_changed = true;
+                    }
+                }
+
+                if path_changed {
+                    commits.push(Commit {
+                        sha: commit.id().to_string(),
+                        author: commit.author().name().unwrap_or("Unknown").to_string(),
+                        timestamp: commit.time().seconds(),
+                        message: commit.message().unwrap_or("").to_string(),
+                    });
+                }
             }
             Ok(commits)
         })
@@ -220,5 +247,32 @@ impl GitProvider for RealGit {
         // TODO: Implement actual churn calculation using git2
         // For now, return empty map (no churn data)
         Ok(HashMap::new())
+    }
+
+    async fn get_file_content_at_revision(&self, file_path: &Path, sha: &str) -> Result<String> {
+        let file_path = file_path.to_path_buf();
+        let sha = sha.to_string();
+
+        task::spawn_blocking(move || {
+            let repo = Repository::discover(&file_path)
+                .with_context(|| format!("Failed to discover repository at {}", file_path.display()))?;
+
+            let workdir = repo.workdir().context("Repository is bare")?;
+            let relative_path = file_path.strip_prefix(workdir)
+                .with_context(|| "File path is not inside the repository workdir")?;
+
+            let oid = git2::Oid::from_str(&sha)?;
+            let commit = repo.find_commit(oid)?;
+
+            let tree = commit.tree()?;
+            let entry = tree.get_path(relative_path)?;
+
+            let object = entry.to_object(&repo)?;
+            let blob = object.as_blob().ok_or_else(|| anyhow!("Object is not a blob"))?;
+
+            Ok(String::from_utf8_lossy(blob.content()).to_string())
+        })
+        .await
+        .map_err(|e| anyhow!("Blocking task failed: {}", e))?
     }
 }

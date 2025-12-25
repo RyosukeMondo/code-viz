@@ -31,5 +31,7 @@ levenshtein = "1.0"
 md5 = "0.7"
 
 [dev-dependencies]
+assert_cmd.workspace = true
 insta = { workspace = true }
+predicates.workspace = true
 tempfile = { workspace = true }

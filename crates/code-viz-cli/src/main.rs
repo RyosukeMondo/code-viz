@@ -120,6 +120,15 @@ enum Commands {
         #[arg(long, short)]
         output: Option<PathBuf>,
     },
+    /// Generate a timeline of metrics for a file
+    Timeline {
+        /// Path to the file to analyze
+        file: PathBuf,
+
+        /// Start date for the timeline (e.g., "2023-01-01")
+        #[arg(long)]
+        since: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -197,6 +206,11 @@ async fn main() -> anyhow::Result<()> {
             let git = RealGit::new();
 
             commands::dead_code::run(path, format, min_confidence, exclude, verbose, threshold, output, ctx, fs, git).await?;
+        }
+        Commands::Timeline { file, since } => {
+            let git = RealGit::new();
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(commands::timeline::run(file, since, git))?;
         }
     }
 
