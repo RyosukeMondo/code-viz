@@ -52,7 +52,7 @@ impl SymbolGraphBuilder {
         let is_test = is_test_file(path);
 
         // Get the appropriate query based on language
-        let query = get_symbol_query(parser.language())?;
+        let query = get_symbol_query(parser.language_key())?;
         let mut cursor = QueryCursor::new();
 
         // Execute the query on the tree
@@ -131,7 +131,7 @@ impl SymbolGraphBuilder {
         let mut imports = Vec::new();
 
         // Get the appropriate query based on language
-        let query = get_import_query(parser.language())?;
+        let query = get_import_query(parser.language_key())?;
         let mut cursor = QueryCursor::new();
 
         // Execute the query on the tree

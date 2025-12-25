@@ -61,7 +61,7 @@ impl DuplicationDetector {
     fn parse_file(&self, path: &Path, content: &str, parser: &dyn LanguageParser) -> Vec<CodeBlock> {
         let mut tree_sitter_parser = Parser::new();
         tree_sitter_parser
-            .set_language(parser.tree_sitter_language())
+            .set_language(parser.get_language())
             .unwrap();
         let tree = tree_sitter_parser.parse(content, None).unwrap();
 

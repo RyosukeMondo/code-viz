@@ -2,6 +2,7 @@
 
 pub mod analyzer;
 pub mod cache;
+pub mod coupling;
 pub mod duplication;
 pub mod metrics;
 pub mod models;

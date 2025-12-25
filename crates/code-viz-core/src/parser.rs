@@ -4,8 +4,8 @@ use thiserror::Error;
 use tree_sitter::{Language, Parser, Query, QueryCursor, Tree};
 
 pub trait LanguageParser: Send + Sync {
-    fn language(&self) -> &str;
-    fn tree_sitter_language(&self) -> Language;
+    fn language_key(&self) -> &'static str;
+    fn get_language(&self) -> Language;
     fn parse(&self, source: &str) -> Result<Tree, ParseError>;
     fn count_functions(&self, tree: &Tree) -> usize;
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range>;
@@ -39,14 +39,14 @@ fn parse_with_language(language: Language, source: &str) -> Result<Tree, ParseEr
 
 pub struct TypeScriptParser;
 impl LanguageParser for TypeScriptParser {
-    fn language(&self) -> &str {
+    fn language_key(&self) -> &'static str {
         "typescript"
     }
-    fn tree_sitter_language(&self) -> Language {
+    fn get_language(&self) -> Language {
         tree_sitter_typescript::language_typescript()
     }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(self.tree_sitter_language(), source)
+        parse_with_language(self.get_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -78,14 +78,14 @@ impl LanguageParser for TypeScriptParser {
 
 pub struct TsxParser;
 impl LanguageParser for TsxParser {
-    fn language(&self) -> &str {
+    fn language_key(&self) -> &'static str {
         "tsx"
     }
-    fn tree_sitter_language(&self) -> Language {
+    fn get_language(&self) -> Language {
         tree_sitter_typescript::language_tsx()
     }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(self.tree_sitter_language(), source)
+        parse_with_language(self.get_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -117,14 +117,14 @@ impl LanguageParser for TsxParser {
 
 pub struct JavaScriptParser;
 impl LanguageParser for JavaScriptParser {
-    fn language(&self) -> &str {
+    fn language_key(&self) -> &'static str {
         "javascript"
     }
-    fn tree_sitter_language(&self) -> Language {
+    fn get_language(&self) -> Language {
         tree_sitter_javascript::language()
     }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(self.tree_sitter_language(), source)
+        parse_with_language(self.get_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -156,14 +156,14 @@ impl LanguageParser for JavaScriptParser {
 
 pub struct RustParser;
 impl LanguageParser for RustParser {
-    fn language(&self) -> &str {
+    fn language_key(&self) -> &'static str {
         "rust"
     }
-    fn tree_sitter_language(&self) -> Language {
+    fn get_language(&self) -> Language {
         tree_sitter_rust::language()
     }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(self.tree_sitter_language(), source)
+        parse_with_language(self.get_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -195,14 +195,14 @@ impl LanguageParser for RustParser {
 
 pub struct PythonParser;
 impl LanguageParser for PythonParser {
-    fn language(&self) -> &str {
+    fn language_key(&self) -> &'static str {
         "python"
     }
-    fn tree_sitter_language(&self) -> Language {
+    fn get_language(&self) -> Language {
         tree_sitter_python::language()
     }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(self.tree_sitter_language(), source)
+        parse_with_language(self.get_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -234,14 +234,14 @@ impl LanguageParser for PythonParser {
 
 pub struct GoParser;
 impl LanguageParser for GoParser {
-    fn language(&self) -> &str {
+    fn language_key(&self) -> &'static str {
         "go"
     }
-    fn tree_sitter_language(&self) -> Language {
+    fn get_language(&self) -> Language {
         tree_sitter_go::language()
     }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(self.tree_sitter_language(), source)
+        parse_with_language(self.get_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -273,14 +273,14 @@ impl LanguageParser for GoParser {
 
 pub struct CppParser;
 impl LanguageParser for CppParser {
-    fn language(&self) -> &str {
+    fn language_key(&self) -> &'static str {
         "cpp"
     }
-    fn tree_sitter_language(&self) -> Language {
+    fn get_language(&self) -> Language {
         tree_sitter_cpp::language()
     }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(self.tree_sitter_language(), source)
+        parse_with_language(self.get_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -328,7 +328,7 @@ pub fn get_parser(language: &str) -> Result<Box<dyn LanguageParser>, ParseError>
         }
     };
 
-    tracing::debug!(parser_language = parser.language(), "Parser created successfully");
+    tracing::debug!(parser_language = parser.language_key(), "Parser created successfully");
     Ok(parser)
 }
 

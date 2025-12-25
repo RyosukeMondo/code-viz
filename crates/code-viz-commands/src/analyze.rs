@@ -5,7 +5,7 @@ use code_viz_core::duplication::DuplicationDetector;
 use code_viz_core::models::{AnalysisResult, FileMetrics};
 use code_viz_core::parser::LanguageParser;
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
-use code_viz_core::{calculate_summary, metrics, parser};
+use code_viz_core::{calculate_summary, coupling, metrics, parser};
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::Path;
@@ -73,9 +73,13 @@ pub async fn analyze_repository(
         }
     }
 
-    // 4. Run duplication analysis if enabled
+    // 4. Calculate coupling metrics
+    ctx.report_progress(0.85, "Analyzing dependencies...").await?;
+    coupling::calculate_coupling(&mut results, &fs, path);
+
+    // 5. Run duplication analysis if enabled
     let duplication = if let Some(config) = duplication_config {
-        ctx.report_progress(0.95, "Running duplication analysis...")
+        ctx.report_progress(0.9, "Running duplication analysis...")
             .await?;
         let detector = DuplicationDetector::new(config.min_lines, config.similarity_threshold);
         let mut parsers: HashMap<String, Box<dyn LanguageParser>> = HashMap::new();
@@ -92,7 +96,8 @@ pub async fn analyze_repository(
         None
     };
 
-    ctx.report_progress(0.9, "Calculating summary...").await?;
+    // 6. Calculate summary
+    ctx.report_progress(0.95, "Calculating summary...").await?;
     let summary = calculate_summary(&results);
 
     let final_result = AnalysisResult {

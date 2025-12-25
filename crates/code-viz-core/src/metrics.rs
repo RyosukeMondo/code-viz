@@ -53,7 +53,7 @@ pub fn calculate_metrics(
 
     Ok(FileMetrics {
         path: path.to_path_buf(),
-        language: parser.language().to_string(),
+        language: parser.language_key().to_string(),
         loc,
         size_bytes,
         function_count,
@@ -62,6 +62,7 @@ pub fn calculate_metrics(
         dead_code_loc: None,
         dead_code_ratio: None,
         code_churn: None,
+        coupling: None,
     })
 }
 

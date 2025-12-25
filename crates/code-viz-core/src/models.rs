@@ -3,6 +3,17 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CouplingMetrics {
+    /// Number of incoming dependencies (other modules that depend on this one)
+    pub afferent_coupling: usize,
+    /// Number of outgoing dependencies (modules this one depends on)
+    pub efferent_coupling: usize,
+    /// Instability metric (Efferent / (Afferent + Efferent))
+    /// Ranges from 0 (stable) to 1 (unstable).
+    pub instability: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FileMetrics {
     /// Relative path from repository root
     pub path: PathBuf,
@@ -37,6 +48,10 @@ pub struct FileMetrics {
     /// Code churn metrics (only present when git analysis is enabled)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code_churn: Option<CodeChurn>,
+
+    /// Dependency coupling metrics (only present when coupling analysis is enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coupling: Option<CouplingMetrics>,
 }
 
 /// Represents code churn for a file.
