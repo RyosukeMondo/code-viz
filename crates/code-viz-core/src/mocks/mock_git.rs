@@ -14,6 +14,8 @@ pub struct MockGit {
     mock_diffs: Arc<Mutex<HashMap<PathBuf, Diff>>>,
     churn_summary: Arc<Mutex<HashMap<PathBuf, (usize, usize)>>>,
     blames: Arc<Mutex<Vec<BlameInfo>>>,
+    diff_calls: Arc<Mutex<Vec<(String, Option<String>, String)>>>,
+    mock_diff: Arc<Mutex<Option<Diff>>>,
 }
 
 impl MockGit {
@@ -25,6 +27,8 @@ impl MockGit {
             mock_diffs: Arc::new(Mutex::new(HashMap::new())),
             churn_summary: Arc::new(Mutex::new(HashMap::new())),
             blames: Arc::new(Mutex::new(Vec::new())),
+            diff_calls: Arc::new(Mutex::new(Vec::new())),
+            mock_diff: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -40,6 +44,12 @@ impl MockGit {
         self
     }
 
+    /// Set the default diff to be returned by get_diff.
+    pub fn with_mock_diff(self, diff: Diff) -> Self {
+        *self.mock_diff.lock().unwrap() = Some(diff);
+        self
+    }
+
     /// Helper to add a commit using simple parameters.
     pub fn add_commit(self, sha: &str, author: &str, message: &str) -> Self {
         self.with_commit(Commit {
@@ -50,8 +60,8 @@ impl MockGit {
         })
     }
 
-    /// Add a mock diff for a specific file.
-    pub fn with_diff(self, path: &str, diff: Diff) -> Self {
+    /// Add a mock diff for a specific file path.
+    pub fn with_diff_for_path(self, path: &str, diff: Diff) -> Self {
         self.mock_diffs
             .lock()
             .unwrap()
@@ -78,17 +88,19 @@ impl GitProvider for MockGit {
     }
 
     async fn get_diff(&self, path: &Path, from: Option<&str>, to: &str) -> Result<Diff> {
-        self.diffs.lock().unwrap().push((
+        self.diff_calls.lock().unwrap().push((
             path.display().to_string(),
             from.map(|s| s.to_string()),
             to.to_string(),
         ));
 
-        if let Some(diff) = self.mock_diffs.lock().unwrap().get(path) {
-            Ok(diff.clone())
+        if let Some(diff) = self.mock_diff.lock().unwrap().clone() {
+            Ok(diff)
         } else {
             Ok(Diff {
-                content: "".to_string(),
+                added_lines: vec![],
+                deleted_lines: vec![],
+                modified_lines: vec![],
             })
         }
     }

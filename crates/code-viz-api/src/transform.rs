@@ -102,7 +102,7 @@ fn strip_prefix(path: &Path, prefix: &Path) -> PathBuf {
 ///
 /// # Examples
 /// ```
-/// use code_viz_tauri::transform::flat_to_hierarchy;
+/// use code_viz_api::transform::flat_to_hierarchy;
 /// use code_viz_core::models::FileMetrics;
 /// use std::path::PathBuf;
 /// use std::time::SystemTime;

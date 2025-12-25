@@ -13,9 +13,11 @@ pub struct Commit {
 }
 
 /// Represents a Git diff.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Diff {
-    pub content: String,
+    pub added_lines: Vec<String>,
+    pub deleted_lines: Vec<String>,
+    pub modified_lines: Vec<(String, String)>, // (old_line, new_line)
 }
 
 /// Represents Git blame information for a file.

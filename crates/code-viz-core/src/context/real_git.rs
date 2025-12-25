@@ -2,6 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use crate::traits::{Commit, Diff, BlameInfo, GitProvider};
 use git2::Repository;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::task;
@@ -50,11 +51,81 @@ impl GitProvider for RealGit {
         .map_err(|e| anyhow!("Blocking task failed: {}", e))?
     }
 
-    async fn get_diff(&self, _path: &Path, _from: Option<&str>, _to: &str) -> Result<Diff> {
-        // TODO: Implement actual diffing using git2
-        Ok(Diff {
-            content: "Diff implementation pending".to_string(),
+    async fn get_diff(&self, path: &Path, from: Option<&str>, to: &str) -> Result<Diff> {
+        let path_buf = path.to_path_buf();
+        let from_str = from.map(|s| s.to_string());
+        let to_str = to.to_string();
+
+        task::spawn_blocking(move || {
+            let repo = Repository::discover(&path_buf)
+                .with_context(|| format!("Failed to discover repository at {}", path_buf.display()))?;
+
+            let to_obj = repo.revparse_single(&to_str)
+                .with_context(|| format!("Failed to find 'to' revision: {}", to_str))?;
+            let to_tree = to_obj.peel_to_tree()
+                .with_context(|| format!("Failed to peel 'to' revision to tree: {}", to_str))?;
+
+            let mut diff_opts = git2::DiffOptions::new();
+            let diff = if let Some(from_str) = from_str {
+                let from_obj = repo.revparse_single(&from_str)
+                    .with_context(|| format!("Failed to find 'from' revision: {}", from_str))?;
+                let from_tree = from_obj.peel_to_tree()
+                    .with_context(|| format!("Failed to peel 'from' revision to tree: {}", from_str))?;
+                repo.diff_tree_to_tree(Some(&from_tree), Some(&to_tree), Some(&mut diff_opts))
+            } else {
+                repo.diff_tree_to_workdir_with_index(Some(&to_tree), Some(&mut diff_opts))
+            }
+            .context("Failed to create diff")?;
+
+            
+            let added_lines = RefCell::new(Vec::<String>::new());
+            let deleted_lines = RefCell::new(Vec::<String>::new());
+            let modified_lines = RefCell::new(Vec::new());
+            let hunk_added = RefCell::new(Vec::<String>::new());
+            let hunk_deleted = RefCell::new(Vec::<String>::new());
+
+            diff.foreach(
+                &mut |_, _| true, // file_cb
+                None,             // binary_cb
+                Some(&mut |_, _| { // hunk_cb
+                    let deleted = hunk_deleted.borrow();
+                    let added = hunk_added.borrow();
+                    let mut del_iter = deleted.iter().peekable();
+                    let mut add_iter = added.iter().peekable();
+
+                    while let (Some(del), Some(add)) = (del_iter.peek(), add_iter.peek()) {
+                        modified_lines.borrow_mut().push(((*del).clone(), (*add).clone()));
+                        del_iter.next();
+                        add_iter.next();
+                    }
+
+                    added_lines.borrow_mut().extend(add_iter.cloned());
+                    deleted_lines.borrow_mut().extend(del_iter.cloned());
+
+                    hunk_added.borrow_mut().clear();
+                    hunk_deleted.borrow_mut().clear();
+                    true
+                }),
+                Some(&mut |_, _, line| { // line_cb
+                    let content = String::from_utf8_lossy(line.content()).to_string();
+                    match line.origin() {
+                        '+' => hunk_added.borrow_mut().push(content),
+                        '-' => hunk_deleted.borrow_mut().push(content),
+                        _ => {}
+                    }
+                    true
+                }),
+            )
+            .context("Failed to process diff")?;
+
+            Ok(Diff {
+                added_lines: added_lines.into_inner(),
+                deleted_lines: deleted_lines.into_inner(),
+                modified_lines: modified_lines.into_inner(),
+            })
         })
+        .await
+        .map_err(|e| anyhow!("Blocking task for diff failed: {}", e))?
     }
 
     async fn get_blame(&self, file_path: &Path) -> Result<BlameInfo> {

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::context::{WebContext, RealFileSystem, RealGit};
 
 /// Request body for repository analysis
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalyzeRequest {
     pub path: String,
@@ -24,7 +24,7 @@ pub struct AnalyzeRequest {
 }
 
 /// Request body for dead code analysis
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeadCodeRequest {
     pub path: String,
