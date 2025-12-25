@@ -1,6 +1,6 @@
 {
   "filePath": ".spec-workflow/steering/tech.md",
-  "currentVersion": 2,
+  "currentVersion": 3,
   "snapshots": [
     {
       "version": 1,
@@ -17,6 +17,14 @@
       "trigger": "approved",
       "approvalId": "approval_1765809468587_lnlta1y1s",
       "approvalTitle": "Tech Steering Document"
+    },
+    {
+      "version": 3,
+      "filename": "snapshot-003.json",
+      "timestamp": "2025-12-25T02:38:00.304Z",
+      "trigger": "approved",
+      "approvalId": "approval_1766158823494_h4fz97oim",
+      "approvalTitle": "Updated tech.md with dual-head architecture"
     }
   ]
 }

@@ -4,6 +4,7 @@ use thiserror::Error;
 pub mod csv;
 pub mod dead_code;
 pub mod json;
+pub mod markdown;
 pub mod text;
 
 #[derive(Error, Debug)]
@@ -101,5 +102,20 @@ mod tests {
         assert!(output.contains("Total LOC:   150"));
         assert!(output.contains("Largest Files:"));
         assert!(output.contains("src/main.rs (100 LOC)"));
+    }
+
+    #[test]
+    fn test_markdown_formatter() {
+        let result = create_sample_result();
+        let formatter = markdown::MarkdownFormatter;
+        let output = formatter.format(&result).unwrap();
+        
+        assert!(output.contains("# Code Analysis Report"));
+        assert!(output.contains("## Summary"));
+        assert!(output.contains("| Total Files     | 2      |"));
+        assert!(output.contains("## LOC Breakdown by Language"));
+        assert!(output.contains("| rust      | 150            |"));
+        assert!(output.contains("## File Metrics"));
+        assert!(output.contains("| src/main.rs | rust | 100 | 5 |"));
     }
 }

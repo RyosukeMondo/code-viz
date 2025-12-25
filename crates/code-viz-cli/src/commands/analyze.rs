@@ -122,6 +122,7 @@ pub fn run(
         "json" => Box::new(output::json::JsonFormatter),
         "csv" => Box::new(output::csv::CsvFormatter),
         "text" => Box::new(output::text::TextFormatter),
+        "markdown" => Box::new(output::markdown::MarkdownFormatter),
         _ => Box::new(output::text::TextFormatter),
     };
 
