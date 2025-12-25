@@ -27,6 +27,8 @@ tree-sitter-rust = "0.20"
 tree-sitter-python = "0.20"
 tree-sitter-cpp = "0.20"
 tree-sitter-go = "0.20"
+levenshtein = "1.0"
+md5 = "0.7"
 
 [dev-dependencies]
 insta = { workspace = true }

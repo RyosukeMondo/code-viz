@@ -50,6 +50,14 @@ enum Commands {
         /// Enable dead code analysis
         #[arg(long)]
         dead_code: bool,
+
+        /// Enable code duplication analysis
+        #[arg(long)]
+        duplicates: bool,
+
+        /// Minimum number of lines for a code block to be considered a duplicate
+        #[arg(long, default_value = "5")]
+        min_duplicate_lines: usize,
     },
     /// Watch a directory for changes and re-analyze
     Watch {
@@ -129,6 +137,8 @@ fn main() -> anyhow::Result<()> {
             output,
             baseline,
             dead_code,
+            duplicates,
+            min_duplicate_lines,
         } => {
             let ctx = CliContext::new(verbose);
             let fs = RealFileSystem::new();
@@ -143,6 +153,8 @@ fn main() -> anyhow::Result<()> {
                 output,
                 baseline,
                 dead_code,
+                duplicates,
+                min_duplicate_lines,
             }, ctx, fs, git)?;
         }
         Commands::Watch {

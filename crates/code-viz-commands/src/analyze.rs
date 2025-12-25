@@ -1,12 +1,21 @@
 use crate::churn::calculate_code_churn;
 use crate::shared::scan_and_filter_files;
 use anyhow::{Context, Result};
+use code_viz_core::duplication::DuplicationDetector;
 use code_viz_core::models::{AnalysisResult, FileMetrics};
+use code_viz_core::parser::LanguageParser;
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 use code_viz_core::{calculate_summary, metrics, parser};
 use serde_json::json;
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::SystemTime;
+
+#[derive(Clone, Copy)]
+pub struct DuplicationConfig {
+    pub min_lines: usize,
+    pub similarity_threshold: f64,
+}
 
 /// Orchestrate repository analysis using trait-based dependencies.
 pub async fn analyze_repository(
@@ -14,6 +23,7 @@ pub async fn analyze_repository(
     ctx: impl AppContext,
     fs: impl FileSystem,
     git: &impl GitProvider,
+    duplication_config: Option<DuplicationConfig>,
 ) -> Result<AnalysisResult> {
     ctx.report_progress(0.1, "Scanning directory...").await?;
 
@@ -24,13 +34,13 @@ pub async fn analyze_repository(
     ctx.report_progress(0.2, &format!("Found {} files to analyze", total_files))
         .await?;
 
-    // 3. Calculate churn
+    // 2. Calculate churn
     let churn_map = calculate_code_churn(path, &ctx, &fs, git).await?;
 
-    // 4. Process files
+    // 3. Process files and collect contents for duplication analysis
     let mut results = Vec::new();
+    let mut file_contents = Vec::new();
     for (i, file_path) in supported_files.iter().enumerate() {
-        // Periodic progress reporting
         if total_files > 0 && i % (total_files / 10).max(1) == 0 {
             let percentage = 0.2 + (i as f32 / total_files as f32) * 0.7;
             ctx.report_progress(
@@ -40,50 +50,75 @@ pub async fn analyze_repository(
             .await?;
         }
 
-        match analyze_single_file(file_path, &fs).await {
-            Ok(mut metrics) => {
-                if let Some(churn) = churn_map.get(file_path) {
-                    metrics.code_churn = Some(churn.clone());
+        match fs.read_to_string(file_path) {
+            Ok(source) => {
+                // Collect contents if duplication analysis is enabled
+                if duplication_config.is_some() {
+                    file_contents.push((file_path.clone(), source.clone()));
                 }
-                results.push(metrics)
+
+                // Analyze file metrics
+                match analyze_single_file_with_source(file_path, &source).await {
+                    Ok(mut metrics) => {
+                        // Add churn data if available
+                        if let Some(churn) = churn_map.get(file_path) {
+                            metrics.code_churn = Some(churn.clone());
+                        }
+                        results.push(metrics)
+                    }
+                    Err(e) => tracing::warn!("Failed to analyze {}: {}", file_path.display(), e),
+                }
             }
-            Err(e) => {
-                // Log error but continue with other files
-                // In a real app, we might want to report this to the UI
-                tracing::warn!("Failed to analyze {}: {}", file_path.display(), e);
-            }
+            Err(e) => tracing::warn!("Failed to read {}: {}", file_path.display(), e),
         }
     }
 
-    ctx.report_progress(0.9, "Calculating summary...").await?;
+    // 4. Run duplication analysis if enabled
+    let duplication = if let Some(config) = duplication_config {
+        ctx.report_progress(0.95, "Running duplication analysis...")
+            .await?;
+        let detector = DuplicationDetector::new(config.min_lines, config.similarity_threshold);
+        let mut parsers: HashMap<String, Box<dyn LanguageParser>> = HashMap::new();
+        ["ts", "tsx", "js", "jsx", "rs", "py", "go", "cpp"]
+            .iter()
+            .for_each(|ext| {
+                if let Ok(parser) = parser::get_parser(ext) {
+                    parsers.insert(ext.to_string(), parser);
+                }
+            });
+        let analysis = detector.run(&file_contents, &parsers);
+        Some(analysis)
+    } else {
+        None
+    };
 
-    // 4. Calculate summary
+    ctx.report_progress(0.9, "Calculating summary...").await?;
     let summary = calculate_summary(&results);
 
     let final_result = AnalysisResult {
         summary,
         files: results,
         timestamp: SystemTime::now(),
+        duplication,
     };
 
-    // 5. Emit completion event
-    ctx.emit_event("analysis_complete", json!(final_result)).await?;
+    ctx.emit_event("analysis_complete", json!(final_result))
+        .await?;
     ctx.report_progress(1.0, "Analysis complete").await?;
 
     Ok(final_result)
 }
 
-/// Analyze a single file using the FileSystem trait.
-async fn analyze_single_file(path: &Path, fs: &impl FileSystem) -> Result<FileMetrics> {
-    let extension = path.extension()
+async fn analyze_single_file_with_source(path: &Path, source: &str) -> Result<FileMetrics> {
+    let extension = path
+        .extension()
         .and_then(|e| e.to_str())
         .context("File has no extension")?;
 
     let language_key = match extension {
         "ts" => "typescript",
         "tsx" => "tsx",
-        "js" => "javascript",
-        "jsx" => "javascript",
+        "js" | "jsx" => "javascript",
         "rs" => "rust",
         "py" => "python",
         "go" => "go",
@@ -94,11 +129,6 @@ async fn analyze_single_file(path: &Path, fs: &impl FileSystem) -> Result<FileMe
     let parser = parser::get_parser(language_key)
         .with_context(|| format!("Failed to get parser for language: {}", language_key))?;
 
-    let source = fs.read_to_string(path)
-        .with_context(|| format!("Failed to read file: {}", path.display()))?;
-
-    let metrics = metrics::calculate_metrics(path, &source, parser.as_ref(), None)
-        .with_context(|| format!("Failed to calculate metrics for: {}", path.display()))?;
-
-    Ok(metrics)
+    metrics::calculate_metrics(path, source, parser.as_ref(), None)
+        .with_context(|| format!("Failed to calculate metrics for: {}", path.display()))
 }

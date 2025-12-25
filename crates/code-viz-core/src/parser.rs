@@ -5,6 +5,7 @@ use tree_sitter::{Language, Parser, Query, QueryCursor, Tree};
 
 pub trait LanguageParser: Send + Sync {
     fn language(&self) -> &str;
+    fn tree_sitter_language(&self) -> Language;
     fn parse(&self, source: &str) -> Result<Tree, ParseError>;
     fn count_functions(&self, tree: &Tree) -> usize;
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range>;
@@ -41,8 +42,11 @@ impl LanguageParser for TypeScriptParser {
     fn language(&self) -> &str {
         "typescript"
     }
+    fn tree_sitter_language(&self) -> Language {
+        tree_sitter_typescript::language_typescript()
+    }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(tree_sitter_typescript::language_typescript(), source)
+        parse_with_language(self.tree_sitter_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -77,8 +81,11 @@ impl LanguageParser for TsxParser {
     fn language(&self) -> &str {
         "tsx"
     }
+    fn tree_sitter_language(&self) -> Language {
+        tree_sitter_typescript::language_tsx()
+    }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(tree_sitter_typescript::language_tsx(), source)
+        parse_with_language(self.tree_sitter_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -113,8 +120,11 @@ impl LanguageParser for JavaScriptParser {
     fn language(&self) -> &str {
         "javascript"
     }
+    fn tree_sitter_language(&self) -> Language {
+        tree_sitter_javascript::language()
+    }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(tree_sitter_javascript::language(), source)
+        parse_with_language(self.tree_sitter_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -149,8 +159,11 @@ impl LanguageParser for RustParser {
     fn language(&self) -> &str {
         "rust"
     }
+    fn tree_sitter_language(&self) -> Language {
+        tree_sitter_rust::language()
+    }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(tree_sitter_rust::language(), source)
+        parse_with_language(self.tree_sitter_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -185,8 +198,11 @@ impl LanguageParser for PythonParser {
     fn language(&self) -> &str {
         "python"
     }
+    fn tree_sitter_language(&self) -> Language {
+        tree_sitter_python::language()
+    }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(tree_sitter_python::language(), source)
+        parse_with_language(self.tree_sitter_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -221,8 +237,11 @@ impl LanguageParser for GoParser {
     fn language(&self) -> &str {
         "go"
     }
+    fn tree_sitter_language(&self) -> Language {
+        tree_sitter_go::language()
+    }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(tree_sitter_go::language(), source)
+        parse_with_language(self.tree_sitter_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -257,8 +276,11 @@ impl LanguageParser for CppParser {
     fn language(&self) -> &str {
         "cpp"
     }
+    fn tree_sitter_language(&self) -> Language {
+        tree_sitter_cpp::language()
+    }
     fn parse(&self, source: &str) -> Result<Tree, ParseError> {
-        parse_with_language(tree_sitter_cpp::language(), source)
+        parse_with_language(self.tree_sitter_language(), source)
     }
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();

@@ -35,8 +35,11 @@ pub struct AnalyzeConfig {
     pub output: Option<PathBuf>,
     pub baseline: Option<PathBuf>,
     pub dead_code: bool,
+    pub duplicates: bool,
+    pub min_duplicate_lines: usize,
 }
 
+use code_viz_commands::analyze::DuplicationConfig;
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 
 pub fn run(
@@ -54,6 +57,8 @@ pub fn run(
         output,
         baseline,
         dead_code,
+        duplicates,
+        min_duplicate_lines,
     } = config;
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
@@ -65,9 +70,23 @@ pub fn run(
     let _ = builder.try_init();
 
     // Use code-viz-commands to run analysis
+    let duplication_config = if duplicates {
+        Some(DuplicationConfig {
+            min_lines: min_duplicate_lines,
+            similarity_threshold: 0.8,
+        })
+    } else {
+        None
+    };
     let mut result = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(code_viz_commands::analyze_repository(&path, ctx.clone(), fs.clone(), &code_viz_core::context::RealGit::new()))
+        .block_on(code_viz_commands::analyze_repository(
+            &path,
+            ctx.clone(),
+            fs.clone(),
+            &code_viz_core::context::RealGit::new(),
+            duplication_config,
+        ))
         .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
 
     // Perform dead code analysis if enabled

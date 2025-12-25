@@ -2,6 +2,7 @@
 
 pub mod analyzer;
 pub mod cache;
+pub mod duplication;
 pub mod metrics;
 pub mod models;
 pub mod parser;

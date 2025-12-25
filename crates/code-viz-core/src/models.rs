@@ -56,6 +56,31 @@ pub struct AnalysisResult {
 
     /// When this analysis was performed
     pub timestamp: SystemTime,
+
+    /// Results of code duplication analysis (if enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duplication: Option<DuplicationAnalysis>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct CodeLocation {
+    pub path: PathBuf,
+    pub start_line: usize,
+    pub end_line: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DuplicatePair {
+    pub original: CodeLocation,
+    pub duplicate: CodeLocation,
+    pub similarity: f64,
+    pub line_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DuplicationAnalysis {
+    pub pairs: Vec<DuplicatePair>,
+    pub total_duplicated_loc: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
