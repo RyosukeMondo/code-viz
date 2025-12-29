@@ -393,6 +393,9 @@ mod tests {
             dead_function_count: None,
             dead_code_loc: None,
             dead_code_ratio: None,
+            code_churn: None,
+            coupling: None,
+            ai_bloat_index: None,
         }
     }
 
@@ -646,6 +649,9 @@ mod tests {
                 dead_function_count: None,
                 dead_code_loc: None,
                 dead_code_ratio: None,
+                code_churn: None,
+                coupling: None,
+                ai_bloat_index: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/older.rs"),
@@ -657,6 +663,9 @@ mod tests {
                 dead_function_count: None,
                 dead_code_loc: None,
                 dead_code_ratio: None,
+                code_churn: None,
+                coupling: None,
+                ai_bloat_index: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/newest.rs"),
@@ -668,6 +677,9 @@ mod tests {
                 dead_function_count: None,
                 dead_code_loc: None,
                 dead_code_ratio: None,
+                code_churn: None,
+                coupling: None,
+                ai_bloat_index: None,
             },
         ];
 

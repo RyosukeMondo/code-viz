@@ -37,6 +37,8 @@ mod tests {
                 dead_code_loc: None,
                 dead_code_ratio: None,
                 code_churn: None,
+                coupling: None,
+                ai_bloat_index: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/lib.rs"),
@@ -49,6 +51,8 @@ mod tests {
                 dead_code_loc: None,
                 dead_code_ratio: None,
                 code_churn: None,
+                coupling: None,
+                ai_bloat_index: None,
             },
         ];
 
@@ -63,6 +67,7 @@ mod tests {
             summary,
             files,
             timestamp: SystemTime::now(),
+            duplication: None,
             ai_commit_analysis: None,
         }
     }

@@ -130,6 +130,7 @@ mod tests {
             dead_code_ratio: None,
             code_churn: None,
             coupling: None,
+            ai_bloat_index: None,
         }
     }
 

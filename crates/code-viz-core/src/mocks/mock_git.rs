@@ -91,11 +91,11 @@ impl MockGit {
     }
 
     /// Add mock file content for a specific revision.
-    pub fn with_file_content(self, path: &Path, sha: &str, content: &str) -> Self {
+    pub fn with_file_content(self, sha: &str, path: &str, content: &str) -> Self {
         self.file_contents
             .lock()
             .unwrap()
-            .insert((path.to_path_buf(), sha.to_string()), content.to_string());
+            .insert((PathBuf::from(path), sha.to_string()), content.to_string());
         self
     }
 }

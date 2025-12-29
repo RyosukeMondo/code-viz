@@ -60,8 +60,8 @@ mod tests {
                 timestamp: 1675209600,
                 message: "Second commit".to_string(),
             })
-            .with_file_content(&file_path, "sha1", "fn main() {}")
-            .with_file_content(&file_path, "sha2", "fn main() {\n    println!(\"hello\");\n}");
+            .with_file_content("sha1", "test.rs", "fn main() {}")
+            .with_file_content("sha2", "test.rs", "fn main() {\n    println!(\"hello\");\n}");
 
         let result = generate_timeline(&file_path, &mock_git).await.unwrap();
 
