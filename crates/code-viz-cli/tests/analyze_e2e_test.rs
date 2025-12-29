@@ -110,3 +110,55 @@ fn test_analyze_all_features() {
         "ai_commit_analysis"
     ]);
 }
+
+#[test]
+#[ignore] // Dead code analysis requires entry points (package.json, main files)
+fn test_analyze_with_dead_code() {
+    let cli = CliTest::new();
+    let repo_path = get_test_repo_path();
+
+    let output = cli.analyze(&repo_path)
+        .format("json")
+        .dead_code()
+        .expect_success()
+        .expect("Failed to run analyze with dead code");
+
+    // Verify dead code analysis was included
+    assert_json_has_fields(&output, &["dead_code_analysis"]);
+}
+
+#[test]
+fn test_analyze_with_ai_commits() {
+    let cli = CliTest::new();
+    let repo_path = get_test_repo_path();
+
+    let output = cli.analyze(&repo_path)
+        .format("json")
+        .ai_commits()
+        .expect_success()
+        .expect("Failed to run analyze with AI commits");
+
+    // Verify AI commit analysis was included
+    assert_json_has_fields(&output, &["ai_commit_analysis"]);
+}
+
+#[test]
+fn test_analyze_validates_basic_metrics() {
+    let cli = CliTest::new();
+    let repo_path = get_test_repo_path();
+
+    let output = cli.analyze(&repo_path)
+        .format("json")
+        .expect_success()
+        .expect("Failed to run basic analyze");
+
+    // Verify all files have basic metrics
+    assert_json_has_fields(&output, &[
+        "summary",
+        "files",
+        "timestamp"
+    ]);
+
+    // Verify we got expected file count and minimum LOC
+    assert_summary_stats(&output, 5, 20);
+}

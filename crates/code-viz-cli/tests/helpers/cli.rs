@@ -102,6 +102,11 @@ impl CliCommand {
         self
     }
 
+    pub fn dead_code(&mut self) -> &mut Self {
+        self.command.arg("--dead-code");
+        self
+    }
+
     pub fn output(&mut self, path: &Path) -> &mut Self {
         self.command.arg("--output").arg(path);
         self
