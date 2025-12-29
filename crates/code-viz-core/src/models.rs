@@ -52,6 +52,10 @@ pub struct FileMetrics {
     /// Dependency coupling metrics (only present when coupling analysis is enabled)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coupling: Option<CouplingMetrics>,
+
+    /// AI Bloat Index: (comment_lines / code_lines) * 100
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ai_bloat_index: Option<f64>,
 }
 
 /// Represents code churn for a file.

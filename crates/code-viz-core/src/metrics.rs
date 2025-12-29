@@ -48,6 +48,17 @@ pub fn calculate_metrics(
     let loc = calculate_loc(source, &comment_ranges);
     let size_bytes = source.len() as u64;
 
+    let total_non_blank_lines = source.lines().filter(|l| !l.trim().is_empty()).count();
+    let comment_lines = total_non_blank_lines.saturating_sub(loc);
+
+    let ai_bloat_index = if loc > 0 {
+        Some((comment_lines as f64 / loc as f64) * 100.0)
+    } else if comment_lines > 0 {
+        Some(999.0) // Effectively infinite bloat for file with only comments
+    } else {
+        Some(0.0) // No code and no comments
+    };
+
     // Use provided last_modified or fallback to now()
     let last_modified = last_modified.unwrap_or_else(SystemTime::now);
 
@@ -63,6 +74,7 @@ pub fn calculate_metrics(
         dead_code_ratio: None,
         code_churn: None,
         coupling: None,
+        ai_bloat_index,
     })
 }
 
@@ -354,5 +366,56 @@ fn main() {
         let metrics = calculate_metrics(&path, source, parser.as_ref(), Some(provided_time)).unwrap();
 
         assert_eq!(metrics.last_modified, provided_time);
+    }
+
+    #[test]
+    fn test_ai_bloat_index_calculation() {
+        let parser = get_parser("typescript").unwrap();
+        let source = r#"
+            // This is a comment
+            let x = 1; // Another comment
+        "#;
+        // 2 non-blank lines, 1 LOC. So, 1 comment line.
+        // (1 / 1) * 100 = 100
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("test.ts");
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
+        assert_eq!(metrics.ai_bloat_index, Some(100.0));
+    }
+
+    #[test]
+    fn test_ai_bloat_index_zero_loc() {
+        let parser = get_parser("typescript").unwrap();
+        let source = "// Just a comment";
+        // 1 non-blank line, 0 LOC. So, 1 comment line.
+        // Should return 999.0
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("test.ts");
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
+        assert_eq!(metrics.ai_bloat_index, Some(999.0));
+    }
+
+    #[test]
+    fn test_ai_bloat_index_no_comments() {
+        let parser = get_parser("typescript").unwrap();
+        let source = "let x = 1;";
+        // 1 non-blank line, 1 LOC. 0 comment lines.
+        // (0 / 1) * 100 = 0
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("test.ts");
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
+        assert_eq!(metrics.ai_bloat_index, Some(0.0));
+    }
+
+    #[test]
+    fn test_ai_bloat_index_empty_file() {
+        let parser = get_parser("typescript").unwrap();
+        let source = "";
+        // 0 non-blank lines, 0 LOC. 0 comment lines.
+        // Should be 0.0
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("test.ts");
+        let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap();
+        assert_eq!(metrics.ai_bloat_index, Some(0.0));
     }
 }
