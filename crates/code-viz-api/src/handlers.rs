@@ -4,8 +4,9 @@
 //! Tauri and Web must use. This ensures compile-time consistency.
 
 use crate::error::ApiError;
-use crate::models::TreeNode;
+use crate::models::{TreeNode, AnalysisOptions};
 use crate::transform::flat_to_hierarchy;
+use code_viz_commands::analyze::{DuplicationConfig, HotspotConfig, CoverageConfig};
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 use code_viz_dead_code::DeadCodeResult;
 use std::path::PathBuf;
@@ -20,6 +21,7 @@ pub trait ApiHandler: Send + Sync {
     async fn analyze_repository(
         &self,
         path: String,
+        options: AnalysisOptions,
         request_id: Option<String>,
     ) -> Result<TreeNode, ApiError>;
 
@@ -71,9 +73,34 @@ where
     async fn analyze_repository(
         &self,
         path: String,
+        options: AnalysisOptions,
         _request_id: Option<String>,
     ) -> Result<TreeNode, ApiError> {
         let repo_path = PathBuf::from(&path);
+
+        // Convert options to config types (transparent pass-through, no business logic)
+        let duplication_config = if options.enable_duplicates {
+            Some(DuplicationConfig {
+                min_lines: options.min_duplicate_lines.unwrap_or(5),
+                similarity_threshold: 0.8,
+            })
+        } else {
+            None
+        };
+
+        let hotspot_config = if options.enable_hotspots {
+            Some(HotspotConfig {
+                max_hotspots: options.max_hotspots.unwrap_or(10),
+            })
+        } else {
+            None
+        };
+
+        let coverage_config = options.coverage_report_path.map(|path| {
+            CoverageConfig {
+                report_path: PathBuf::from(path),
+            }
+        });
 
         // Call framework-agnostic command layer (clones because impl Trait consumes)
         let analysis_result = code_viz_commands::analyze_repository(
@@ -81,9 +108,9 @@ where
             self.ctx.clone(),
             self.fs.clone(),
             &self.git.clone(),
-            None, // No duplication analysis by default
-            None, // No hotspot analysis by default
-            None, // No coverage analysis by default
+            duplication_config,
+            hotspot_config,
+            coverage_config,
         )
         .await
         .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
@@ -128,6 +155,7 @@ pub async fn analyze_repository_handler<C, F, G>(
     fs: F,
     git: G,
     path: String,
+    options: AnalysisOptions,
     _request_id: Option<String>,
 ) -> Result<TreeNode, ApiError>
 where
@@ -137,9 +165,41 @@ where
 {
     let repo_path = PathBuf::from(&path);
 
-    let analysis_result = code_viz_commands::analyze_repository(&repo_path, ctx, fs, &git, None, None, None)
-        .await
-        .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
+    // Convert options to config types (transparent pass-through, no business logic)
+    let duplication_config = if options.enable_duplicates {
+        Some(DuplicationConfig {
+            min_lines: options.min_duplicate_lines.unwrap_or(5),
+            similarity_threshold: 0.8,
+        })
+    } else {
+        None
+    };
+
+    let hotspot_config = if options.enable_hotspots {
+        Some(HotspotConfig {
+            max_hotspots: options.max_hotspots.unwrap_or(10),
+        })
+    } else {
+        None
+    };
+
+    let coverage_config = options.coverage_report_path.map(|path| {
+        CoverageConfig {
+            report_path: PathBuf::from(path),
+        }
+    });
+
+    let analysis_result = code_viz_commands::analyze_repository(
+        &repo_path,
+        ctx,
+        fs,
+        &git,
+        duplication_config,
+        hotspot_config,
+        coverage_config,
+    )
+    .await
+    .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
 
     let tree = flat_to_hierarchy(analysis_result.files);
 
@@ -186,7 +246,8 @@ mod tests {
             .to_string();
 
         let git = code_viz_core::context::RealGit::new();
-        let result = analyze_repository_handler(ctx, fs, git, current_dir, None).await;
+        let options = AnalysisOptions::default();
+        let result = analyze_repository_handler(ctx, fs, git, current_dir, options, None).await;
         assert!(result.is_ok(), "Handler should succeed: {:?}", result);
     }
 

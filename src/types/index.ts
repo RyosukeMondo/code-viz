@@ -6,10 +6,10 @@
  */
 
 // Import types from bindings for internal use
-import type { TreeNode } from './bindings';
+import type { TreeNode, AnalysisOptions } from './bindings';
 
 // Re-export all types from bindings for convenient single import
-export type { TreeNode } from './bindings';
+export type { TreeNode, AnalysisOptions } from './bindings';
 export { analyzeRepository } from './bindings';
 
 /**

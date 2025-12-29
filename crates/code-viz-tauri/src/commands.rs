@@ -3,7 +3,7 @@
 //! This module contains Tauri IPC commands that wrap the shared code-viz-api handlers.
 //! All business logic lives in code-viz-api (SSOT), these are just transport adapters.
 
-use crate::models::TreeNode;
+use crate::models::{TreeNode, AnalysisOptions};
 use crate::context::{TauriContext, RealFileSystem, RealGit};
 use code_viz_dead_code::DeadCodeResult;
 
@@ -16,14 +16,18 @@ use code_viz_dead_code::DeadCodeResult;
 pub async fn analyze_repository(
     app: tauri::AppHandle,
     path: String,
+    options: AnalysisOptions,
     request_id: Option<String>,
 ) -> Result<TreeNode, String> {
     let ctx = TauriContext::new(app);
     let fs = RealFileSystem::new();
     let git = RealGit::new();
 
+    // Convert Tauri options to API options (transparent pass-through)
+    let api_options: code_viz_api::AnalysisOptions = options.into();
+
     // Call the shared SSOT handler
-    let api_tree = code_viz_api::analyze_repository_handler(ctx, fs, git, path, request_id)
+    let api_tree = code_viz_api::analyze_repository_handler(ctx, fs, git, path, api_options, request_id)
         .await
         .map_err(|e| e.to_user_message())?;
 

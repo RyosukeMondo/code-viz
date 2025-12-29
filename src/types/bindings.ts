@@ -139,6 +139,31 @@ export interface DeadCodeResult {
 }
 
 /**
+ * Analysis options - configure which features to enable
+ *
+ * Corresponds to Rust struct: code_viz_tauri::models::AnalysisOptions
+ */
+export interface AnalysisOptions {
+  /** Enable code duplication detection */
+  enableDuplicates?: boolean;
+
+  /** Minimum lines for duplicate detection (default: 5) */
+  minDuplicateLines?: number;
+
+  /** Enable git hotspot detection */
+  enableHotspots?: boolean;
+
+  /** Maximum number of hotspots to report (default: 10) */
+  maxHotspots?: number;
+
+  /** Enable AI commit analysis */
+  enableAiCommits?: boolean;
+
+  /** Path to test coverage report (llvm-cov or Tarpaulin JSON) */
+  coverageReportPath?: string;
+}
+
+/**
  * Tauri Commands
  *
  * These functions wrap the Tauri invoke API for type-safe command invocation.
@@ -148,6 +173,7 @@ export interface DeadCodeResult {
  * Analyzes a repository and returns hierarchical tree structure for visualization
  *
  * @param path - Absolute path to the repository root directory
+ * @param options - Analysis options to configure which features to enable
  * @param requestId - Optional UUID for correlating frontend and backend logs
  * @returns Promise resolving to the root TreeNode
  * @throws Error if path does not exist, is not a directory, or analysis fails
@@ -157,17 +183,24 @@ export interface DeadCodeResult {
  * import { analyzeRepository } from './types/bindings';
  *
  * const requestId = crypto.randomUUID();
- * const tree = await analyzeRepository('/home/user/my-project', requestId);
+ * const tree = await analyzeRepository('/home/user/my-project', {
+ *   enableDuplicates: true,
+ *   enableHotspots: true,
+ *   minDuplicateLines: 5,
+ *   maxHotspots: 10
+ * }, requestId);
  * console.log(`Total LOC: ${tree.loc}`);
  * ```
  */
 export async function analyzeRepository(
   path: string,
+  options: AnalysisOptions,
   requestId?: string
 ): Promise<TreeNode> {
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke<TreeNode>('analyze_repository', {
     path,
+    options,
     request_id: requestId
   });
 }

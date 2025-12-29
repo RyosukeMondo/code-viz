@@ -10,7 +10,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type { TreeNode } from '../types';
+import type { TreeNode, AnalysisOptions } from '../types';
 import type { DeadCodeResult } from '../types/bindings';
 
 /**
@@ -24,23 +24,26 @@ console.log(`[API Client] Running in ${isTauri ? 'Tauri (Desktop)' : 'Web'} mode
  * Analyze a repository
  *
  * @param path - Absolute path to the repository
+ * @param options - Analysis options to configure which features to enable
  * @param requestId - Optional request ID for correlation
  * @returns Tree structure with metrics
  */
 export async function analyzeRepository(
   path: string,
+  options: AnalysisOptions = {},
   requestId?: string
 ): Promise<TreeNode> {
   if (isTauri) {
     // Tauri mode: Use IPC
-    console.log('[API Client] Using Tauri IPC for analyze_repository');
+    console.log('[API Client] Using Tauri IPC for analyze_repository', { options });
     return await invoke<TreeNode>('analyze_repository', {
       path,
+      options,
       requestId,
     });
   } else {
     // Web mode: Use HTTP REST API
-    console.log('[API Client] Using HTTP REST API for /api/analyze');
+    console.log('[API Client] Using HTTP REST API for /api/analyze', { options });
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: {
@@ -48,6 +51,7 @@ export async function analyzeRepository(
       },
       body: JSON.stringify({
         path,
+        options,
         requestId,
       }),
     });

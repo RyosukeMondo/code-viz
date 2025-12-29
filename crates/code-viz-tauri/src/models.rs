@@ -11,6 +11,40 @@ use std::time::SystemTime;
 // Re-export the serialization functions from code-viz-api
 pub use code_viz_api::models::{serialize_systemtime, deserialize_systemtime};
 
+/// AnalysisOptions with specta Type derive for TypeScript generation
+///
+/// This wraps code_viz_api::AnalysisOptions and adds Tauri-specific annotations.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalysisOptions {
+    #[serde(default)]
+    pub enable_duplicates: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_duplicate_lines: Option<usize>,
+    #[serde(default)]
+    pub enable_hotspots: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_hotspots: Option<usize>,
+    #[serde(default)]
+    pub enable_ai_commits: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coverage_report_path: Option<String>,
+}
+
+/// Convert from Tauri AnalysisOptions to API AnalysisOptions
+impl From<AnalysisOptions> for code_viz_api::AnalysisOptions {
+    fn from(tauri_options: AnalysisOptions) -> Self {
+        Self {
+            enable_duplicates: tauri_options.enable_duplicates,
+            min_duplicate_lines: tauri_options.min_duplicate_lines,
+            enable_hotspots: tauri_options.enable_hotspots,
+            max_hotspots: tauri_options.max_hotspots,
+            enable_ai_commits: tauri_options.enable_ai_commits,
+            coverage_report_path: tauri_options.coverage_report_path,
+        }
+    }
+}
+
 /// TreeNode with specta Type derive for TypeScript generation
 ///
 /// This wraps code_viz_api::TreeNode and adds Tauri-specific annotations.

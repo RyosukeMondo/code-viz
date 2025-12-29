@@ -1,11 +1,44 @@
 //! Data models for visualization
 //!
 //! This module defines the TreeNode structure used for hierarchical
-//! visualization of code metrics in the frontend.
+//! visualization of code metrics in the frontend, and AnalysisOptions
+//! for configuring which analysis features to enable.
 
 use serde::{Deserialize, Serialize, Serializer, Deserializer};
 use std::path::PathBuf;
 use std::time::SystemTime;
+
+/// Analysis options - configure which features to enable
+///
+/// This struct is a transparent pass-through to CLI options.
+/// No logic here - just transport from frontend to backend.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalysisOptions {
+    /// Enable code duplication detection
+    #[serde(default)]
+    pub enable_duplicates: bool,
+
+    /// Minimum lines for duplicate detection (default: 5)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_duplicate_lines: Option<usize>,
+
+    /// Enable git hotspot detection
+    #[serde(default)]
+    pub enable_hotspots: bool,
+
+    /// Maximum number of hotspots to report (default: 10)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_hotspots: Option<usize>,
+
+    /// Enable AI commit analysis
+    #[serde(default)]
+    pub enable_ai_commits: bool,
+
+    /// Path to test coverage report (llvm-cov or Tarpaulin JSON)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coverage_report_path: Option<String>,
+}
 
 /// Serialize SystemTime as ISO 8601 string with Z suffix for UTC
 pub fn serialize_systemtime<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>

@@ -8,7 +8,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use code_viz_api::{analyze_repository_handler, analyze_dead_code_handler, TreeNode};
+use code_viz_api::{analyze_repository_handler, analyze_dead_code_handler, TreeNode, AnalysisOptions};
 use code_viz_dead_code::DeadCodeResult;
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,8 @@ use crate::context::{WebContext, RealFileSystem, RealGit};
 #[serde(rename_all = "camelCase")]
 pub struct AnalyzeRequest {
     pub path: String,
+    #[serde(default)]
+    pub options: AnalysisOptions,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
 }
@@ -74,14 +76,14 @@ impl IntoResponse for WebError {
 pub async fn post_analyze(
     Json(req): Json<AnalyzeRequest>,
 ) -> Result<Json<TreeNode>, WebError> {
-    tracing::info!(path = %req.path, request_id = ?req.request_id, "POST /api/analyze");
+    tracing::info!(path = %req.path, request_id = ?req.request_id, options = ?req.options, "POST /api/analyze");
 
     let ctx = WebContext::new();
     let fs = RealFileSystem::new();
 
     // Call the shared SSOT handler (same as Tauri uses)
     let git = code_viz_core::context::RealGit::new();
-    let tree = analyze_repository_handler(ctx, fs, git, req.path, req.request_id).await?;
+    let tree = analyze_repository_handler(ctx, fs, git, req.path, req.options, req.request_id).await?;
 
     Ok(Json(tree))
 }
