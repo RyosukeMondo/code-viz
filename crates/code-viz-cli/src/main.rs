@@ -229,12 +229,10 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Timeline { file, since } => {
             let git = RealGit::new();
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(commands::timeline::run(file, since, git))?;
+            commands::timeline::run(file, since, git).await?;
         }
         Commands::Compare(args) => {
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(commands::compare::handle_compare(&args))?;
+            commands::compare::handle_compare(&args).await?;
         }
     }
 

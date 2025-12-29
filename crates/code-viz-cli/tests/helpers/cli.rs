@@ -35,8 +35,8 @@ impl CliTest {
     /// Run code-viz diff command
     pub fn diff(&self, old: &Path, new: &Path) -> CliCommand {
         let mut cmd = CliCommand::new(&self.binary_path, "diff", Path::new("."));
-        cmd.arg(old);
-        cmd.arg(new);
+        cmd.command.arg(old);
+        cmd.command.arg(new);
         cmd
     }
 }
@@ -77,6 +77,12 @@ impl CliCommand {
 
     pub fn duplicates(&mut self) -> &mut Self {
         self.command.arg("--duplicates");
+        self
+    }
+
+    pub fn duplicates_min_lines(&mut self, min_lines: usize) -> &mut Self {
+        self.command.arg("--duplicates");
+        self.command.arg("--min-duplicate-lines").arg(min_lines.to_string());
         self
     }
 

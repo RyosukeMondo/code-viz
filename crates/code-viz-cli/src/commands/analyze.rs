@@ -98,9 +98,7 @@ pub async fn run(
 
     let coverage_config = coverage_report.map(|report_path| CoverageConfig { report_path });
 
-    let mut result = tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(code_viz_commands::analyze_repository(
+    let mut result = code_viz_commands::analyze_repository(
             &path,
             ctx.clone(),
             fs.clone(),
@@ -108,7 +106,8 @@ pub async fn run(
             duplication_config,
             hotspot_config,
             coverage_config,
-        ))
+        )
+        .await
         .map_err(|e| AnalyzeError::AnalysisFailed(e.to_string()))?;
 
     // Perform dead code analysis if enabled
