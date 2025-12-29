@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use crate::traits::{Commit, Diff, BlameInfo, GitProvider};
+use crate::traits::{BlameInfo, Commit, Diff, GitProvider};
+use crate::traits::git_provider::ChangedFile;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -16,6 +17,7 @@ pub struct MockGit {
     blames: Arc<Mutex<Vec<BlameInfo>>>,
     diff_calls: Arc<Mutex<Vec<(String, Option<String>, String)>>>,
     mock_diff: Arc<Mutex<Option<Diff>>>,
+    changed_files: Arc<Mutex<Vec<ChangedFile>>>,
     file_contents: Arc<Mutex<HashMap<(PathBuf, String), String>>>,
 }
 
@@ -30,6 +32,7 @@ impl MockGit {
             blames: Arc::new(Mutex::new(Vec::new())),
             diff_calls: Arc::new(Mutex::new(Vec::new())),
             mock_diff: Arc::new(Mutex::new(None)),
+            changed_files: Arc::new(Mutex::new(Vec::new())),
             file_contents: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -49,6 +52,11 @@ impl MockGit {
     /// Set the default diff to be returned by get_diff.
     pub fn with_mock_diff(self, diff: Diff) -> Self {
         *self.mock_diff.lock().unwrap() = Some(diff);
+        self
+    }
+
+    pub fn with_changed_files(self, files: Vec<ChangedFile>) -> Self {
+        self.changed_files.lock().unwrap().extend(files);
         self
     }
 
@@ -149,5 +157,9 @@ impl GitProvider for MockGit {
             .get(&key)
             .cloned()
             .ok_or_else(|| anyhow!("Mock content not found for {}@{}", file_path.display(), sha))
+    }
+
+    async fn get_changed_files(&self, _base: &str, _head: &str) -> Result<Vec<ChangedFile>> {
+        Ok(self.changed_files.lock().unwrap().clone())
     }
 }

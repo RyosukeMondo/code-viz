@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use crate::context::CliContext;
+use crate::commands::compare::CompareCommand;
 use code_viz_core::context::{RealFileSystem, RealGit};
 
 mod commands;
@@ -129,6 +130,7 @@ enum Commands {
         #[arg(long)]
         since: Option<String>,
     },
+    Compare(CompareCommand),
 }
 
 #[derive(Subcommand)]
@@ -211,6 +213,10 @@ async fn main() -> anyhow::Result<()> {
             let git = RealGit::new();
             let rt = tokio::runtime::Runtime::new()?;
             rt.block_on(commands::timeline::run(file, since, git))?;
+        }
+        Commands::Compare(args) => {
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(commands::compare::handle_compare(&args))?;
         }
     }
 

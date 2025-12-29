@@ -159,3 +159,15 @@ pub struct AICommitAnalysis {
     /// List of patterns that were detected
     pub patterns_detected: Vec<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileMetricComparison {
+    pub path: PathBuf,
+    pub base: Option<FileMetrics>,
+    pub head: Option<FileMetrics>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BranchComparison {
+    pub files: Vec<FileMetricComparison>,
+}

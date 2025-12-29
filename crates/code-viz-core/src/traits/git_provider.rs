@@ -39,6 +39,20 @@ pub struct BlameLine {
 
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChangeType {
+    Added,
+    Deleted,
+    Modified,
+    Renamed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangedFile {
+    pub path: PathBuf,
+    pub change_type: ChangeType,
+}
+
 /// GitProvider abstracts Git operations required for analysis.
 #[async_trait]
 pub trait GitProvider: Send + Sync + Clone {
@@ -57,6 +71,9 @@ pub trait GitProvider: Send + Sync + Clone {
         from: Option<&str>,
         to: &str,
     ) -> Result<HashMap<PathBuf, (usize, usize)>>;
+
+    /// Get a list of files changed between two revisions.
+    async fn get_changed_files(&self, base: &str, head: &str) -> Result<Vec<ChangedFile>>;
 
     /// Get the content of a file at a specific revision.
     async fn get_file_content_at_revision(&self, file_path: &Path, sha: &str) -> Result<String>;

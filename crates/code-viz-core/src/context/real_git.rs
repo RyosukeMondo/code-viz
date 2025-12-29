@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use crate::traits::{Commit, Diff, BlameInfo, GitProvider};
-use git2::Repository;
+use crate::traits::{BlameInfo, Commit, Diff, GitProvider};
+use crate::traits::git_provider::{ChangedFile, ChangeType};
+use git2::{DiffOptions, Repository};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -271,6 +272,53 @@ impl GitProvider for RealGit {
             let blob = object.as_blob().ok_or_else(|| anyhow!("Object is not a blob"))?;
 
             Ok(String::from_utf8_lossy(blob.content()).to_string())
+        })
+        .await
+        .map_err(|e| anyhow!("Blocking task failed: {}", e))?
+    }
+
+    async fn get_changed_files(&self, base: &str, head: &str) -> Result<Vec<ChangedFile>> {
+        let base = base.to_string();
+        let head = head.to_string();
+
+        task::spawn_blocking(move || {
+            let repo = Repository::open(".")?;
+            let base_oid = repo.revparse_single(&base)?.id();
+            let head_oid = repo.revparse_single(&head)?.id();
+
+            let base_commit = repo.find_commit(base_oid)?;
+            let head_commit = repo.find_commit(head_oid)?;
+
+            let base_tree = base_commit.tree()?;
+            let head_tree = head_commit.tree()?;
+
+            let mut diff_opts = DiffOptions::new();
+            let diff = repo.diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut diff_opts))?;
+
+            let mut changed_files = Vec::new();
+            diff.foreach(
+                &mut |delta, _| {
+                    if let Some(path) = delta.new_file().path() {
+                        let change_type = match delta.status() {
+                            git2::Delta::Added => ChangeType::Added,
+                            git2::Delta::Deleted => ChangeType::Deleted,
+                            git2::Delta::Modified => ChangeType::Modified,
+                            git2::Delta::Renamed => ChangeType::Renamed,
+                            _ => return true, // Continue
+                        };
+                        changed_files.push(ChangedFile {
+                            path: path.to_path_buf(),
+                            change_type,
+                        });
+                    }
+                    true
+                },
+                None,
+                None,
+                None,
+            )?;
+
+            Ok(changed_files)
         })
         .await
         .map_err(|e| anyhow!("Blocking task failed: {}", e))?
