@@ -2,6 +2,7 @@ use crate::churn::calculate_code_churn;
 use crate::shared::scan_and_filter_files;
 use anyhow::{Context, Result};
 use code_viz_core::analyzer;
+use code_viz_core::coverage;
 use code_viz_core::duplication::DuplicationDetector;
 use code_viz_core::hotspot::HotspotDetector;
 use code_viz_core::models::{AICommitAnalysis, AnalysisResult, FileMetrics};
@@ -10,7 +11,7 @@ use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 use code_viz_core::{calculate_summary, coupling, metrics, parser};
 use serde_json::json;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 #[derive(Clone, Copy)]
@@ -24,6 +25,11 @@ pub struct HotspotConfig {
     pub max_hotspots: usize,
 }
 
+#[derive(Clone)]
+pub struct CoverageConfig {
+    pub report_path: PathBuf,
+}
+
 /// Orchestrate repository analysis using trait-based dependencies.
 pub async fn analyze_repository(
     path: &Path,
@@ -32,6 +38,7 @@ pub async fn analyze_repository(
     git: &impl GitProvider,
     duplication_config: Option<DuplicationConfig>,
     hotspot_config: Option<HotspotConfig>,
+    coverage_config: Option<CoverageConfig>,
 ) -> Result<AnalysisResult> {
     ctx.report_progress(0.1, "Scanning directory...").await?;
 
@@ -85,7 +92,33 @@ pub async fn analyze_repository(
     ctx.report_progress(0.85, "Analyzing dependencies...").await?;
     coupling::calculate_coupling(&mut results, &fs, path);
 
-    // 5. Run duplication analysis if enabled
+    // 5. Apply test coverage if provided
+    let coverage_analysis = if let Some(coverage_cfg) = coverage_config {
+        ctx.report_progress(0.87, "Loading coverage report...")
+            .await?;
+        match fs.read_to_string(&coverage_cfg.report_path) {
+            Ok(coverage_json) => {
+                match coverage::parse_coverage_report(&coverage_json) {
+                    Ok(coverage_map) => {
+                        coverage::apply_coverage_to_metrics(&mut results, coverage_map);
+                        coverage::calculate_coverage_analysis(&results)
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to parse coverage report: {}", e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to read coverage report: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // 6. Run duplication analysis if enabled
     let duplication = if let Some(config) = duplication_config {
         ctx.report_progress(0.9, "Running duplication analysis...")
             .await?;
@@ -104,7 +137,7 @@ pub async fn analyze_repository(
         None
     };
 
-    // 6. Calculate hotspot analysis if enabled
+    // 7. Calculate hotspot analysis if enabled
     let hotspot_analysis = if let Some(config) = hotspot_config {
         ctx.report_progress(0.93, "Calculating hotspots...")
             .await?;
@@ -114,7 +147,7 @@ pub async fn analyze_repository(
         None
     };
 
-    // 7. Calculate summary
+    // 8. Calculate summary
     ctx.report_progress(0.95, "Calculating summary...").await?;
     let summary = calculate_summary(&results);
 
@@ -125,6 +158,7 @@ pub async fn analyze_repository(
         duplication,
         ai_commit_analysis: None,
         hotspot_analysis,
+        coverage_analysis,
     };
 
     ctx.emit_event("analysis_complete", json!(final_result))

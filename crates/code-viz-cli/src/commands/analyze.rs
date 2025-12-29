@@ -43,9 +43,10 @@ pub struct AnalyzeConfig {
     pub ai_commits: bool,
     pub hotspots: bool,
     pub max_hotspots: usize,
+    pub coverage_report: Option<PathBuf>,
 }
 
-use code_viz_commands::analyze::{DuplicationConfig, HotspotConfig};
+use code_viz_commands::analyze::{CoverageConfig, DuplicationConfig, HotspotConfig};
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 
 pub async fn run(
@@ -68,6 +69,7 @@ pub async fn run(
         ai_commits,
         hotspots,
         max_hotspots,
+        coverage_report,
     } = config;
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
@@ -94,6 +96,8 @@ pub async fn run(
         None
     };
 
+    let coverage_config = coverage_report.map(|report_path| CoverageConfig { report_path });
+
     let mut result = tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(code_viz_commands::analyze_repository(
@@ -103,6 +107,7 @@ pub async fn run(
             &git,
             duplication_config,
             hotspot_config,
+            coverage_config,
         ))
         .map_err(|e| AnalyzeError::AnalysisFailed(e.to_string()))?;
 

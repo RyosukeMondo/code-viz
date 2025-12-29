@@ -25,6 +25,7 @@ mod path_handling_tests {
             coupling: None,
             ai_bloat_index: None,
             cognitive_complexity: None,
+            test_coverage: None,
         }
     }
 

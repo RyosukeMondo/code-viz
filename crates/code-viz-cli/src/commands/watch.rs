@@ -55,7 +55,7 @@ pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppCont
         println!("Performing initial analysis...");
     }
     let git = code_viz_core::context::RealGit::new();
-    let mut current_result = analyze_repository(&path, ctx.clone(), fs.clone(), &git, None, None).await?;
+    let mut current_result = analyze_repository(&path, ctx.clone(), fs.clone(), &git, None, None, None).await?;
     print_output(&current_result, &format)?;
 
     // Setup channel

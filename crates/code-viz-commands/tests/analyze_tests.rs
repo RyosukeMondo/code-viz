@@ -12,7 +12,7 @@ async fn test_analyze_repository_success() {
     let git = MockGit::new();
 
     let path = Path::new("src");
-    let result = analyze_repository(path, ctx.clone(), fs.clone(), &git, None, None)
+    let result = analyze_repository(path, ctx.clone(), fs.clone(), &git, None, None, None)
         .await
         .unwrap();
 
@@ -44,7 +44,7 @@ async fn test_analyze_repository_empty_dir() {
     let git = MockGit::new();
 
     let path = Path::new("empty");
-    let result = analyze_repository(path, ctx.clone(), fs.clone(), &git, None, None)
+    let result = analyze_repository(path, ctx.clone(), fs.clone(), &git, None, None, None)
         .await
         .unwrap();
 
@@ -63,7 +63,7 @@ async fn test_analyze_repository_error_handling() {
     // Wait, MockFileSystem.read_dir_recursive returns empty Vec if no files match prefix.
 
     let path = Path::new("non_existent");
-    let result = analyze_repository(path, ctx, fs, &git, None, None).await;
+    let result = analyze_repository(path, ctx, fs, &git, None, None, None).await;
 
     assert!(result.is_ok()); // Should return empty AnalysisResult for empty/non-existent dir in mock
 }

@@ -397,6 +397,7 @@ mod tests {
             coupling: None,
             ai_bloat_index: None,
             cognitive_complexity: None,
+            test_coverage: None,
         }
     }
 
@@ -654,6 +655,7 @@ mod tests {
                 coupling: None,
                 ai_bloat_index: None,
             cognitive_complexity: None,
+            test_coverage: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/older.rs"),
@@ -669,6 +671,7 @@ mod tests {
                 coupling: None,
                 ai_bloat_index: None,
             cognitive_complexity: None,
+            test_coverage: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/newest.rs"),
@@ -684,6 +687,7 @@ mod tests {
                 coupling: None,
                 ai_bloat_index: None,
             cognitive_complexity: None,
+            test_coverage: None,
             },
         ];
 

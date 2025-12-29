@@ -71,6 +71,10 @@ enum Commands {
         /// Maximum number of hotspots to report
         #[arg(long, default_value = "10")]
         max_hotspots: usize,
+
+        /// Path to test coverage report (llvm-cov or Tarpaulin JSON)
+        #[arg(long)]
+        coverage_report: Option<PathBuf>,
     },
     /// Watch a directory for changes and re-analyze
     Watch {
@@ -166,6 +170,7 @@ async fn main() -> anyhow::Result<()> {
             ai_commits,
             hotspots,
             max_hotspots,
+            coverage_report,
         } => {
             let ctx = CliContext::new(verbose);
             let fs = RealFileSystem::new();
@@ -185,6 +190,7 @@ async fn main() -> anyhow::Result<()> {
                 ai_commits,
                 hotspots,
                 max_hotspots,
+                coverage_report,
             }, ctx, fs, git).await?;
         }
         Commands::Watch {

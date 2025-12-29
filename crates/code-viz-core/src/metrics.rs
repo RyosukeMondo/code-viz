@@ -197,6 +197,7 @@ pub fn calculate_metrics(
         coupling: None,
         ai_bloat_index,
         cognitive_complexity,
+        test_coverage: None,
     })
 }
 

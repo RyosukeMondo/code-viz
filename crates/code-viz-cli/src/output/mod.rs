@@ -40,6 +40,7 @@ mod tests {
                 coupling: None,
                 ai_bloat_index: None,
                 cognitive_complexity: None,
+                test_coverage: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/lib.rs"),
@@ -55,6 +56,7 @@ mod tests {
                 coupling: None,
                 ai_bloat_index: None,
                 cognitive_complexity: None,
+                test_coverage: None,
             },
         ];
 
@@ -72,6 +74,7 @@ mod tests {
             duplication: None,
             ai_commit_analysis: None,
             hotspot_analysis: None,
+            coverage_analysis: None,
         }
     }
 

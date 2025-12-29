@@ -60,6 +60,10 @@ pub struct FileMetrics {
     /// Cognitive complexity metrics (per-function and file-level aggregation)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cognitive_complexity: Option<CognitiveComplexity>,
+
+    /// Test coverage metrics (from llvm-cov, tarpaulin, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test_coverage: Option<TestCoverage>,
 }
 
 /// Represents code churn for a file.
@@ -91,6 +95,10 @@ pub struct AnalysisResult {
     /// Git hotspot analysis (only present when enabled)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hotspot_analysis: Option<HotspotAnalysis>,
+
+    /// Test coverage analysis (only present when coverage report provided)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coverage_analysis: Option<CoverageAnalysis>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -224,4 +232,31 @@ pub struct CognitiveComplexity {
     pub max_complexity: usize,
     /// Per-function complexity details
     pub functions: Vec<FunctionComplexity>,
+}
+
+/// Test coverage metrics for a file
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestCoverage {
+    /// Line coverage percentage (0.0 - 100.0)
+    pub line_coverage: f64,
+    /// Number of lines covered
+    pub lines_covered: usize,
+    /// Total number of executable lines
+    pub total_lines: usize,
+    /// Branch coverage percentage (0.0 - 100.0), if available
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch_coverage: Option<f64>,
+}
+
+/// Aggregated test coverage analysis for the entire codebase
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CoverageAnalysis {
+    /// Overall line coverage percentage
+    pub overall_coverage: f64,
+    /// Total lines covered across all files
+    pub total_lines_covered: usize,
+    /// Total executable lines across all files
+    pub total_executable_lines: usize,
+    /// Files with coverage data
+    pub file_count: usize,
 }
