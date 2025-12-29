@@ -56,6 +56,10 @@ pub struct FileMetrics {
     /// AI Bloat Index: (comment_lines / code_lines) * 100
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ai_bloat_index: Option<f64>,
+
+    /// Cognitive complexity metrics (per-function and file-level aggregation)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cognitive_complexity: Option<CognitiveComplexity>,
 }
 
 /// Represents code churn for a file.
@@ -83,6 +87,10 @@ pub struct AnalysisResult {
     /// AI commit analysis (only present when enabled)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ai_commit_analysis: Option<AICommitAnalysis>,
+
+    /// Git hotspot analysis (only present when enabled)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hotspot_analysis: Option<HotspotAnalysis>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -174,4 +182,46 @@ pub struct FileMetricComparison {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BranchComparison {
     pub files: Vec<FileMetricComparison>,
+}
+
+/// Represents a hotspot file (high churn + complexity + size)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hotspot {
+    pub path: PathBuf,
+    pub hotspot_score: f64,
+    pub churn_score: f64,
+    pub complexity_score: f64,
+    pub size_score: f64,
+    pub total_changes: usize,
+}
+
+/// Results of git hotspot analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HotspotAnalysis {
+    /// Top hotspots sorted by score (descending)
+    pub hotspots: Vec<Hotspot>,
+    /// Total files analyzed for hotspots
+    pub total_files_analyzed: usize,
+}
+
+/// Cognitive complexity for a single function
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FunctionComplexity {
+    pub name: String,
+    pub complexity: usize,
+    pub start_line: usize,
+    pub end_line: usize,
+}
+
+/// Cognitive complexity metrics for a file
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CognitiveComplexity {
+    /// Total cognitive complexity for the file
+    pub total_complexity: usize,
+    /// Average complexity per function
+    pub average_complexity: f64,
+    /// Maximum complexity among all functions
+    pub max_complexity: usize,
+    /// Per-function complexity details
+    pub functions: Vec<FunctionComplexity>,
 }

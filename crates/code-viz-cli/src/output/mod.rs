@@ -39,6 +39,7 @@ mod tests {
                 code_churn: None,
                 coupling: None,
                 ai_bloat_index: None,
+                cognitive_complexity: None,
             },
             FileMetrics {
                 path: PathBuf::from("src/lib.rs"),
@@ -53,6 +54,7 @@ mod tests {
                 code_churn: None,
                 coupling: None,
                 ai_bloat_index: None,
+                cognitive_complexity: None,
             },
         ];
 
@@ -69,6 +71,7 @@ mod tests {
             timestamp: SystemTime::now(),
             duplication: None,
             ai_commit_analysis: None,
+            hotspot_analysis: None,
         }
     }
 

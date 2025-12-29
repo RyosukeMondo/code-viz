@@ -131,6 +131,7 @@ mod tests {
             code_churn: None,
             coupling: None,
             ai_bloat_index: None,
+            cognitive_complexity: None,
         }
     }
 

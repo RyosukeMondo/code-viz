@@ -12,9 +12,10 @@ use std::env;
 /// and returns the analysis results without requiring a full Tauri runtime.
 #[tokio::test]
 async fn test_analyze_repository_with_mock_context() {
-    // 1. Setup MockContext and RealFileSystem
+    // 1. Setup MockContext, RealFileSystem, and RealGit
     let ctx = MockContext::new();
     let fs = RealFileSystem::new();
+    let git = code_viz_core::context::RealGit::new();
 
     // 2. Prepare arguments (use current directory for analysis)
     let current_dir = env::current_dir()
@@ -26,6 +27,7 @@ async fn test_analyze_repository_with_mock_context() {
     let result = code_viz_api::analyze_repository_handler(
         ctx.clone(),
         fs,
+        git,
         current_dir,
         Some("test-request-id".to_string())
     ).await;

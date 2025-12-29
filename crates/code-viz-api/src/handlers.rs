@@ -82,6 +82,7 @@ where
             self.fs.clone(),
             &self.git.clone(),
             None, // No duplication analysis by default
+            None, // No hotspot analysis by default
         )
         .await
         .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
@@ -135,7 +136,7 @@ where
 {
     let repo_path = PathBuf::from(&path);
 
-    let analysis_result = code_viz_commands::analyze_repository(&repo_path, ctx, fs, &git, None)
+    let analysis_result = code_viz_commands::analyze_repository(&repo_path, ctx, fs, &git, None, None)
         .await
         .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
 

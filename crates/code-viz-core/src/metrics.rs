@@ -1,9 +1,10 @@
-use crate::models::{CodeChurn, FileMetrics};
+use crate::models::{CodeChurn, CognitiveComplexity, FileMetrics, FunctionComplexity};
 use crate::parser::LanguageParser;
 use crate::traits::GitProvider;
 use std::path::Path;
 use std::time::SystemTime;
 use thiserror::Error;
+use tree_sitter::Node;
 
 use std::collections::HashMap;
 
@@ -35,6 +36,123 @@ pub async fn calculate_churn_summary(
     Ok(result)
 }
 
+/// Calculate cognitive complexity for source code
+fn calculate_cognitive_complexity(
+    source: &str,
+    parser: &dyn LanguageParser,
+) -> Option<CognitiveComplexity> {
+    let tree = parser.parse(source).ok()?;
+    let root = tree.root_node();
+
+    let mut functions = Vec::new();
+
+    // Find all functions in the file
+    let mut cursor = root.walk();
+    let mut visited_children = false;
+
+    loop {
+        let node = cursor.node();
+
+        // Check if this is a function node
+        if is_function_node(&node) {
+            let name = extract_function_name(&node, source).unwrap_or_else(|| "anonymous".to_string());
+            let start_line = node.start_position().row + 1;
+            let end_line = node.end_position().row + 1;
+            let complexity = calculate_function_complexity(&node, source, 0);
+
+            functions.push(FunctionComplexity {
+                name,
+                complexity,
+                start_line,
+                end_line,
+            });
+        }
+
+        // Navigate tree
+        if !visited_children && cursor.goto_first_child() {
+            visited_children = false;
+        } else if cursor.goto_next_sibling() {
+            visited_children = false;
+        } else if cursor.goto_parent() {
+            visited_children = true;
+        } else {
+            break;
+        }
+    }
+
+    if functions.is_empty() {
+        return None;
+    }
+
+    let total_complexity: usize = functions.iter().map(|f| f.complexity).sum();
+    let max_complexity = functions.iter().map(|f| f.complexity).max().unwrap_or(0);
+    let average_complexity = total_complexity as f64 / functions.len() as f64;
+
+    Some(CognitiveComplexity {
+        total_complexity,
+        average_complexity,
+        max_complexity,
+        functions,
+    })
+}
+
+fn is_function_node(node: &Node) -> bool {
+    matches!(
+        node.kind(),
+        "function_declaration" | "function" | "function_item" | "method_declaration" |
+        "arrow_function" | "function_definition" | "method_definition"
+    )
+}
+
+fn extract_function_name(node: &Node, source: &str) -> Option<String> {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "identifier" || child.kind() == "property_identifier" {
+            return child.utf8_text(source.as_bytes()).ok().map(|s| s.to_string());
+        }
+    }
+    None
+}
+
+fn calculate_function_complexity(node: &Node, source: &str, nesting_level: usize) -> usize {
+    let mut complexity = 0;
+    let mut cursor = node.walk();
+
+    for child in node.children(&mut cursor) {
+        let kind = child.kind();
+
+        // Control flow structures (+1 + nesting level)
+        if matches!(
+            kind,
+            "if_statement" | "else_clause" | "for_statement" | "while_statement" |
+            "do_statement" | "switch_statement" | "case_clause" | "catch_clause" |
+            "for_in_statement" | "for_of_statement" | "conditional_expression"
+        ) {
+            complexity += 1 + nesting_level;
+            // Recursively calculate nested complexity
+            complexity += calculate_function_complexity(&child, source, nesting_level + 1);
+            continue;
+        }
+
+        // Logical operators in conditions (+1 each)
+        if kind == "binary_expression" {
+            if let Ok(text) = child.utf8_text(source.as_bytes()) {
+                complexity += text.matches("&&").count() + text.matches("||").count();
+            }
+        }
+
+        // Jump statements (+1): break, continue, goto, throw
+        if matches!(kind, "break_statement" | "continue_statement" | "goto_statement" | "throw_statement") {
+            complexity += 1;
+        }
+
+        // Recursively process children (except for nodes we already handled)
+        complexity += calculate_function_complexity(&child, source, nesting_level);
+    }
+
+    complexity
+}
+
 pub fn calculate_metrics(
     path: &Path,
     source: &str,
@@ -59,6 +177,9 @@ pub fn calculate_metrics(
         Some(0.0) // No code and no comments
     };
 
+    // Calculate cognitive complexity
+    let cognitive_complexity = calculate_cognitive_complexity(source, parser);
+
     // Use provided last_modified or fallback to now()
     let last_modified = last_modified.unwrap_or_else(SystemTime::now);
 
@@ -75,6 +196,7 @@ pub fn calculate_metrics(
         code_churn: None,
         coupling: None,
         ai_bloat_index,
+        cognitive_complexity,
     })
 }
 

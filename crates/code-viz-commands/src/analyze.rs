@@ -3,6 +3,7 @@ use crate::shared::scan_and_filter_files;
 use anyhow::{Context, Result};
 use code_viz_core::analyzer;
 use code_viz_core::duplication::DuplicationDetector;
+use code_viz_core::hotspot::HotspotDetector;
 use code_viz_core::models::{AICommitAnalysis, AnalysisResult, FileMetrics};
 use code_viz_core::parser::LanguageParser;
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
@@ -18,6 +19,11 @@ pub struct DuplicationConfig {
     pub similarity_threshold: f64,
 }
 
+#[derive(Clone, Copy)]
+pub struct HotspotConfig {
+    pub max_hotspots: usize,
+}
+
 /// Orchestrate repository analysis using trait-based dependencies.
 pub async fn analyze_repository(
     path: &Path,
@@ -25,6 +31,7 @@ pub async fn analyze_repository(
     fs: impl FileSystem,
     git: &impl GitProvider,
     duplication_config: Option<DuplicationConfig>,
+    hotspot_config: Option<HotspotConfig>,
 ) -> Result<AnalysisResult> {
     ctx.report_progress(0.1, "Scanning directory...").await?;
 
@@ -97,7 +104,17 @@ pub async fn analyze_repository(
         None
     };
 
-    // 6. Calculate summary
+    // 6. Calculate hotspot analysis if enabled
+    let hotspot_analysis = if let Some(config) = hotspot_config {
+        ctx.report_progress(0.93, "Calculating hotspots...")
+            .await?;
+        let detector = HotspotDetector::new(config.max_hotspots);
+        Some(detector.calculate(&results))
+    } else {
+        None
+    };
+
+    // 7. Calculate summary
     ctx.report_progress(0.95, "Calculating summary...").await?;
     let summary = calculate_summary(&results);
 
@@ -107,6 +124,7 @@ pub async fn analyze_repository(
         timestamp: SystemTime::now(),
         duplication,
         ai_commit_analysis: None,
+        hotspot_analysis,
     };
 
     ctx.emit_event("analysis_complete", json!(final_result))

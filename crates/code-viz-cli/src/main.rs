@@ -63,6 +63,14 @@ enum Commands {
         /// Enable AI commit analysis
         #[arg(long)]
         ai_commits: bool,
+
+        /// Enable git hotspot analysis
+        #[arg(long)]
+        hotspots: bool,
+
+        /// Maximum number of hotspots to report
+        #[arg(long, default_value = "10")]
+        max_hotspots: usize,
     },
     /// Watch a directory for changes and re-analyze
     Watch {
@@ -156,6 +164,8 @@ async fn main() -> anyhow::Result<()> {
             duplicates,
             min_duplicate_lines,
             ai_commits,
+            hotspots,
+            max_hotspots,
         } => {
             let ctx = CliContext::new(verbose);
             let fs = RealFileSystem::new();
@@ -173,6 +183,8 @@ async fn main() -> anyhow::Result<()> {
                 duplicates,
                 min_duplicate_lines,
                 ai_commits,
+                hotspots,
+                max_hotspots,
             }, ctx, fs, git).await?;
         }
         Commands::Watch {

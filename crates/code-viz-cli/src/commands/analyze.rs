@@ -41,9 +41,11 @@ pub struct AnalyzeConfig {
     pub duplicates: bool,
     pub min_duplicate_lines: usize,
     pub ai_commits: bool,
+    pub hotspots: bool,
+    pub max_hotspots: usize,
 }
 
-use code_viz_commands::analyze::DuplicationConfig;
+use code_viz_commands::analyze::{DuplicationConfig, HotspotConfig};
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 
 pub async fn run(
@@ -64,6 +66,8 @@ pub async fn run(
         duplicates,
         min_duplicate_lines,
         ai_commits,
+        hotspots,
+        max_hotspots,
     } = config;
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
@@ -83,6 +87,13 @@ pub async fn run(
     } else {
         None
     };
+
+    let hotspot_config = if hotspots {
+        Some(HotspotConfig { max_hotspots })
+    } else {
+        None
+    };
+
     let mut result = tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(code_viz_commands::analyze_repository(
@@ -91,6 +102,7 @@ pub async fn run(
             fs.clone(),
             &git,
             duplication_config,
+            hotspot_config,
         ))
         .map_err(|e| AnalyzeError::AnalysisFailed(e.to_string()))?;
 
