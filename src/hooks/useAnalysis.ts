@@ -11,7 +11,7 @@
 import { useCallback, useState } from 'react';
 import { useAnalysisStore } from '../store/analysisStore';
 import { analyzeRepository } from '../api/client';
-import type { TreeNode } from '../types/bindings';
+import type { TreeNode, AnalysisOptions } from '../types/bindings';
 
 /**
  * State and actions returned by useAnalysis hook
@@ -29,8 +29,9 @@ interface UseAnalysisResult {
   /**
    * Execute analysis on the specified repository path
    * @param path - Absolute path to the repository root directory
+   * @param options - Analysis options to configure which features to enable
    */
-  analyze: (path: string) => Promise<void>;
+  analyze: (path: string, options?: AnalysisOptions) => Promise<void>;
 
   /**
    * Re-run the most recent analysis (useful for refreshing)
@@ -66,8 +67,8 @@ export function useAnalysis(): UseAnalysisResult {
    * Execute analysis on the specified repository path
    */
   const analyze = useCallback(
-    async (path: string) => {
-      console.log('[useAnalysis] analyze() called with path:', path);
+    async (path: string, options: AnalysisOptions = {}) => {
+      console.log('[useAnalysis] analyze() called with path:', path, 'options:', options);
 
       // Validate path
       if (!path || typeof path !== 'string') {
@@ -92,7 +93,7 @@ export function useAnalysis(): UseAnalysisResult {
           : `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
         // Use unified API client (auto-detects Tauri vs Web)
-        const data = await analyzeRepository(path, requestId);
+        const data = await analyzeRepository(path, options, requestId);
 
         console.log('[useAnalysis] API returned data:', {
           hasData: !!data,

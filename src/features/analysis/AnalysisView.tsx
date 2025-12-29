@@ -20,6 +20,7 @@ import Sunburst from '@/components/visualizations/Sunburst';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { DetailPanel } from '@/components/common/DetailPanel';
 import { DeadCodePanel } from '@/components/common/DeadCodePanel';
+import { AnalysisSettings } from '@/components/common/AnalysisSettings';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { DataDebugger } from '@/components/common/DataDebugger';
 import { ProgressBar } from '@/components/common/ProgressBar';
@@ -32,7 +33,7 @@ import {
   useAnalysisActions,
   useDeadCodeEnabled,
 } from '@/store/analysisStore';
-import type { TreeNode } from '@/types/bindings';
+import type { TreeNode, AnalysisOptions } from '@/types/bindings';
 import { filterByPath } from '@/utils/treeTransform';
 
 /**
@@ -45,6 +46,16 @@ export function AnalysisView() {
       return localStorage.getItem('lastRepoPath') || '';
     } catch {
       return '';
+    }
+  });
+
+  // Local state for analysis options (load from localStorage if available)
+  const [analysisOptions, setAnalysisOptions] = useState<AnalysisOptions>(() => {
+    try {
+      const saved = localStorage.getItem('analysisOptions');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
     }
   });
 
@@ -79,10 +90,23 @@ export function AnalysisView() {
   }, [data, deadCodeEnabled, repoPath, deadCodeResults, deadCodeLoading, analyzeDeadCode]);
 
   /**
+   * Handle analysis options change
+   */
+  const handleOptionsChange = useCallback((newOptions: AnalysisOptions) => {
+    setAnalysisOptions(newOptions);
+    // Save to localStorage
+    try {
+      localStorage.setItem('analysisOptions', JSON.stringify(newOptions));
+    } catch (error) {
+      console.warn('[AnalysisView] Failed to save options to localStorage:', error);
+    }
+  }, []);
+
+  /**
    * Handle analyze button click
    */
   const handleAnalyze = useCallback(async () => {
-    console.log('[AnalysisView] handleAnalyze called, repoPath:', repoPath);
+    console.log('[AnalysisView] handleAnalyze called, repoPath:', repoPath, 'options:', analysisOptions);
     if (!repoPath.trim()) {
       console.warn('[AnalysisView] Empty path, aborting');
       return;
@@ -97,7 +121,7 @@ export function AnalysisView() {
 
     console.log('[AnalysisView] Calling analyze() with:', repoPath.trim());
     try {
-      await analyze(repoPath.trim());
+      await analyze(repoPath.trim(), analysisOptions);
       console.log('[AnalysisView] analyze() returned successfully');
       // If dead code overlay is enabled, also run dead code analysis
       if (deadCodeEnabled) {
@@ -107,7 +131,7 @@ export function AnalysisView() {
     } catch (error) {
       console.error('[AnalysisView] analyze() threw error:', error);
     }
-  }, [repoPath, analyze, deadCodeEnabled, analyzeDeadCode]);
+  }, [repoPath, analysisOptions, analyze, deadCodeEnabled, analyzeDeadCode]);
 
   /**
    * Handle Enter key in path input
@@ -361,6 +385,13 @@ export function AnalysisView() {
               </>
             )}
           </div>
+
+          {/* Analysis Settings */}
+          <AnalysisSettings
+            options={analysisOptions}
+            onChange={handleOptionsChange}
+            disabled={loading}
+          />
 
           {/* Breadcrumb Navigation */}
           {data && !loading && (
