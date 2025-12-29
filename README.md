@@ -17,6 +17,75 @@ CodeViz is a fast, parallelized CLI tool for analyzing codebase metrics (LOC, fu
 - ⚙️ **CI Integration**: Threshold enforcement and baseline comparison (fail CI on regression).
 - 📈 **Formats**: Output to JSON, CSV, or human-readable text.
 
+## Features
+
+CodeViz provides 12 powerful code analysis features:
+
+### 1. **Basic Metrics** 📊
+Accurate LOC calculation excluding comments and blank lines, function counts, file sizes.
+```bash
+code-viz analyze ./src --format json
+```
+
+### 2. **Code Duplication Detection** 🔄
+Identifies duplicate code blocks across files with configurable similarity thresholds.
+```bash
+code-viz analyze ./src --duplicates --min-duplicate-lines 5
+```
+
+### 3. **Git Diff Comparison** 📈
+Compare analysis reports between commits or branches.
+```bash
+code-viz diff report-old.json report-new.json
+```
+
+### 4. **AI Commit Analysis** 🤖
+Detects AI-generated commits and calculates AI contribution ratio.
+```bash
+code-viz analyze ./src --ai-commits
+```
+
+### 5. **Coupling Metrics** 🔗
+Measures afferent/efferent coupling and instability for each module.
+*Automatically included in standard analysis*
+
+### 6. **Code Churn** 📉
+Tracks file modification frequency and change volume from Git history.
+*Automatically included in standard analysis*
+
+### 7. **Dead Code Detection** 💀
+Semantic analysis using stack-graphs to identify unused functions and classes.
+```bash
+code-viz dead-code ./src --min-confidence 90
+```
+*See dedicated section below for details*
+
+### 8. **AI Bloat Index** 🎈
+Measures ratio of comments/documentation to code (detects over-documentation).
+*Automatically included in standard analysis*
+
+### 9. **Cognitive Complexity** 🧠
+Per-function complexity analysis using SonarSource algorithm.
+*Automatically included in standard analysis*
+
+### 10. **Git Hotspot Detection** 🔥
+Identifies high-risk files combining churn, complexity, and size.
+```bash
+code-viz analyze ./src --hotspots --max-hotspots 10
+```
+
+### 11. **Test Coverage Integration** ✅
+Integrates llvm-cov or Tarpaulin coverage reports.
+```bash
+code-viz analyze ./src --coverage-report coverage.json
+```
+
+### 12. **Watch Mode** 👁️
+Real-time monitoring with incremental re-analysis on file changes.
+```bash
+code-viz watch ./src --format text
+```
+
 ## Documentation
 
 Comprehensive documentation is available in the [`docs/`](docs/) directory:
