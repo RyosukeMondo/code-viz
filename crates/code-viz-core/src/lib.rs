@@ -6,6 +6,7 @@ pub mod coupling;
 pub mod coverage;
 pub mod duplication;
 pub mod error;
+pub mod error_ext;
 pub mod hotspot;
 pub mod metrics;
 pub mod models;
