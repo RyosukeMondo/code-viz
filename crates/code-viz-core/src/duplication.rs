@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser, Tree};
 use crate::models::{CodeLocation, DuplicatePair, DuplicationAnalysis};
 use crate::parser::LanguageParser;
+use crate::error::{CodeVizError, Result};
 
 pub struct DuplicationDetector {
     min_lines: usize,
@@ -50,7 +51,11 @@ impl DuplicationDetector {
             .flat_map(|(path, content)| {
                 let language = path.extension().and_then(|s| s.to_str()).unwrap_or("");
                 if let Some(parser) = parsers.get(language) {
-                    self.parse_file(path, content, parser.as_ref())
+                    // Skip files that fail to parse rather than crashing the entire analysis
+                    self.parse_file(path, content, parser.as_ref()).unwrap_or_else(|e| {
+                        eprintln!("Warning: Failed to parse {:?} for duplication analysis: {}", path, e);
+                        vec![]
+                    })
                 } else {
                     vec![]
                 }
@@ -58,14 +63,26 @@ impl DuplicationDetector {
             .collect()
     }
 
-    fn parse_file(&self, path: &Path, content: &str, parser: &dyn LanguageParser) -> Vec<CodeBlock> {
+    fn parse_file(&self, path: &Path, content: &str, parser: &dyn LanguageParser) -> Result<Vec<CodeBlock>> {
         let mut tree_sitter_parser = Parser::new();
         tree_sitter_parser
             .set_language(parser.get_language())
-            .unwrap();
-        let tree = tree_sitter_parser.parse(content, None).unwrap();
+            .map_err(|e| CodeVizError::parse(
+                path.to_path_buf(),
+                "unknown",
+                None,
+                format!("Failed to set tree-sitter language: {:?}", e)
+            ))?;
 
-        self.extract_blocks_from_tree(path, content, &tree)
+        let tree = tree_sitter_parser.parse(content, None)
+            .ok_or_else(|| CodeVizError::parse(
+                path.to_path_buf(),
+                "unknown",
+                None,
+                "Failed to parse file - tree-sitter returned None"
+            ))?;
+
+        Ok(self.extract_blocks_from_tree(path, content, &tree))
     }
 
     fn extract_blocks_from_tree(&self, path: &Path, content: &str, tree: &Tree) -> Vec<CodeBlock> {
@@ -100,7 +117,10 @@ impl DuplicationDetector {
             }
 
             for i in (0..node.child_count()).rev() {
-                queue.push(node.child(i).unwrap());
+                if let Some(child) = node.child(i) {
+                    queue.push(child);
+                }
+                // If child is None, skip it - this shouldn't happen but we handle it gracefully
             }
         }
         blocks
@@ -118,8 +138,11 @@ impl DuplicationDetector {
 
             if current_node.child_count() == 0 {
                 // It's a leaf node (a token), use its text content.
-                canonical_text.push_str(current_node.utf8_text(content.as_bytes()).unwrap());
-                canonical_text.push(' ');
+                // If we can't get valid UTF-8, skip this node
+                if let Ok(text) = current_node.utf8_text(content.as_bytes()) {
+                    canonical_text.push_str(text);
+                    canonical_text.push(' ');
+                }
             } else {
                 // It's an internal node, use its kind to represent structure.
                 canonical_text.push_str(kind);
@@ -127,7 +150,9 @@ impl DuplicationDetector {
             }
             // push children in reverse order to process them in forward order (DFS)
             for i in (0..current_node.child_count()).rev() {
-                queue.push(current_node.child(i).unwrap());
+                if let Some(child) = current_node.child(i) {
+                    queue.push(child);
+                }
             }
         }
         canonical_text
@@ -185,18 +210,21 @@ impl DuplicationDetector {
 
                 if similarity >= self.similarity_threshold {
                     // Found a similar pair. Now, create pairs for all blocks in their respective hash groups.
-                    let blocks_a = blocks_by_hash.get(&block_a.hash).unwrap();
-                    let blocks_b = blocks_by_hash.get(&block_b.hash).unwrap();
-                    for ba in blocks_a {
-                        for bb in blocks_b {
-                            pairs.push(DuplicatePair {
-                                original: ba.location.clone(),
-                                duplicate: bb.location.clone(),
-                                similarity,
-                                line_count: ba.line_count,
-                            });
+                    // These lookups should always succeed since unique_blocks came from blocks_by_hash.values()
+                    if let (Some(blocks_a), Some(blocks_b)) =
+                        (blocks_by_hash.get(&block_a.hash), blocks_by_hash.get(&block_b.hash)) {
+                        for ba in blocks_a {
+                            for bb in blocks_b {
+                                pairs.push(DuplicatePair {
+                                    original: ba.location.clone(),
+                                    duplicate: bb.location.clone(),
+                                    similarity,
+                                    line_count: ba.line_count,
+                                });
+                            }
                         }
                     }
+                    // If lookups fail (shouldn't happen), skip this pair silently
                 }
             }
         }
