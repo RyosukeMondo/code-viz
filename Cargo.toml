@@ -23,7 +23,7 @@ repository = "https://github.com/rmondo/code-viz"
 serde = { version = "1.0", features = ["derive"] }
 tree-sitter = "0.20"
 rayon = "1.8"
-thiserror = "1.0"
+thiserror = "2.0"
 walkdir = "2.4"
 git2 = { version = "0.18", features = ["vendored-openssl"] }
 globset = "0.4"
@@ -31,6 +31,7 @@ anyhow = "1.0"
 async-trait = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+specta = "2.0.0-rc.22"
 
 # CLI dependencies
 clap = { version = "4.0", features = ["derive"] }

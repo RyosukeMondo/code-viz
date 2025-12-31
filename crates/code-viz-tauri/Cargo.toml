@@ -12,7 +12,7 @@ description = "Tauri wrapper library for code-viz analysis engine"
 code-viz-api = { path = "../code-viz-api" }
 
 # Core analysis engine
-code-viz-core = { path = "../code-viz-core" }
+code-viz-core = { path = "../code-viz-core", features = ["specta"] }
 code-viz-commands = { path = "../code-viz-commands" }
 code-viz-dead-code = { path = "../code-viz-dead-code", features = ["specta"] }
 
@@ -33,6 +33,9 @@ tokio = { version = "1", features = ["rt", "sync"] }
 # Type generation
 specta = { version = "2.0.0-rc.22", features = ["export"] }
 specta-typescript = "0.0.9"
+
+# Error handling
+thiserror = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
