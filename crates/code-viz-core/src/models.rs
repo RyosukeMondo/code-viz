@@ -2,7 +2,11 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+#[cfg(feature = "specta")]
+use specta::Type;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct CouplingMetrics {
     /// Number of incoming dependencies (other modules that depend on this one)
     pub afferent_coupling: usize,
@@ -68,6 +72,7 @@ pub struct FileMetrics {
 
 /// Represents code churn for a file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct CodeChurn {
     pub added_lines: usize,
     pub deleted_lines: usize,
@@ -214,6 +219,7 @@ pub struct HotspotAnalysis {
 
 /// Cognitive complexity for a single function
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct FunctionComplexity {
     pub name: String,
     pub complexity: usize,
@@ -223,6 +229,7 @@ pub struct FunctionComplexity {
 
 /// Cognitive complexity metrics for a file
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct CognitiveComplexity {
     /// Total cognitive complexity for the file
     pub total_complexity: usize,
@@ -236,6 +243,7 @@ pub struct CognitiveComplexity {
 
 /// Test coverage metrics for a file
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "specta", derive(Type))]
 pub struct TestCoverage {
     /// Line coverage percentage (0.0 - 100.0)
     pub line_coverage: f64,

@@ -264,6 +264,11 @@ impl SymbolGraphCache {
 
 #[cfg(test)]
 mod tests {
+    //! Test module for symbol graph caching
+    //!
+    //! Note: unwrap() is acceptable in test code because test panics indicate
+    //! test fixture or assertion failures, which is the expected behavior.
+
     use super::*;
     use crate::models::{Symbol, SymbolId, SymbolKind};
     use ahash::AHashMap as HashMap;

@@ -12,6 +12,49 @@
  *
  * Corresponds to Rust struct: code_viz_tauri::models::TreeNode
  */
+export interface CouplingMetrics {
+  /** Number of incoming dependencies (other modules that depend on this one) */
+  afferentCoupling: number;
+  /** Number of outgoing dependencies (modules this one depends on) */
+  efferentCoupling: number;
+  /** Instability metric (Efferent / (Afferent + Efferent)), ranges from 0 (stable) to 1 (unstable) */
+  instability: number;
+}
+
+export interface CodeChurn {
+  addedLines: number;
+  deletedLines: number;
+}
+
+export interface FunctionComplexity {
+  name: string;
+  complexity: number;
+  startLine: number;
+  endLine: number;
+}
+
+export interface CognitiveComplexity {
+  /** Total cognitive complexity for the file */
+  totalComplexity: number;
+  /** Average complexity per function */
+  averageComplexity: number;
+  /** Maximum complexity among all functions */
+  maxComplexity: number;
+  /** Per-function complexity details */
+  functions: FunctionComplexity[];
+}
+
+export interface TestCoverage {
+  /** Line coverage percentage (0.0 - 100.0) */
+  lineCoverage: number;
+  /** Number of lines covered */
+  linesCovered: number;
+  /** Total number of executable lines */
+  totalLines: number;
+  /** Branch coverage percentage (0.0 - 100.0), if available */
+  branchCoverage?: number;
+}
+
 export interface TreeNode {
   /** Unique identifier for this node (typically the full path) */
   id: string;
@@ -42,6 +85,32 @@ export interface TreeNode {
 
   /** Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled */
   deadCodeRatio?: number;
+
+  // Additional metrics from FileMetrics (only present for files)
+
+  /** Programming language ("rust", "typescript", "python", etc.) - only for files */
+  language?: string;
+
+  /** File size in bytes - only for files */
+  sizeBytes?: number;
+
+  /** Number of functions/methods - only for files */
+  functionCount?: number;
+
+  /** Coupling metrics (afferent, efferent, instability) */
+  coupling?: CouplingMetrics;
+
+  /** Code churn metrics (lines added/deleted from git) */
+  codeChurn?: CodeChurn;
+
+  /** AI Bloat Index: (comment_lines / code_lines) * 100 */
+  aiBloatIndex?: number;
+
+  /** Cognitive complexity metrics (SonarSource algorithm) */
+  cognitiveComplexity?: CognitiveComplexity;
+
+  /** Test coverage metrics (from llvm-cov, tarpaulin, etc.) */
+  testCoverage?: TestCoverage;
 }
 
 /**

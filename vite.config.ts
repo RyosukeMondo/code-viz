@@ -11,11 +11,19 @@ export default defineConfig({
 
   // Tauri expects a fixed port, fail if that port is not available
   server: {
+    host: '0.0.0.0', // Allow SSH tunnel access
     port: 5173,
     strictPort: true,
     watch: {
-      // 3. tell vite to ignore watching `src-tauri`
-      ignored: ['**/src-tauri/**'],
+      // Ignore Rust build directories to prevent file watcher limit errors
+      ignored: ['**/src-tauri/**', '**/target/**', '**/crates/**'],
+    },
+    // Proxy API requests to the Rust web backend server
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 

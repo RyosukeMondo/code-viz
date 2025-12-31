@@ -144,6 +144,11 @@ pub fn identify_dead_code(graph: &SymbolGraph, reachable: &HashSet<SymbolId>) ->
 
 #[cfg(test)]
 mod tests {
+    //! Test module for reachability analysis
+    //!
+    //! Note: unwrap() and expect() are acceptable in test code because test panics
+    //! indicate test fixture or assertion failures, which is the expected behavior.
+
     use super::*;
     use crate::models::SymbolKind;
     use ahash::AHashMap as HashMap;

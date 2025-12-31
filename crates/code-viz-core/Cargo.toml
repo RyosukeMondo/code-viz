@@ -12,6 +12,7 @@ tree-sitter = { workspace = true }
 rayon = { workspace = true }
 thiserror = { workspace = true }
 walkdir = { workspace = true }
+specta = { workspace = true, optional = true }
 globset = { workspace = true }
 ignore = "0.4"
 tracing = { workspace = true }
@@ -29,6 +30,9 @@ tree-sitter-cpp = "0.20"
 tree-sitter-go = "0.20"
 levenshtein = "1.0"
 md5 = "0.7"
+
+[features]
+specta = ["dep:specta"]
 
 [dev-dependencies]
 assert_cmd.workspace = true

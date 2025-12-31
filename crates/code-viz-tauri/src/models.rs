@@ -65,6 +65,23 @@ pub struct TreeNode {
     pub last_modified: SystemTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dead_code_ratio: Option<f64>,
+    // Additional metrics from FileMetrics
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coupling: Option<code_viz_core::models::CouplingMetrics>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_churn: Option<code_viz_core::models::CodeChurn>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ai_bloat_index: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cognitive_complexity: Option<code_viz_core::models::CognitiveComplexity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test_coverage: Option<code_viz_core::models::TestCoverage>,
 }
 
 /// Convert from code_viz_api::TreeNode to Tauri TreeNode
@@ -80,6 +97,14 @@ impl From<code_viz_api::TreeNode> for TreeNode {
             children: api_node.children.into_iter().map(Into::into).collect(),
             last_modified: api_node.last_modified,
             dead_code_ratio: api_node.dead_code_ratio,
+            language: api_node.language,
+            size_bytes: api_node.size_bytes,
+            function_count: api_node.function_count,
+            coupling: api_node.coupling,
+            code_churn: api_node.code_churn,
+            ai_bloat_index: api_node.ai_bloat_index,
+            cognitive_complexity: api_node.cognitive_complexity,
+            test_coverage: api_node.test_coverage,
         }
     }
 }
@@ -101,6 +126,14 @@ mod tests {
             children: vec![],
             last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: None,
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         let tauri_node: TreeNode = api_node.into();
@@ -122,6 +155,14 @@ mod tests {
             children: vec![],
             last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: None,
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         let json = serde_json::to_value(&node).expect("Failed to serialize");

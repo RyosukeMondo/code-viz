@@ -100,6 +100,40 @@ pub struct TreeNode {
     /// Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dead_code_ratio: Option<f64>,
+
+    // Additional metrics from FileMetrics (only present for files, not directories)
+
+    /// Programming language ("rust", "typescript", "python", etc.) - only for files
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+
+    /// File size in bytes - only for files
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<u64>,
+
+    /// Number of functions/methods - only for files
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_count: Option<usize>,
+
+    /// Coupling metrics (afferent, efferent, instability)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coupling: Option<code_viz_core::models::CouplingMetrics>,
+
+    /// Code churn metrics (lines added/deleted from git)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_churn: Option<code_viz_core::models::CodeChurn>,
+
+    /// AI Bloat Index: (comment_lines / code_lines) * 100
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ai_bloat_index: Option<f64>,
+
+    /// Cognitive complexity metrics (SonarSource algorithm)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cognitive_complexity: Option<code_viz_core::models::CognitiveComplexity>,
+
+    /// Test coverage metrics (from llvm-cov, tarpaulin, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test_coverage: Option<code_viz_core::models::TestCoverage>,
 }
 
 #[cfg(test)]
@@ -120,6 +154,14 @@ mod tests {
             children: vec![],
             last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: None,
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         // Debug: Print the actual JSON to see PathBuf serialization
@@ -168,6 +210,14 @@ mod tests {
             children: vec![],
             last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: Some(0.15),
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         let parent = TreeNode {
@@ -180,6 +230,14 @@ mod tests {
             children: vec![child],
             last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: Some(0.15),
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         let json = serde_json::to_value(&parent).expect("Failed to serialize");
@@ -207,6 +265,14 @@ mod tests {
             children: vec![],
             last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: Some(0.25),
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         // Serialize
@@ -245,6 +311,14 @@ mod tests {
             children: vec![],
             last_modified: SystemTime::now(),
             dead_code_ratio: None,
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         let json = serde_json::to_value(&without_dead_code).unwrap();

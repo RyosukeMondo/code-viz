@@ -25,6 +25,8 @@ pub(super) fn get_symbol_query(language: &str) -> Result<&'static Query, GraphEr
                     (method_definition) @method
                     "#,
                 )
+                // Programming error: Hardcoded query string is validated at compile-time
+                // and should never fail. If this fails, it indicates a bug in the query syntax.
                 .expect("Invalid TypeScript symbol query")
             }))
         }
@@ -45,6 +47,8 @@ pub(super) fn get_symbol_query(language: &str) -> Result<&'static Query, GraphEr
                     (method_definition) @method
                     "#,
                 )
+                // Programming error: Hardcoded query string is validated at compile-time
+                // and should never fail. If this fails, it indicates a bug in the query syntax.
                 .expect("Invalid JavaScript symbol query")
             }))
         }
@@ -68,6 +72,8 @@ pub(super) fn get_import_query(language: &str) -> Result<&'static Query, GraphEr
                         source: (string) @import_source)
                     "#,
                 )
+                // Programming error: Hardcoded query string is validated at compile-time
+                // and should never fail. If this fails, it indicates a bug in the query syntax.
                 .expect("Invalid TypeScript import query")
             }))
         }
@@ -81,6 +87,8 @@ pub(super) fn get_import_query(language: &str) -> Result<&'static Query, GraphEr
                         source: (string) @import_source)
                     "#,
                 )
+                // Programming error: Hardcoded query string is validated at compile-time
+                // and should never fail. If this fails, it indicates a bug in the query syntax.
                 .expect("Invalid JavaScript import query")
             }))
         }

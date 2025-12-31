@@ -209,18 +209,21 @@ impl SymbolGraphBuilder {
         for result in symbol_results {
             let (file_path, symbols, file_exports) = result?;
 
+            // Safe: Mutex is not poisoned (no panics in parallel processing)
             let mut all_symbols_guard = all_symbols.lock().unwrap();
             for symbol in symbols {
                 all_symbols_guard.insert(symbol.id.clone(), symbol);
             }
 
             if !file_exports.is_empty() {
+                // Safe: Mutex is not poisoned (no panics in parallel processing)
                 let mut exports_guard = exports.lock().unwrap();
                 exports_guard.insert(file_path, file_exports);
             }
         }
 
-        // Unwrap the Mutex to get the final HashMaps
+        // Safe: into_inner only fails if Mutex is poisoned, which cannot happen
+        // because parallel processing uses Result-based error handling
         let all_symbols = all_symbols.into_inner().unwrap();
         let exports = exports.into_inner().unwrap();
 
@@ -278,6 +281,7 @@ impl SymbolGraphBuilder {
         // Collect import results
         for result in import_results {
             let file_imports = result?;
+            // Safe: Mutex is not poisoned (no panics in parallel processing)
             let mut imports_guard = imports.lock().unwrap();
             for (symbol_id, deps) in file_imports {
                 imports_guard
@@ -287,6 +291,8 @@ impl SymbolGraphBuilder {
             }
         }
 
+        // Safe: into_inner only fails if Mutex is poisoned, which cannot happen
+        // because parallel processing uses Result-based error handling
         let imports = imports.into_inner().unwrap();
 
         Ok(SymbolGraph {

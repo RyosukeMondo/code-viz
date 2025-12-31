@@ -141,7 +141,7 @@ pub fn analyze_dead_code(
     path: &Path,
     config: Option<AnalysisConfig>,
 ) -> Result<DeadCodeResult, AnalysisError> {
-    let config = config.unwrap_or_default();
+    let config = config.unwrap_or_else(AnalysisConfig::default);
 
     tracing::info!("Starting dead code analysis");
 
@@ -366,6 +366,11 @@ fn build_graph_from_files(files: &[PathBuf]) -> Result<symbol_graph::SymbolGraph
 
 #[cfg(test)]
 mod tests {
+    //! Integration tests for dead code analysis
+    //!
+    //! Note: unwrap() is acceptable in test code because test panics indicate
+    //! test fixture or assertion failures, which is the expected behavior.
+
     use super::*;
     use std::fs;
     use tempfile::TempDir;

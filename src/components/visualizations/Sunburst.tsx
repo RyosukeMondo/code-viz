@@ -176,6 +176,12 @@ const Sunburst: React.FC<TreemapProps> = memo(({
             rotate: 'radial',
             fontSize: 10,
             minAngle: 15, // Only show label if segment is large enough (15 degrees)
+            color: '#fff', // White text for better contrast
+            textBorderColor: 'transparent', // Remove text border
+            textShadowColor: 'rgba(0, 0, 0, 0.8)', // Dark shadow for readability
+            textShadowBlur: 3,
+            textShadowOffsetX: 0,
+            textShadowOffsetY: 1,
             formatter: (params: any) => {
               // Only show labels for directories or larger files
               if (params.data && params.data.type === 'directory') {
@@ -197,6 +203,10 @@ const Sunburst: React.FC<TreemapProps> = memo(({
             label: {
               show: true,
               fontSize: 12,
+              fontWeight: 'bold',
+              color: '#fff',
+              textShadowColor: 'rgba(0, 0, 0, 0.9)',
+              textShadowBlur: 4,
             },
           },
           levels: [
@@ -229,6 +239,9 @@ const Sunburst: React.FC<TreemapProps> = memo(({
               label: {
                 rotate: 0,
                 fontSize: 11,
+                color: '#fff',
+                textShadowColor: 'rgba(0, 0, 0, 0.8)',
+                textShadowBlur: 3,
               },
             },
             {
@@ -236,6 +249,9 @@ const Sunburst: React.FC<TreemapProps> = memo(({
               r: '65%',
               label: {
                 fontSize: 10,
+                color: '#fff',
+                textShadowColor: 'rgba(0, 0, 0, 0.8)',
+                textShadowBlur: 3,
               },
             },
             {
@@ -245,6 +261,9 @@ const Sunburst: React.FC<TreemapProps> = memo(({
                 position: 'outside',
                 silent: false,
                 fontSize: 9,
+                color: '#fff',
+                textShadowColor: 'rgba(0, 0, 0, 0.8)',
+                textShadowBlur: 3,
               },
             },
           ],

@@ -53,9 +53,11 @@ export function AnalysisView() {
   const [analysisOptions, setAnalysisOptions] = useState<AnalysisOptions>(() => {
     try {
       const saved = localStorage.getItem('analysisOptions');
-      return saved ? JSON.parse(saved) : {};
+      const parsed = saved ? JSON.parse(saved) : {};
+      // Force disable duplication (in development)
+      return { ...parsed, enableDuplicates: false };
     } catch {
-      return {};
+      return { enableDuplicates: false };
     }
   });
 
@@ -338,51 +340,18 @@ export function AnalysisView() {
             </button>
 
             {data && !loading && (
-              <>
-                <button
-                  onClick={toggleDeadCodeOverlay}
-                  className={`px-4 py-2 rounded-lg font-medium border transition-colors
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                           dark:focus:ring-offset-gray-800
-                           ${
-                             deadCodeEnabled
-                               ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
-                               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                           }`}
-                  aria-label="Toggle dead code overlay"
-                  title="Toggle dead code visualization overlay"
-                >
-                  <span className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                      />
-                    </svg>
-                    Dead Code
-                  </span>
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
                          border border-gray-300 dark:border-gray-600 rounded-lg
                          hover:bg-gray-200 dark:hover:bg-gray-600
                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                          dark:focus:ring-offset-gray-800
                          transition-colors"
-                  aria-label="Reset analysis"
-                >
-                  Reset
-                </button>
-              </>
+                aria-label="Reset analysis"
+              >
+                Reset
+              </button>
             )}
           </div>
 
@@ -391,6 +360,8 @@ export function AnalysisView() {
             options={analysisOptions}
             onChange={handleOptionsChange}
             disabled={loading}
+            deadCodeEnabled={deadCodeEnabled}
+            onToggleDeadCode={toggleDeadCodeOverlay}
           />
 
           {/* Breadcrumb Navigation */}

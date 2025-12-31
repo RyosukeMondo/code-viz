@@ -1,4 +1,7 @@
 //! Tests for symbol graph construction.
+//!
+//! Note: unwrap() is acceptable in test code because test panics indicate
+//! test fixture or assertion failures, which is the expected behavior.
 
 use super::builder::SymbolGraphBuilder;
 use super::extractors::is_test_file;

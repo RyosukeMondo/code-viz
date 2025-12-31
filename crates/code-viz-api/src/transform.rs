@@ -138,6 +138,14 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
             children: vec![],
             last_modified: std::time::SystemTime::now(),
             dead_code_ratio: None,
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
     }
 
@@ -178,6 +186,14 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
         children: vec![],
         last_modified: std::time::SystemTime::now(),
         dead_code_ratio: None,
+        language: None,
+        size_bytes: None,
+        function_count: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
     };
     dir_map.insert(root_node_path.clone(), root_node);
 
@@ -209,7 +225,16 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
             node_type: "file".to_string(),
             children: vec![],
             last_modified: file.last_modified,
-            dead_code_ratio: None,
+            dead_code_ratio: file.dead_code_ratio,
+            // Copy all additional metrics from FileMetrics
+            language: Some(file.language.clone()),
+            size_bytes: Some(file.size_bytes),
+            function_count: Some(file.function_count),
+            coupling: file.coupling.clone(),
+            code_churn: file.code_churn.clone(),
+            ai_bloat_index: file.ai_bloat_index,
+            cognitive_complexity: file.cognitive_complexity.clone(),
+            test_coverage: file.test_coverage.clone(),
         };
         file_nodes.push((file_path.clone(), file_node));
 
@@ -264,6 +289,14 @@ fn ensure_parent_directories(
                 children: vec![],
                 last_modified: std::time::SystemTime::now(),
                 dead_code_ratio: None,
+                language: None,
+                size_bytes: None,
+                function_count: None,
+                coupling: None,
+                code_churn: None,
+                ai_bloat_index: None,
+                cognitive_complexity: None,
+                test_coverage: None,
             };
             dir_map.insert(parent_buf.clone(), dir_node);
 
