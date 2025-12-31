@@ -72,6 +72,21 @@ pub struct DeadCodeResult {
 }
 
 impl DeadCodeResult {
+    /// Create an empty result for when no source files are found
+    pub fn empty() -> Self {
+        Self {
+            summary: DeadCodeSummary {
+                total_files: 0,
+                files_with_dead_code: 0,
+                dead_functions: 0,
+                dead_classes: 0,
+                total_dead_loc: 0,
+                dead_code_ratio: 0.0,
+            },
+            files: vec![],
+        }
+    }
+
     /// Filter dead code by minimum confidence score
     ///
     /// Returns a new `DeadCodeResult` containing only dead symbols

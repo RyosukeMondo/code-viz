@@ -137,62 +137,48 @@ pub enum AnalysisError {
 /// # Ok::<(), code_viz_dead_code::AnalysisError>(())
 /// ```
 #[tracing::instrument(skip(config), fields(path = %path.display()))]
-pub fn analyze_dead_code(
-    path: &Path,
-    config: Option<AnalysisConfig>,
-) -> Result<DeadCodeResult, AnalysisError> {
-    let config = config.unwrap_or_else(AnalysisConfig::default);
-
-    tracing::info!("Starting dead code analysis");
-
-    // Step 1: Scan directory for source files
+/// Scan directory for source files
+fn scan_source_files(path: &Path, config: &AnalysisConfig) -> Result<Vec<PathBuf>, AnalysisError> {
     tracing::info!("Scanning directory for source files");
     let files = code_viz_core::scanner::scan_directory(path, &config.exclude_patterns)?;
-
-    if files.is_empty() {
-        tracing::warn!("No source files found in directory");
-        return Ok(DeadCodeResult {
-            summary: DeadCodeSummary {
-                total_files: 0,
-                files_with_dead_code: 0,
-                dead_functions: 0,
-                dead_classes: 0,
-                total_dead_loc: 0,
-                dead_code_ratio: 0.0,
-            },
-            files: vec![],
-        });
-    }
-
     tracing::info!(file_count = files.len(), "Found source files");
+    Ok(files)
+}
 
-    // Step 2: Build or load cached symbol graph
+/// Build or load symbol graph based on configuration
+fn get_symbol_graph(
+    files: &[PathBuf],
+    config: &AnalysisConfig,
+    path: &Path,
+) -> Result<SymbolGraph, AnalysisError> {
     let graph = if config.enable_cache {
-        load_or_build_graph(&files, &config, path)?
+        load_or_build_graph(files, config, path)?
     } else {
-        build_graph_from_files(&files)?
+        build_graph_from_files(files)?
     };
+    tracing::info!(symbol_count = graph.symbols.len(), "Symbol graph constructed");
+    Ok(graph)
+}
 
-    tracing::info!(
-        symbol_count = graph.symbols.len(),
-        "Symbol graph constructed"
-    );
-
-    // Step 3: Detect entry points
+/// Detect and validate entry points
+fn get_entry_points(graph: &SymbolGraph) -> Result<Vec<models::SymbolId>, AnalysisError> {
     tracing::info!("Detecting entry points");
-    let entry_points = entry_points::detect_entry_points(&graph);
+    let entry_points = entry_points::detect_entry_points(graph);
 
     if entry_points.is_empty() {
         tracing::error!("No entry points found in codebase");
         return Err(AnalysisError::NoEntryPoints);
     }
 
-    tracing::info!(
-        entry_point_count = entry_points.len(),
-        "Entry points detected"
-    );
+    tracing::info!(entry_point_count = entry_points.len(), "Entry points detected");
+    Ok(entry_points)
+}
 
-    // Step 4: Perform reachability analysis
+/// Perform reachability analysis from entry points
+fn analyze_reachability(
+    graph: &SymbolGraph,
+    entry_points: Vec<models::SymbolId>,
+) -> Result<ahash::AHashSet<models::SymbolId>, AnalysisError> {
     tracing::info!("Performing reachability analysis");
     let mut analyzer = reachability::ReachabilityAnalyzer::new(graph.clone());
     let reachable = analyzer.analyze(entry_points)?;
@@ -202,39 +188,38 @@ pub fn analyze_dead_code(
         total_count = graph.symbols.len(),
         "Reachability analysis complete"
     );
+    Ok(reachable)
+}
 
-    // Step 5: Identify dead code
-    let dead_symbols = reachability::identify_dead_code(&graph, &reachable);
+/// Aggregation statistics for dead code
+struct DeadCodeStats {
+    total_dead_loc: usize,
+    dead_functions: usize,
+    dead_classes: usize,
+}
 
-    tracing::info!(
-        dead_symbol_count = dead_symbols.len(),
-        "Dead code identified"
-    );
-
-    // Step 6: Calculate confidence scores
-    tracing::info!("Calculating confidence scores");
-    let calculator = confidence::ConfidenceCalculator::new(graph.clone());
-
-    // Group dead symbols by file and calculate confidence
+/// Process dead symbols into file-grouped results with confidence scores
+fn process_dead_symbols(
+    dead_symbols: Vec<models::Symbol>,
+    calculator: &confidence::ConfidenceCalculator,
+) -> (Vec<FileDeadCode>, DeadCodeStats) {
     let mut files_map: HashMap<PathBuf, Vec<DeadSymbol>> = HashMap::new();
-    let mut total_dead_loc = 0;
-    let mut dead_functions = 0;
-    let mut dead_classes = 0;
+    let mut stats = DeadCodeStats {
+        total_dead_loc: 0,
+        dead_functions: 0,
+        dead_classes: 0,
+    };
 
     for symbol in dead_symbols {
         let confidence = calculator.calculate(&symbol);
         let loc = symbol.line_end.saturating_sub(symbol.line_start) + 1;
-        total_dead_loc += loc;
+        stats.total_dead_loc += loc;
 
         match symbol.kind {
             models::SymbolKind::Function
             | models::SymbolKind::ArrowFunction
-            | models::SymbolKind::Method => {
-                dead_functions += 1;
-            }
-            models::SymbolKind::Class => {
-                dead_classes += 1;
-            }
+            | models::SymbolKind::Method => stats.dead_functions += 1,
+            models::SymbolKind::Class => stats.dead_classes += 1,
             _ => {}
         }
 
@@ -249,55 +234,90 @@ pub fn analyze_dead_code(
             last_modified: None,
         };
 
-        files_map
-            .entry(symbol.path.clone())
-            .or_default()
-            .push(dead_symbol);
+        files_map.entry(symbol.path.clone()).or_default().push(dead_symbol);
     }
 
-    // Convert to Vec<FileDeadCode>
     let mut files: Vec<FileDeadCode> = files_map
         .into_iter()
         .map(|(path, dead_code)| FileDeadCode { path, dead_code })
         .collect();
 
-    // Sort by path for consistent output
     files.sort_by(|a, b| a.path.cmp(&b.path));
+    (files, stats)
+}
 
-    // Calculate total LOC (approximate by counting lines in all symbols)
+/// Calculate dead code ratio from total and dead LOC
+fn calculate_dead_code_ratio(graph: &SymbolGraph, total_dead_loc: usize) -> f64 {
     let total_loc: usize = graph
         .symbols
         .values()
         .map(|s| s.line_end.saturating_sub(s.line_start) + 1)
         .sum();
 
-    let dead_code_ratio = if total_loc > 0 {
+    if total_loc > 0 {
         total_dead_loc as f64 / total_loc as f64
     } else {
         0.0
-    };
+    }
+}
 
-    let files_with_dead_code = files.len();
-
+/// Build final result from processed dead code data
+fn build_result(
+    files: Vec<FileDeadCode>,
+    stats: DeadCodeStats,
+    dead_code_ratio: f64,
+) -> DeadCodeResult {
     tracing::info!(
-        dead_functions,
-        dead_classes,
-        total_dead_loc,
+        dead_functions = stats.dead_functions,
+        dead_classes = stats.dead_classes,
+        total_dead_loc = stats.total_dead_loc,
         dead_code_ratio = format!("{:.2}%", dead_code_ratio * 100.0),
         "Analysis complete"
     );
 
-    Ok(DeadCodeResult {
+    DeadCodeResult {
         summary: DeadCodeSummary {
             total_files: files.len(),
-            files_with_dead_code,
-            dead_functions,
-            dead_classes,
-            total_dead_loc,
+            files_with_dead_code: files.len(),
+            dead_functions: stats.dead_functions,
+            dead_classes: stats.dead_classes,
+            total_dead_loc: stats.total_dead_loc,
             dead_code_ratio,
         },
         files,
-    })
+    }
+}
+
+pub fn analyze_dead_code(
+    path: &Path,
+    config: Option<AnalysisConfig>,
+) -> Result<DeadCodeResult, AnalysisError> {
+    let config = config.unwrap_or_else(AnalysisConfig::default);
+    tracing::info!("Starting dead code analysis");
+
+    // Step 1: Scan source files
+    let files = scan_source_files(path, &config)?;
+    if files.is_empty() {
+        tracing::warn!("No source files found in directory");
+        return Ok(DeadCodeResult::empty());
+    }
+
+    // Step 2-4: Build graph, detect entry points, and analyze reachability
+    let graph = get_symbol_graph(&files, &config, path)?;
+    let entry_points = get_entry_points(&graph)?;
+    let reachable = analyze_reachability(&graph, entry_points)?;
+
+    // Step 5: Identify dead code
+    let dead_symbols = reachability::identify_dead_code(&graph, &reachable);
+    tracing::info!(dead_symbol_count = dead_symbols.len(), "Dead code identified");
+
+    // Step 6: Calculate confidence and build result
+    tracing::info!("Calculating confidence scores");
+    let calculator = confidence::ConfidenceCalculator::new(graph.clone());
+    let (files, stats) = process_dead_symbols(dead_symbols, &calculator);
+    let ratio = calculate_dead_code_ratio(&graph, stats.total_dead_loc);
+
+    Ok(build_result(files, stats, ratio))
 }
 
 /// Load graph from cache or build it from files
