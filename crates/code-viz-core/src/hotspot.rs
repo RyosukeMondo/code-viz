@@ -34,9 +34,9 @@ impl HotspotDetector {
         // Find max values for normalization
         let max_churn = files_with_churn
             .iter()
-            .map(|f| {
-                let churn = f.code_churn.as_ref().unwrap();
-                churn.added_lines + churn.deleted_lines
+            .filter_map(|f| {
+                // We've already filtered for files with churn data, but use filter_map for safety
+                f.code_churn.as_ref().map(|churn| churn.added_lines + churn.deleted_lines)
             })
             .max()
             .unwrap_or(1) as f64;
@@ -56,8 +56,9 @@ impl HotspotDetector {
         // Calculate hotspot scores
         let mut hotspots: Vec<Hotspot> = files_with_churn
             .iter()
-            .map(|file| {
-                let churn = file.code_churn.as_ref().unwrap();
+            .filter_map(|file| {
+                // We've already filtered for files with churn data, but use filter_map for safety
+                let churn = file.code_churn.as_ref()?;
                 let total_changes = churn.added_lines + churn.deleted_lines;
 
                 // Normalize scores to 0-1 range
@@ -84,19 +85,24 @@ impl HotspotDetector {
                     + (complexity_score * COMPLEXITY_WEIGHT)
                     + (size_score * SIZE_WEIGHT);
 
-                Hotspot {
+                Some(Hotspot {
                     path: file.path.clone(),
                     hotspot_score,
                     churn_score,
                     complexity_score,
                     size_score,
                     total_changes,
-                }
+                })
             })
             .collect();
 
         // Sort by hotspot score descending
-        hotspots.sort_by(|a, b| b.hotspot_score.partial_cmp(&a.hotspot_score).unwrap());
+        // Use unwrap_or to handle NaN values (treat them as less than any number)
+        hotspots.sort_by(|a, b| {
+            b.hotspot_score
+                .partial_cmp(&a.hotspot_score)
+                .unwrap_or(std::cmp::Ordering::Less)
+        });
 
         // Take top N
         hotspots.truncate(self.max_hotspots);
