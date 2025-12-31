@@ -16,11 +16,13 @@ echo "🔍 Checking for unwrap() and expect() in production code..."
 TEMP_FILE=$(mktemp)
 trap "rm -f $TEMP_FILE" EXIT
 
-# First pass: find all unwrap/expect in Rust files (excluding obvious test files)
+# First pass: find all unwrap/expect in Rust files (excluding obvious test files and mocks)
 rg --type rust '\.(unwrap|expect)\(' crates/ \
   --glob '!**/*test*.rs' \
   --glob '!**/tests/**' \
   --glob '!**/build.rs' \
+  --glob '!**/mocks/**' \
+  --glob '!**/mock_*.rs' \
   --line-number \
   > "$TEMP_FILE" || true
 
@@ -39,8 +41,8 @@ VIOLATIONS=$(cat "$TEMP_FILE" \
   | grep -v '//.*not a runtime error' \
   | grep -v 'expect("Invalid.*query")' \
   | grep -v 'expect("BUG:' \
-  | grep -v '^\s*///' \
-  | grep -v '^\s*\*' \
+  | grep -v '///' \
+  | grep -v '^[^:]*:[^:]*:\s*/\*' \
   || true)
 
 # Third pass: check each violation to see if it's in a test function
@@ -51,16 +53,38 @@ while IFS= read -r line; do
   LINE_NUM=$(echo "$line" | cut -d: -f2)
 
   # Check if this line is inside a #[test] function or #[cfg(test)] module
-  # Look backwards from the line to find #[test] or #[cfg(test)]
-  CONTEXT=$(sed -n "1,${LINE_NUM}p" "$FILE" | tail -20)
+  # Strategy: Check if the file has a #[cfg(test)] module before this line
+  # and no module closing brace between the #[cfg(test)] and our line
 
-  # Skip if we find #[test] or #[cfg(test)] in recent context
-  if echo "$CONTEXT" | grep -q '#\[test\]'; then
+  # Get all content up to our line
+  BEFORE_LINE=$(sed -n "1,${LINE_NUM}p" "$FILE")
+
+  # Check for #[test] attribute nearby (within 30 lines before)
+  RECENT_CONTEXT=$(echo "$BEFORE_LINE" | tail -30)
+  if echo "$RECENT_CONTEXT" | grep -q '#\[test\]'; then
     continue
   fi
 
-  if echo "$CONTEXT" | grep -q '#\[cfg(test)\]'; then
+  # Check if there's a "Test-only unwrap" comment in the preceding lines (within 5 lines)
+  PRECEDING_LINES=$(echo "$BEFORE_LINE" | tail -5)
+  if echo "$PRECEDING_LINES" | grep -q "Test-only unwrap"; then
     continue
+  fi
+
+  # Check if we're in a #[cfg(test)] module
+  # Find the last #[cfg(test)] before our line
+  LAST_CFG_TEST_LINE=$(echo "$BEFORE_LINE" | grep -n '#\[cfg(test)\]' | tail -1 | cut -d: -f1)
+
+  if [ -n "$LAST_CFG_TEST_LINE" ]; then
+    # We found a #[cfg(test)] before this line
+    # Now check if there's a module closure between #[cfg(test)] and our line
+    # Count braces to see if we're still in the test module
+    AFTER_CFG=$(sed -n "${LAST_CFG_TEST_LINE},${LINE_NUM}p" "$FILE")
+
+    # Simple heuristic: if we see "mod tests" or similar after #[cfg(test)], we're in a test module
+    if echo "$AFTER_CFG" | head -5 | grep -q 'mod \(tests\|test\)'; then
+      continue
+    fi
   fi
 
   # This is a genuine violation

@@ -292,21 +292,23 @@ impl SymbolGraphBuilder {
         for result in results {
             let (file_path, symbols, file_exports) = result?;
 
-            // Safe: Mutex is not poisoned (no panics in parallel processing)
-            let mut all_symbols_guard = all_symbols.lock().unwrap();
+            let mut all_symbols_guard = all_symbols.lock()
+                .expect("BUG: Mutex poisoned - indicates panic in parallel processing");
             for symbol in symbols {
                 all_symbols_guard.insert(symbol.id.clone(), symbol);
             }
 
             if !file_exports.is_empty() {
-                // Safe: Mutex is not poisoned (no panics in parallel processing)
-                let mut exports_guard = exports.lock().unwrap();
+                let mut exports_guard = exports.lock()
+                    .expect("BUG: Mutex poisoned - indicates panic in parallel processing");
                 exports_guard.insert(file_path, file_exports);
             }
         }
 
-        // Safe: into_inner only fails if Mutex is poisoned, which cannot happen
-        Ok((all_symbols.into_inner().unwrap(), exports.into_inner().unwrap()))
+        Ok((
+            all_symbols.into_inner().expect("BUG: Mutex poisoned"),
+            exports.into_inner().expect("BUG: Mutex poisoned")
+        ))
     }
 
     /// Resolve imports for a single file
@@ -347,8 +349,8 @@ impl SymbolGraphBuilder {
     ) -> Result<ImportMap, GraphError> {
         for result in results {
             let file_imports = result?;
-            // Safe: Mutex is not poisoned (no panics in parallel processing)
-            let mut imports_guard = imports.lock().unwrap();
+            let mut imports_guard = imports.lock()
+                .expect("BUG: Mutex poisoned - indicates panic in parallel processing");
             for (symbol_id, deps) in file_imports {
                 imports_guard
                     .entry(symbol_id)
@@ -357,8 +359,7 @@ impl SymbolGraphBuilder {
             }
         }
 
-        // Safe: into_inner only fails if Mutex is poisoned
-        Ok(imports.into_inner().unwrap())
+        Ok(imports.into_inner().expect("BUG: Mutex poisoned"))
     }
 }
 
