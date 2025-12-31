@@ -132,35 +132,57 @@ fn strip_prefix(path: &Path, prefix: &Path) -> PathBuf {
 /// assert_eq!(tree.children.len(), 1);
 /// ```
 pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> {
-    // Handle empty input - return empty root node
     if files.is_empty() {
-        return Ok(TreeNode {
-            id: "/".to_string(),
-            name: "root".to_string(),
-            path: PathBuf::from("/"),
-            loc: 0,
-            complexity: 0,
-            node_type: "directory".to_string(),
-            children: vec![],
-            last_modified: std::time::SystemTime::now(),
-            dead_code_ratio: None,
-            language: None,
-            size_bytes: None,
-            function_count: None,
-            coupling: None,
-            code_churn: None,
-            ai_bloat_index: None,
-            cognitive_complexity: None,
-            test_coverage: None,
-        });
+        return Ok(create_empty_root());
     }
 
-    // Check if paths are absolute (start with "/") or relative
     let has_absolute_paths = files.iter().any(|f| f.path.is_absolute());
+    let (root_path, project_name) = determine_root_path(&files, has_absolute_paths);
+    let root_node_path = if has_absolute_paths {
+        PathBuf::from("")
+    } else {
+        root_path.clone()
+    };
 
-    let (root_path, project_name) = if has_absolute_paths {
-        // Find common root path from all files and use project name
-        let common_root = find_common_root(&files);
+    let mut dir_map = build_directory_map(&project_name, &root_node_path);
+    let file_nodes = build_file_nodes(files, has_absolute_paths, &root_path, &mut dir_map, &root_node_path);
+    attach_file_nodes_to_parents(file_nodes, &mut dir_map, &root_node_path);
+    aggregate_directory_metrics(&mut dir_map, &root_node_path);
+
+    dir_map.remove(&root_node_path).ok_or_else(|| {
+        ApiError::TransformError(
+            "Root node missing from directory map after tree construction".to_string()
+        )
+    })
+}
+
+/// Creates an empty root TreeNode for empty file lists
+fn create_empty_root() -> TreeNode {
+    TreeNode {
+        id: "/".to_string(),
+        name: "root".to_string(),
+        path: PathBuf::from("/"),
+        loc: 0,
+        complexity: 0,
+        node_type: "directory".to_string(),
+        children: vec![],
+        last_modified: std::time::SystemTime::now(),
+        dead_code_ratio: None,
+        language: None,
+        size_bytes: None,
+        function_count: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
+    }
+}
+
+/// Determines the root path and project name from file list
+fn determine_root_path(files: &[FileMetrics], has_absolute_paths: bool) -> (PathBuf, String) {
+    if has_absolute_paths {
+        let common_root = find_common_root(files);
         let proj_name = common_root
             .file_name()
             .and_then(|n| n.to_str())
@@ -168,24 +190,17 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> 
             .to_string();
         (common_root, proj_name)
     } else {
-        // For relative paths, use generic root
         (PathBuf::from("/"), "root".to_string())
-    };
+    }
+}
 
-    // Map to store directory nodes by their path (for O(1) lookup)
-    let mut dir_map: HashMap<PathBuf, TreeNode> = HashMap::new();
-
-    // Root node representing the repository
-    let root_node_path = if has_absolute_paths {
-        PathBuf::from("")
-    } else {
-        root_path.clone()
-    };
-
+/// Builds initial directory map with root node
+fn build_directory_map(project_name: &str, root_node_path: &Path) -> HashMap<PathBuf, TreeNode> {
+    let mut dir_map = HashMap::new();
     let root_node = TreeNode {
         id: "/".to_string(),
-        name: project_name,
-        path: root_node_path.clone(),
+        name: project_name.to_string(),
+        path: root_node_path.to_path_buf(),
         loc: 0,
         complexity: 0,
         node_type: "directory".to_string(),
@@ -201,18 +216,25 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> 
         cognitive_complexity: None,
         test_coverage: None,
     };
-    dir_map.insert(root_node_path.clone(), root_node);
+    dir_map.insert(root_node_path.to_path_buf(), root_node);
+    dir_map
+}
 
-    // First pass: create all file nodes and ensure all parent directories exist
+/// Builds file nodes from metrics and ensures parent directories exist
+fn build_file_nodes(
+    files: Vec<FileMetrics>,
+    has_absolute_paths: bool,
+    root_path: &Path,
+    dir_map: &mut HashMap<PathBuf, TreeNode>,
+    root_node_path: &Path,
+) -> Vec<(PathBuf, TreeNode)> {
     let mut file_nodes = Vec::new();
     for file in files {
-        // Create file node
         let file_loc = file.loc;
         let file_complexity = calculate_complexity(file_loc);
 
-        // Convert absolute path to relative path by stripping common root
         let file_path = if has_absolute_paths {
-            strip_prefix(&file.path, &root_path)
+            strip_prefix(&file.path, root_path)
         } else {
             file.path.clone()
         };
@@ -232,7 +254,6 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> 
             children: vec![],
             last_modified: file.last_modified,
             dead_code_ratio: file.dead_code_ratio,
-            // Copy all additional metrics from FileMetrics
             language: Some(file.language.clone()),
             size_bytes: Some(file.size_bytes),
             function_count: Some(file.function_count),
@@ -243,28 +264,23 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> 
             test_coverage: file.test_coverage.clone(),
         };
         file_nodes.push((file_path.clone(), file_node));
-
-        // Ensure all parent directories exist
-        ensure_parent_directories(&file_path, &mut dir_map, &root_node_path);
+        ensure_parent_directories(&file_path, dir_map, root_node_path);
     }
+    file_nodes
+}
 
-    // Second pass: attach file nodes to their parent directories
+/// Attaches file nodes to their parent directories
+fn attach_file_nodes_to_parents(
+    file_nodes: Vec<(PathBuf, TreeNode)>,
+    dir_map: &mut HashMap<PathBuf, TreeNode>,
+    root_node_path: &Path,
+) {
     for (file_path, file_node) in file_nodes {
-        let parent_path = get_parent_path(&file_path, &root_node_path);
+        let parent_path = get_parent_path(&file_path, root_node_path);
         if let Some(parent) = dir_map.get_mut(&parent_path) {
             parent.children.push(file_node);
         }
     }
-
-    // Third pass: aggregate metrics up the tree (bottom-up)
-    aggregate_directory_metrics(&mut dir_map, &root_node_path);
-
-    // Extract root node - this should always succeed since we create the root node at the beginning
-    dir_map.remove(&root_node_path).ok_or_else(|| {
-        ApiError::TransformError(
-            "Root node missing from directory map after tree construction".to_string()
-        )
-    })
 }
 
 /// Ensures all parent directories exist in the directory map
