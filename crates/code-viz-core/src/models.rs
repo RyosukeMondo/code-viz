@@ -268,3 +268,62 @@ pub struct CoverageAnalysis {
     /// Files with coverage data
     pub file_count: usize,
 }
+
+/// Hierarchical node representing a file or directory in the codebase tree
+///
+/// This structure is used by the transform module to build hierarchical
+/// visualizations from flat file metrics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
+pub struct TreeNode {
+    /// Unique identifier for this node (typically the full path)
+    pub id: String,
+
+    /// Display name (file/directory name without full path)
+    pub name: String,
+
+    /// Full path from repository root
+    pub path: PathBuf,
+
+    /// Lines of code (for files) or sum of children (for directories)
+    pub loc: usize,
+
+    /// Complexity score (0-100 scale, calculated as loc/10)
+    pub complexity: u32,
+
+    /// Node type: "file" or "directory"
+    pub node_type: String,
+
+    /// Child nodes (empty for files, contains children for directories)
+    pub children: Vec<TreeNode>,
+
+    /// Last modified timestamp
+    pub last_modified: SystemTime,
+
+    /// Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled
+    pub dead_code_ratio: Option<f64>,
+
+    /// Programming language - only for files
+    pub language: Option<String>,
+
+    /// File size in bytes - only for files
+    pub size_bytes: Option<u64>,
+
+    /// Number of functions/methods - only for files
+    pub function_count: Option<usize>,
+
+    /// Coupling metrics
+    pub coupling: Option<CouplingMetrics>,
+
+    /// Code churn metrics
+    pub code_churn: Option<CodeChurn>,
+
+    /// AI Bloat Index: (comment_lines / code_lines) * 100
+    pub ai_bloat_index: Option<f64>,
+
+    /// Cognitive complexity metrics
+    pub cognitive_complexity: Option<CognitiveComplexity>,
+
+    /// Test coverage metrics
+    pub test_coverage: Option<TestCoverage>,
+}
