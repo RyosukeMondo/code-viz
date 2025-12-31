@@ -10,7 +10,7 @@ use code_viz_core::parser::LanguageParser;
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tree_sitter::QueryCursor;
+use tree_sitter::{Query, QueryCursor, Tree};
 
 // Type aliases to reduce complexity
 type SymbolMap = HashMap<SymbolId, Symbol>;
@@ -33,6 +33,80 @@ impl SymbolGraphBuilder {
         }
     }
 
+    fn parse_symbol_kind(capture_name: &str) -> Option<SymbolKind> {
+        match capture_name {
+            "function" => Some(SymbolKind::Function),
+            "arrow" => Some(SymbolKind::ArrowFunction),
+            "class" => Some(SymbolKind::Class),
+            "method" => Some(SymbolKind::Method),
+            "variable" => Some(SymbolKind::Variable),
+            _ => None,
+        }
+    }
+
+    fn build_symbol_from_capture(
+        &self,
+        node: tree_sitter::Node,
+        capture_name: &str,
+        source: &str,
+        path: &Path,
+        is_test: bool,
+    ) -> Option<Symbol> {
+        let kind = Self::parse_symbol_kind(capture_name)?;
+        let name = extract_symbol_name(&node, source, capture_name);
+        if name.is_empty() {
+            return None;
+        }
+
+        let is_exported = is_symbol_exported(&node, source);
+        let start_point = node.start_position();
+        let end_point = node.end_position();
+        let line_start = start_point.row + 1;
+        let line_end = end_point.row + 1;
+        let id = format!("{}:{}:{}", path.display(), line_start, name);
+
+        Some(Symbol {
+            id,
+            name,
+            kind,
+            path: path.to_path_buf(),
+            line_start,
+            line_end,
+            is_exported,
+            is_test,
+        })
+    }
+
+    fn process_query_matches(
+        &self,
+        query: &Query,
+        tree: &Tree,
+        source: &str,
+        path: &Path,
+        is_test: bool,
+    ) -> Vec<Symbol> {
+        let mut symbols = Vec::new();
+        let mut cursor = QueryCursor::new();
+        let matches = cursor.matches(query, tree.root_node(), source.as_bytes());
+
+        for m in matches {
+            for capture in m.captures {
+                let capture_name = &query.capture_names()[capture.index as usize];
+                if let Some(symbol) = self.build_symbol_from_capture(
+                    capture.node,
+                    capture_name,
+                    source,
+                    path,
+                    is_test,
+                ) {
+                    symbols.push(symbol);
+                }
+            }
+        }
+
+        symbols
+    }
+
     /// Extract symbols from a single file using Tree-sitter
     ///
     /// # Arguments
@@ -48,67 +122,14 @@ impl SymbolGraphBuilder {
         source: &str,
         parser: &dyn LanguageParser,
     ) -> Result<Vec<Symbol>, GraphError> {
-        // Parse the source code
         let tree = parser.parse(source).map_err(|e| GraphError::ParseError {
             file: path.to_path_buf(),
             message: e.to_string(),
         })?;
 
-        let mut symbols = Vec::new();
         let is_test = is_test_file(path);
-
-        // Get the appropriate query based on language
         let query = get_symbol_query(parser.language_key())?;
-        let mut cursor = QueryCursor::new();
-
-        // Execute the query on the tree
-        let matches = cursor.matches(query, tree.root_node(), source.as_bytes());
-
-        for m in matches {
-            for capture in m.captures {
-                let node = capture.node;
-                let capture_name = &query.capture_names()[capture.index as usize];
-
-                // Determine symbol kind based on capture name
-                let kind = match capture_name.as_str() {
-                    "function" => SymbolKind::Function,
-                    "arrow" => SymbolKind::ArrowFunction,
-                    "class" => SymbolKind::Class,
-                    "method" => SymbolKind::Method,
-                    "variable" => SymbolKind::Variable,
-                    _ => continue,
-                };
-
-                // Extract symbol name from the node
-                let name = extract_symbol_name(&node, source, capture_name);
-                if name.is_empty() {
-                    continue; // Skip anonymous functions
-                }
-
-                // Check if symbol is exported
-                let is_exported = is_symbol_exported(&node, source);
-
-                // Get line range
-                let start_point = node.start_position();
-                let end_point = node.end_position();
-                let line_start = start_point.row + 1; // Convert to 1-indexed
-                let line_end = end_point.row + 1;
-
-                // Create unique symbol ID
-                let id = format!("{}:{}:{}", path.display(), line_start, name);
-
-                symbols.push(Symbol {
-                    id,
-                    name,
-                    kind,
-                    path: path.to_path_buf(),
-                    line_start,
-                    line_end,
-                    is_exported,
-                    is_test,
-                });
-            }
-        }
+        let symbols = self.process_query_matches(&query, &tree, source, path, is_test);
 
         Ok(symbols)
     }
