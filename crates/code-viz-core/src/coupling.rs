@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use crate::error::{CodeVizError, Result};
 use crate::models::{CouplingMetrics, FileMetrics};
 use crate::parser::{get_parser, LanguageParser};
 use crate::traits::FileSystem;
@@ -30,10 +31,24 @@ fn extract_dependencies(
     source: &str,
     parser: &dyn LanguageParser,
     query_str: &str,
-) -> Vec<String> {
-    let tree = parser.parse(source).unwrap();
+) -> Result<Vec<String>> {
+    let tree = parser.parse(source)
+        .map_err(|e| CodeVizError::parse(
+            PathBuf::from("<inline>"),
+            parser.language_key(),
+            None,
+            e.to_string(),
+        ))?;
+
     let mut cursor = tree_sitter::QueryCursor::new();
-    let query = tree_sitter::Query::new(parser.get_language(), query_str).unwrap();
+    let query = tree_sitter::Query::new(parser.get_language(), query_str)
+        .map_err(|e| CodeVizError::parse(
+            PathBuf::from("<query>"),
+            parser.language_key(),
+            None,
+            format!("Invalid tree-sitter query: {}", e),
+        ))?;
+
     let captures = cursor.matches(&query, tree.root_node(), source.as_bytes());
 
     let mut dependencies = Vec::new();
@@ -44,7 +59,7 @@ fn extract_dependencies(
             dependencies.push(dep.to_string());
         }
     }
-    dependencies
+    Ok(dependencies)
 }
 
 pub fn calculate_coupling(
@@ -74,7 +89,13 @@ pub fn calculate_coupling(
             _ => continue,
         };
 
-        let dependencies = extract_dependencies(&source, parser.as_ref(), query_str);
+        let dependencies = match extract_dependencies(&source, parser.as_ref(), query_str) {
+            Ok(deps) => deps,
+            Err(_) => {
+                // Skip files that fail to parse - log warning in production but continue analysis
+                continue;
+            }
+        };
         let resolved_deps = resolve_dependencies(
             base_path,
             &file.path,
@@ -154,30 +175,30 @@ mod tests {
         let a = files
             .iter()
             .find(|f| f.path == Path::new("a.ts"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(a.efferent_coupling, 1);
         assert_eq!(a.afferent_coupling, 0);
 
         let b = files
             .iter()
             .find(|f| f.path == Path::new("b.ts"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(b.efferent_coupling, 1);
         assert_eq!(b.afferent_coupling, 1);
 
         let c = files
             .iter()
             .find(|f| f.path == Path::new("c.ts"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(c.efferent_coupling, 0);
         assert_eq!(c.afferent_coupling, 1);
     }
@@ -200,30 +221,30 @@ mod tests {
         let main = files
             .iter()
             .find(|f| f.path == Path::new("lib.rs"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(main.efferent_coupling, 1);
         assert_eq!(main.afferent_coupling, 0);
 
         let a = files
             .iter()
             .find(|f| f.path == Path::new("a.rs"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(a.efferent_coupling, 1);
         assert_eq!(a.afferent_coupling, 1);
 
         let b = files
             .iter()
             .find(|f| f.path == Path::new("b.rs"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(b.efferent_coupling, 0);
         assert_eq!(b.afferent_coupling, 1);
     }
@@ -246,30 +267,30 @@ mod tests {
         let main = files
             .iter()
             .find(|f| f.path == Path::new("main.py"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(main.efferent_coupling, 1);
         assert_eq!(main.afferent_coupling, 0);
 
         let a = files
             .iter()
             .find(|f| f.path == Path::new("a.py"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(a.efferent_coupling, 1);
         assert_eq!(a.afferent_coupling, 1);
 
         let b = files
             .iter()
             .find(|f| f.path == Path::new("b.py"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(b.efferent_coupling, 0);
         assert_eq!(b.afferent_coupling, 1);
     }
@@ -290,20 +311,20 @@ mod tests {
         let a = files
             .iter()
             .find(|f| f.path == Path::new("pkg/a.py"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(a.efferent_coupling, 1);
         assert_eq!(a.afferent_coupling, 0);
 
         let b = files
             .iter()
             .find(|f| f.path == Path::new("pkg/b.py"))
-            .unwrap()
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
             .coupling
             .as_ref()
-            .unwrap();
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
         assert_eq!(b.efferent_coupling, 0);
         assert_eq!(b.afferent_coupling, 1);
     }
