@@ -49,29 +49,133 @@ pub struct AnalyzeConfig {
 use code_viz_commands::analyze::{CoverageConfig, DuplicationConfig, HotspotConfig};
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 
+/// Orchestrates the analysis process
+struct AnalysisOrchestrator<C, F, G> {
+    config: AnalyzeConfig,
+    ctx: C,
+    fs: F,
+    git: G,
+}
+
+impl<C, F, G> AnalysisOrchestrator<C, F, G>
+where
+    C: AppContext + Clone,
+    F: FileSystem + Clone,
+    G: GitProvider + Clone,
+{
+    fn new(config: AnalyzeConfig, ctx: C, fs: F, git: G) -> Self {
+        Self { config, ctx, fs, git }
+    }
+
+    async fn execute(&self) -> Result<(), AnalyzeError> {
+        setup_logging(self.config.verbose);
+
+        let mut result = self.run_base_analysis().await?;
+        self.enrich_with_dead_code(&mut result).await?;
+        self.enrich_with_ai_commits(&mut result).await?;
+        self.apply_baseline(&result)?;
+        self.check_threshold(&result)?;
+        self.output_result(&result)?;
+
+        Ok(())
+    }
+
+    async fn run_base_analysis(&self) -> Result<code_viz_core::AnalysisResult, AnalyzeError> {
+        let duplication_config = build_duplication_config(&self.config);
+        let hotspot_config = build_hotspot_config(&self.config);
+        let coverage_config = build_coverage_config(&self.config);
+
+        code_viz_commands::analyze_repository(
+            &self.config.path,
+            self.ctx.clone(),
+            self.fs.clone(),
+            &self.git,
+            duplication_config,
+            hotspot_config,
+            coverage_config,
+        )
+        .await
+        .map_err(|e| AnalyzeError::AnalysisFailed(e.to_string()))
+    }
+
+    async fn enrich_with_dead_code(&self, result: &mut code_viz_core::AnalysisResult) -> Result<(), AnalyzeError> {
+        if !self.config.dead_code {
+            return Ok(());
+        }
+
+        log::info!("Running dead code analysis");
+        let dead_code_result = code_viz_commands::calculate_dead_code(
+            &self.config.path,
+            self.ctx.clone(),
+            self.fs.clone(),
+            self.git.clone(),
+        )
+        .await
+        .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
+
+        merge_dead_code_results(&mut result.files, dead_code_result);
+        Ok(())
+    }
+
+    async fn enrich_with_ai_commits(&self, result: &mut code_viz_core::AnalysisResult) -> Result<(), AnalyzeError> {
+        if !self.config.ai_commits {
+            return Ok(());
+        }
+
+        log::info!("Running AI commit analysis");
+        let ai_commit_result = code_viz_commands::analyze_ai_commits(
+            &self.config.path,
+            self.ctx.clone(),
+            self.git.clone(),
+        )
+        .await
+        .map_err(|e| AnalyzeError::AICommitAnalysisFailed(e.to_string()))?;
+
+        result.ai_commit_analysis = Some(ai_commit_result);
+        Ok(())
+    }
+
+    fn apply_baseline(&self, result: &code_viz_core::AnalysisResult) -> Result<(), AnalyzeError> {
+        let Some(baseline_path) = &self.config.baseline else {
+            return Ok(());
+        };
+
+        compare_with_baseline(&self.fs, baseline_path, result)
+    }
+
+    fn check_threshold(&self, result: &code_viz_core::AnalysisResult) -> Result<(), AnalyzeError> {
+        if let Some(threshold_str) = &self.config.threshold {
+            check_threshold(threshold_str, &result.files)?;
+        }
+        Ok(())
+    }
+
+    fn output_result(&self, result: &code_viz_core::AnalysisResult) -> Result<(), AnalyzeError> {
+        let formatter = create_formatter(&self.config.format);
+        let formatted_output = formatter.format(result)?;
+
+        if let Some(output_path) = &self.config.output {
+            self.fs.write(output_path, &formatted_output)
+                .map_err(|e| AnalyzeError::IoError(std::io::Error::other(e)))?;
+        } else {
+            println!("{}", formatted_output);
+        }
+
+        Ok(())
+    }
+}
+
 pub async fn run(
     config: AnalyzeConfig,
     ctx: impl AppContext + Clone,
     fs: impl FileSystem + Clone,
     git: impl GitProvider + Clone,
 ) -> Result<(), AnalyzeError> {
-    let AnalyzeConfig {
-        path,
-        format,
-        exclude: _,
-        verbose,
-        threshold,
-        output,
-        baseline,
-        dead_code,
-        duplicates,
-        min_duplicate_lines,
-        ai_commits,
-        hotspots,
-        max_hotspots,
-        coverage_report,
-    } = config;
-    // Setup logging
+    let orchestrator = AnalysisOrchestrator::new(config, ctx, fs, git);
+    orchestrator.execute().await
+}
+
+fn setup_logging(verbose: bool) {
     let mut builder = env_logger::Builder::from_default_env();
     if verbose {
         builder.filter_level(log::LevelFilter::Debug);
@@ -79,109 +183,73 @@ pub async fn run(
         builder.filter_level(log::LevelFilter::Info);
     }
     let _ = builder.try_init();
+}
 
-    // Use code-viz-commands to run analysis
-    let duplication_config = if duplicates {
+fn build_duplication_config(config: &AnalyzeConfig) -> Option<DuplicationConfig> {
+    if config.duplicates {
         Some(DuplicationConfig {
-            min_lines: min_duplicate_lines,
+            min_lines: config.min_duplicate_lines,
             similarity_threshold: 0.8,
         })
     } else {
         None
-    };
+    }
+}
 
-    let hotspot_config = if hotspots {
-        Some(HotspotConfig { max_hotspots })
+fn build_hotspot_config(config: &AnalyzeConfig) -> Option<HotspotConfig> {
+    if config.hotspots {
+        Some(HotspotConfig {
+            max_hotspots: config.max_hotspots,
+        })
     } else {
         None
-    };
-
-    let coverage_config = coverage_report.map(|report_path| CoverageConfig { report_path });
-
-    let mut result = code_viz_commands::analyze_repository(
-            &path,
-            ctx.clone(),
-            fs.clone(),
-            &git,
-            duplication_config,
-            hotspot_config,
-            coverage_config,
-        )
-        .await
-        .map_err(|e| AnalyzeError::AnalysisFailed(e.to_string()))?;
-
-    // Perform dead code analysis if enabled
-    if dead_code {
-        log::info!("Running dead code analysis");
-        let dead_code_result = code_viz_commands::calculate_dead_code(&path, ctx.clone(), fs.clone(), git.clone())
-            .await
-            .map_err(|e| AnalyzeError::DeadCodeFailed(e.to_string()))?;
-
-        // Merge dead code info into result files
-        merge_dead_code_results(&mut result.files, dead_code_result);
     }
+}
 
-    // Perform AI commit analysis if enabled
-    if ai_commits {
-        log::info!("Running AI commit analysis");
-        let ai_commit_result = code_viz_commands::analyze_ai_commits(&path, ctx, git)
-            .await
-            .map_err(|e| AnalyzeError::AICommitAnalysisFailed(e.to_string()))?;
-        result.ai_commit_analysis = Some(ai_commit_result);
-    }
+fn build_coverage_config(config: &AnalyzeConfig) -> Option<CoverageConfig> {
+    config.coverage_report.as_ref().map(|report_path| CoverageConfig {
+        report_path: report_path.clone(),
+    })
+}
 
-    // Handle baseline comparison
-    if let Some(baseline_path) = baseline {
-        let baseline_content = fs.read_to_string(&baseline_path)
-            .map_err(|e| AnalyzeError::IoError(std::io::Error::other(e)))?;
-        let baseline: code_viz_core::AnalysisResult = serde_json::from_str(&baseline_content)
-            .map_err(|e| AnalyzeError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
-
-        let current_loc = result.summary.total_loc;
-        let baseline_loc = baseline.summary.total_loc;
-        
-        let delta = current_loc as isize - baseline_loc as isize;
-        let delta_percent = if baseline_loc > 0 {
-            (delta as f64 / baseline_loc as f64) * 100.0
-        } else {
-            0.0
-        };
-
-        println!(
-            "Baseline comparison: {} -> {} ({:+.1}%)",
-            baseline_loc, current_loc, delta_percent
-        );
-
-        if delta_percent > 10.0 {
-            eprintln!("Error: Total LOC increased by {:.1}% (limit: 10%)", delta_percent);
-            process::exit(3);
-        }
-    }
-
-    // Handle threshold
-    if let Some(threshold_str) = threshold {
-        check_threshold(&threshold_str, &result.files)?;
-    }
-
-    // Format output
-    // CLI format arg takes precedence
-    let format_str = format.as_str();
-    let formatter: Box<dyn MetricsFormatter> = match format_str {
+fn create_formatter(format: &str) -> Box<dyn MetricsFormatter> {
+    match format {
         "json" => Box::new(output::json::JsonFormatter),
         "csv" => Box::new(output::csv::CsvFormatter),
         "text" => Box::new(output::text::TextFormatter),
         "markdown" => Box::new(output::markdown::MarkdownFormatter),
         _ => Box::new(output::text::TextFormatter),
+    }
+}
+
+fn compare_with_baseline(
+    fs: &impl FileSystem,
+    baseline_path: &PathBuf,
+    result: &code_viz_core::AnalysisResult,
+) -> Result<(), AnalyzeError> {
+    let baseline_content = fs.read_to_string(baseline_path)
+        .map_err(|e| AnalyzeError::IoError(std::io::Error::other(e)))?;
+    let baseline: code_viz_core::AnalysisResult = serde_json::from_str(&baseline_content)
+        .map_err(|e| AnalyzeError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+
+    let current_loc = result.summary.total_loc;
+    let baseline_loc = baseline.summary.total_loc;
+
+    let delta = current_loc as isize - baseline_loc as isize;
+    let delta_percent = if baseline_loc > 0 {
+        (delta as f64 / baseline_loc as f64) * 100.0
+    } else {
+        0.0
     };
 
-    let formatted_output = formatter.format(&result)?;
+    println!(
+        "Baseline comparison: {} -> {} ({:+.1}%)",
+        baseline_loc, current_loc, delta_percent
+    );
 
-    // Write output
-    if let Some(output_path) = output {
-        fs.write(&output_path, &formatted_output)
-            .map_err(|e| AnalyzeError::IoError(std::io::Error::other(e)))?;
-    } else {
-        println!("{}", formatted_output);
+    if delta_percent > 10.0 {
+        eprintln!("Error: Total LOC increased by {:.1}% (limit: 10%)", delta_percent);
+        process::exit(3);
     }
 
     Ok(())
