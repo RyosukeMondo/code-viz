@@ -15,10 +15,59 @@ impl HotspotDetector {
         Self { max_hotspots }
     }
 
+    fn calculate_max_values(files: &[&FileMetrics]) -> (f64, f64, f64) {
+        let max_churn = files
+            .iter()
+            .filter_map(|f| {
+                f.code_churn.as_ref().map(|churn| churn.added_lines + churn.deleted_lines)
+            })
+            .max()
+            .unwrap_or(1) as f64;
+
+        let max_complexity = files.iter().map(|f| f.function_count).max().unwrap_or(1) as f64;
+        let max_size = files.iter().map(|f| f.loc).max().unwrap_or(1) as f64;
+
+        (max_churn, max_complexity, max_size)
+    }
+
+    fn normalize_score(value: f64, max_value: f64) -> f64 {
+        if max_value > 0.0 {
+            value / max_value
+        } else {
+            0.0
+        }
+    }
+
+    fn calculate_hotspot_for_file(
+        file: &FileMetrics,
+        max_churn: f64,
+        max_complexity: f64,
+        max_size: f64,
+    ) -> Option<Hotspot> {
+        let churn = file.code_churn.as_ref()?;
+        let total_changes = churn.added_lines + churn.deleted_lines;
+
+        let churn_score = Self::normalize_score(total_changes as f64, max_churn);
+        let complexity_score = Self::normalize_score(file.function_count as f64, max_complexity);
+        let size_score = Self::normalize_score(file.loc as f64, max_size);
+
+        let hotspot_score = (churn_score * CHURN_WEIGHT)
+            + (complexity_score * COMPLEXITY_WEIGHT)
+            + (size_score * SIZE_WEIGHT);
+
+        Some(Hotspot {
+            path: file.path.clone(),
+            hotspot_score,
+            churn_score,
+            complexity_score,
+            size_score,
+            total_changes,
+        })
+    }
+
     /// Calculate hotspot analysis from file metrics
     /// Requires files to have code_churn data populated
     pub fn calculate(&self, files: &[FileMetrics]) -> HotspotAnalysis {
-        // Filter files that have churn data
         let files_with_churn: Vec<&FileMetrics> = files
             .iter()
             .filter(|f| f.code_churn.is_some())
@@ -31,80 +80,21 @@ impl HotspotDetector {
             };
         }
 
-        // Find max values for normalization
-        let max_churn = files_with_churn
-            .iter()
-            .filter_map(|f| {
-                // We've already filtered for files with churn data, but use filter_map for safety
-                f.code_churn.as_ref().map(|churn| churn.added_lines + churn.deleted_lines)
-            })
-            .max()
-            .unwrap_or(1) as f64;
+        let (max_churn, max_complexity, max_size) = Self::calculate_max_values(&files_with_churn);
 
-        let max_complexity = files_with_churn
-            .iter()
-            .map(|f| f.function_count)
-            .max()
-            .unwrap_or(1) as f64;
-
-        let max_size = files_with_churn
-            .iter()
-            .map(|f| f.loc)
-            .max()
-            .unwrap_or(1) as f64;
-
-        // Calculate hotspot scores
         let mut hotspots: Vec<Hotspot> = files_with_churn
             .iter()
             .filter_map(|file| {
-                // We've already filtered for files with churn data, but use filter_map for safety
-                let churn = file.code_churn.as_ref()?;
-                let total_changes = churn.added_lines + churn.deleted_lines;
-
-                // Normalize scores to 0-1 range
-                let churn_score = if max_churn > 0.0 {
-                    total_changes as f64 / max_churn
-                } else {
-                    0.0
-                };
-
-                let complexity_score = if max_complexity > 0.0 {
-                    file.function_count as f64 / max_complexity
-                } else {
-                    0.0
-                };
-
-                let size_score = if max_size > 0.0 {
-                    file.loc as f64 / max_size
-                } else {
-                    0.0
-                };
-
-                // Calculate weighted hotspot score
-                let hotspot_score = (churn_score * CHURN_WEIGHT)
-                    + (complexity_score * COMPLEXITY_WEIGHT)
-                    + (size_score * SIZE_WEIGHT);
-
-                Some(Hotspot {
-                    path: file.path.clone(),
-                    hotspot_score,
-                    churn_score,
-                    complexity_score,
-                    size_score,
-                    total_changes,
-                })
+                Self::calculate_hotspot_for_file(file, max_churn, max_complexity, max_size)
             })
             .collect();
 
-        // Sort by hotspot score descending
-        // Use unwrap_or to handle NaN values (treat them as less than any number)
         hotspots.sort_by(|a, b| {
             b.hotspot_score
                 .partial_cmp(&a.hotspot_score)
                 .unwrap_or(std::cmp::Ordering::Less)
         });
 
-        // Take top N
         hotspots.truncate(self.max_hotspots);
 
         HotspotAnalysis {
