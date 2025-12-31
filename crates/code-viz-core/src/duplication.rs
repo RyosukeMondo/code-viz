@@ -159,9 +159,20 @@ impl DuplicationDetector {
     }
 
     fn find_duplicates(&self, blocks: &[CodeBlock]) -> Vec<DuplicatePair> {
-        let mut pairs = Vec::new();
+        let blocks_by_hash = self.group_blocks_by_hash(blocks);
 
-        // Group blocks by hash
+        let mut pairs = self.find_exact_duplicates(&blocks_by_hash);
+
+        let similar_pairs = self.find_similar_duplicates(&blocks_by_hash);
+        pairs.extend(similar_pairs);
+
+        pairs
+    }
+
+    fn group_blocks_by_hash<'a>(
+        &self,
+        blocks: &'a [CodeBlock],
+    ) -> HashMap<String, Vec<&'a CodeBlock>> {
         let mut blocks_by_hash: HashMap<String, Vec<&CodeBlock>> = HashMap::new();
         for block in blocks {
             if !block.hash.is_empty() {
@@ -171,9 +182,16 @@ impl DuplicationDetector {
                     .push(block);
             }
         }
+        blocks_by_hash
+    }
 
-        // Find exact duplicates from groups with more than one block
-        for (_, duplicated_blocks) in blocks_by_hash.iter().filter(|(_, v)| v.len() > 1) {
+    fn find_exact_duplicates(
+        &self,
+        blocks_by_hash: &HashMap<String, Vec<&CodeBlock>>,
+    ) -> Vec<DuplicatePair> {
+        let mut pairs = Vec::new();
+
+        for duplicated_blocks in blocks_by_hash.values().filter(|v| v.len() > 1) {
             for i in 0..duplicated_blocks.len() {
                 for j in i + 1..duplicated_blocks.len() {
                     let block_a = duplicated_blocks[i];
@@ -188,7 +206,14 @@ impl DuplicationDetector {
             }
         }
 
-        // For similarity check, we only need one representative from each hash group.
+        pairs
+    }
+
+    fn find_similar_duplicates(
+        &self,
+        blocks_by_hash: &HashMap<String, Vec<&CodeBlock>>,
+    ) -> Vec<DuplicatePair> {
+        let mut pairs = Vec::new();
         let unique_blocks: Vec<&CodeBlock> = blocks_by_hash.values().map(|v| v[0]).collect();
 
         for i in 0..unique_blocks.len() {
@@ -196,35 +221,59 @@ impl DuplicationDetector {
                 let block_a = unique_blocks[i];
                 let block_b = unique_blocks[j];
 
-                let distance =
-                    levenshtein::levenshtein(&block_a.canonical_text, &block_b.canonical_text);
-                let len_a = block_a.canonical_text.len();
-                let len_b = block_b.canonical_text.len();
-
-                if len_a == 0 || len_b == 0 {
-                    continue;
-                }
-
-                let max_len = std::cmp::max(len_a, len_b) as f64;
-                let similarity = 1.0 - (distance as f64 / max_len);
-
-                if similarity >= self.similarity_threshold {
-                    // Found a similar pair. Now, create pairs for all blocks in their respective hash groups.
-                    // These lookups should always succeed since unique_blocks came from blocks_by_hash.values()
-                    if let (Some(blocks_a), Some(blocks_b)) =
-                        (blocks_by_hash.get(&block_a.hash), blocks_by_hash.get(&block_b.hash)) {
-                        for ba in blocks_a {
-                            for bb in blocks_b {
-                                pairs.push(DuplicatePair {
-                                    original: ba.location.clone(),
-                                    duplicate: bb.location.clone(),
-                                    similarity,
-                                    line_count: ba.line_count,
-                                });
-                            }
-                        }
+                if let Some(similarity) = self.calculate_similarity(block_a, block_b) {
+                    if similarity >= self.similarity_threshold {
+                        let new_pairs = self.create_pairs_for_similar_groups(
+                            block_a,
+                            block_b,
+                            similarity,
+                            blocks_by_hash,
+                        );
+                        pairs.extend(new_pairs);
                     }
-                    // If lookups fail (shouldn't happen), skip this pair silently
+                }
+            }
+        }
+
+        pairs
+    }
+
+    fn calculate_similarity(&self, block_a: &CodeBlock, block_b: &CodeBlock) -> Option<f64> {
+        let len_a = block_a.canonical_text.len();
+        let len_b = block_b.canonical_text.len();
+
+        if len_a == 0 || len_b == 0 {
+            return None;
+        }
+
+        let distance =
+            levenshtein::levenshtein(&block_a.canonical_text, &block_b.canonical_text);
+        let max_len = std::cmp::max(len_a, len_b) as f64;
+        let similarity = 1.0 - (distance as f64 / max_len);
+
+        Some(similarity)
+    }
+
+    fn create_pairs_for_similar_groups(
+        &self,
+        block_a: &CodeBlock,
+        block_b: &CodeBlock,
+        similarity: f64,
+        blocks_by_hash: &HashMap<String, Vec<&CodeBlock>>,
+    ) -> Vec<DuplicatePair> {
+        let mut pairs = Vec::new();
+
+        if let (Some(blocks_a), Some(blocks_b)) =
+            (blocks_by_hash.get(&block_a.hash), blocks_by_hash.get(&block_b.hash))
+        {
+            for ba in blocks_a {
+                for bb in blocks_b {
+                    pairs.push(DuplicatePair {
+                        original: ba.location.clone(),
+                        duplicate: bb.location.clone(),
+                        similarity,
+                        line_count: ba.line_count,
+                    });
                 }
             }
         }
