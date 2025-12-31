@@ -51,10 +51,11 @@ impl LanguageParser for TypeScriptParser {
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_typescript::language_typescript(),
                 "(function_declaration) @f (arrow_function) @f (method_definition) @f"
-            ).expect("Invalid TypeScript query")
+            ).expect("BUG: Invalid TypeScript query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -63,10 +64,11 @@ impl LanguageParser for TypeScriptParser {
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_typescript::language_typescript(),
                 "(comment) @c"
-            ).expect("Invalid TypeScript comment query")
+            ).expect("BUG: Invalid TypeScript comment query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -90,10 +92,11 @@ impl LanguageParser for TsxParser {
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_typescript::language_tsx(),
                 "(function_declaration) @f (arrow_function) @f (method_definition) @f"
-            ).expect("Invalid TSX query")
+            ).expect("BUG: Invalid TSX query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -102,10 +105,11 @@ impl LanguageParser for TsxParser {
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_typescript::language_tsx(),
                 "(comment) @c"
-            ).expect("Invalid TSX comment query")
+            ).expect("BUG: Invalid TSX comment query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -129,10 +133,11 @@ impl LanguageParser for JavaScriptParser {
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_javascript::language(),
                 "(function_declaration) @f (arrow_function) @f (method_definition) @f"
-            ).expect("Invalid JavaScript query")
+            ).expect("BUG: Invalid JavaScript query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -141,10 +146,11 @@ impl LanguageParser for JavaScriptParser {
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_javascript::language(),
                 "(comment) @c"
-            ).expect("Invalid JavaScript comment query")
+            ).expect("BUG: Invalid JavaScript comment query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -168,10 +174,11 @@ impl LanguageParser for RustParser {
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_rust::language(),
                 "(function_item) @f"
-            ).expect("Invalid Rust query")
+            ).expect("BUG: Invalid Rust query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -180,10 +187,11 @@ impl LanguageParser for RustParser {
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_rust::language(),
                 "(line_comment) @c (block_comment) @c"
-            ).expect("Invalid Rust comment query")
+            ).expect("BUG: Invalid Rust comment query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -207,10 +215,11 @@ impl LanguageParser for PythonParser {
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_python::language(),
                 "(function_definition) @f"
-            ).expect("Invalid Python query")
+            ).expect("BUG: Invalid Python query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -219,10 +228,11 @@ impl LanguageParser for PythonParser {
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_python::language(),
                 "(comment) @c"
-            ).expect("Invalid Python comment query")
+            ).expect("BUG: Invalid Python comment query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -246,10 +256,11 @@ impl LanguageParser for GoParser {
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_go::language(),
                 "(function_declaration) @f (method_declaration) @f (func_literal) @f"
-            ).expect("Invalid Go query")
+            ).expect("BUG: Invalid Go query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -258,10 +269,11 @@ impl LanguageParser for GoParser {
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_go::language(),
                 "(comment) @c"
-            ).expect("Invalid Go comment query")
+            ).expect("BUG: Invalid Go comment query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -285,10 +297,11 @@ impl LanguageParser for CppParser {
     fn count_functions(&self, tree: &Tree) -> usize {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_cpp::language(),
                 "(function_definition) @f"
-            ).expect("Invalid C++ query")
+            ).expect("BUG: Invalid C++ query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -297,10 +310,11 @@ impl LanguageParser for CppParser {
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
+            // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_cpp::language(),
                 "(comment) @c"
-            ).expect("Invalid C++ comment query")
+            ).expect("BUG: Invalid C++ comment query - this is a programming error, not a runtime error")
         });
         
         let mut cursor = QueryCursor::new();
@@ -347,24 +361,24 @@ mod tests {
 
     #[test]
     fn test_parse_valid_typescript() {
-        let parser = get_parser("typescript").unwrap();
+        let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = "function hello() { console.log('world'); }";
-        let tree = parser.parse(source).unwrap();
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         assert!(tree.root_node().has_error() == false);
     }
 
     #[test]
     fn test_parse_syntax_error() {
-        let parser = get_parser("typescript").unwrap();
+        let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = "function hello() { return "; // Missing brace
-        let tree = parser.parse(source).unwrap();
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         // tree-sitter usually produces a tree even with errors, but has_error() should be true
         assert!(tree.root_node().has_error());
     }
 
     #[test]
     fn test_count_functions_typescript() {
-        let parser = get_parser("typescript").unwrap();
+        let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = r#"
             function a() {}
             const b = () => {};
@@ -372,14 +386,14 @@ mod tests {
                 m() {}
             }
         "#;
-        let tree = parser.parse(source).unwrap();
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         let count = parser.count_functions(&tree);
         assert_eq!(count, 3);
     }
 
     #[test]
     fn test_count_functions_javascript() {
-        let parser = get_parser("javascript").unwrap();
+        let parser = get_parser("javascript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = r#"
             function a() {}
             const b = () => {};
@@ -387,38 +401,38 @@ mod tests {
                 m() {}
             }
         "#;
-        let tree = parser.parse(source).unwrap();
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         let count = parser.count_functions(&tree);
         assert_eq!(count, 3);
     }
     
     #[test]
     fn test_count_functions_tsx() {
-        let parser = get_parser("tsx").unwrap();
+        let parser = get_parser("tsx").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = r#"
             const Component = () => <div></div>;
             function helper() {}
         "#;
-        let tree = parser.parse(source).unwrap();
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         let count = parser.count_functions(&tree);
         assert_eq!(count, 2);
     }
 
     #[test]
     fn test_snapshot_typescript_ast() {
-        let parser = get_parser("typescript").unwrap();
+        let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = r#"
             function greet(name: string) {
                 console.log(`Hello, ${name}`);
             }
         "#;
-        let tree = parser.parse(source).unwrap();
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         insta::assert_debug_snapshot!(tree.root_node());
     }
 
     #[test]
     fn test_snapshot_javascript_ast() {
-        let parser = get_parser("javascript").unwrap();
+        let parser = get_parser("javascript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = r#"
             class Person {
                 constructor(name) {
@@ -426,7 +440,7 @@ mod tests {
                 }
             }
         "#;
-        let tree = parser.parse(source).unwrap();
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         insta::assert_debug_snapshot!(tree.root_node());
     }
 }
