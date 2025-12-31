@@ -54,6 +54,20 @@ jobs:
     - name: Clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
 
+    - name: Check for unwrap() in production code
+      run: |
+        # Install ripgrep if not available (usually pre-installed on GitHub runners)
+        if ! command -v rg &> /dev/null; then
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            curl -LO https://github.com/BurntSushi/ripgrep/releases/download/13.0.0/ripgrep_13.0.0_amd64.deb
+            sudo dpkg -i ripgrep_13.0.0_amd64.deb
+          else
+            cargo install ripgrep
+          fi
+        fi
+
+        ./scripts/check-unwrap.sh
+
     - name: Test
       # Skipping watch tests in CI due to flakiness
       run: cargo test --all-targets --all-features
