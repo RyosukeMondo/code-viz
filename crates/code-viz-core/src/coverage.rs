@@ -176,12 +176,14 @@ pub fn calculate_coverage_analysis(files: &[FileMetrics]) -> Option<CoverageAnal
 
     let total_lines_covered: usize = files_with_coverage
         .iter()
-        .map(|f| f.test_coverage.as_ref().unwrap().lines_covered)
+        .filter_map(|f| f.test_coverage.as_ref())
+        .map(|cov| cov.lines_covered)
         .sum();
 
     let total_executable_lines: usize = files_with_coverage
         .iter()
-        .map(|f| f.test_coverage.as_ref().unwrap().total_lines)
+        .filter_map(|f| f.test_coverage.as_ref())
+        .map(|cov| cov.total_lines)
         .sum();
 
     let overall_coverage = if total_executable_lines > 0 {
@@ -238,10 +240,10 @@ mod tests {
         }"#;
 
         let parser = LlvmCovParser;
-        let coverage = parser.parse(json).unwrap();
+        let coverage = parser.parse(json).unwrap(); // Test-only unwrap: test JSON is valid
 
         assert_eq!(coverage.len(), 1);
-        let main_coverage = coverage.get(&PathBuf::from("src/main.rs")).unwrap();
+        let main_coverage = coverage.get(&PathBuf::from("src/main.rs")).unwrap(); // Test-only unwrap: test data contains this file
         assert_eq!(main_coverage.line_coverage, 80.0);
         assert_eq!(main_coverage.lines_covered, 80);
         assert_eq!(main_coverage.total_lines, 100);
@@ -260,10 +262,10 @@ mod tests {
         }"#;
 
         let parser = TarpaulinParser;
-        let coverage = parser.parse(json).unwrap();
+        let coverage = parser.parse(json).unwrap(); // Test-only unwrap: test JSON is valid
 
         assert_eq!(coverage.len(), 1);
-        let lib_coverage = coverage.get(&PathBuf::from("src/lib.rs")).unwrap();
+        let lib_coverage = coverage.get(&PathBuf::from("src/lib.rs")).unwrap(); // Test-only unwrap: test data contains this file
         assert_eq!(lib_coverage.line_coverage, 50.0);
         assert_eq!(lib_coverage.lines_covered, 5);
         assert_eq!(lib_coverage.total_lines, 10);
