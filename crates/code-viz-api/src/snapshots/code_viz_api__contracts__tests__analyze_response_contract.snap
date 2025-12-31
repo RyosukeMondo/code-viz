@@ -6,11 +6,14 @@ expression: json
   "tree": {
     "children": [],
     "complexity": 10,
+    "functionCount": 5,
     "id": "test.rs",
+    "language": "rust",
     "lastModified": "2009-02-13T23:31:30.000Z",
     "loc": 100,
     "name": "test.rs",
     "path": "test.rs",
+    "sizeBytes": 2048,
     "type": "file"
   }
 }

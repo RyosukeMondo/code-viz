@@ -138,6 +138,12 @@ pub struct TreeNode {
 
 #[cfg(test)]
 mod tests {
+    //! Test module for API models
+    //!
+    //! Note: unwrap() and expect() calls in tests are acceptable as test panics
+    //! indicate fixture setup failures or assertion failures - which is expected
+    //! behavior in test contexts.
+
     use super::*;
     use std::time::UNIX_EPOCH;
 

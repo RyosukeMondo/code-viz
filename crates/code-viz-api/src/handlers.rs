@@ -116,7 +116,7 @@ where
         .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
 
         // Transform flat metrics to hierarchical tree (presentation layer)
-        let tree = flat_to_hierarchy(analysis_result.files);
+        let tree = flat_to_hierarchy(analysis_result.files)?;
 
         Ok(tree)
     }
@@ -201,7 +201,7 @@ where
     .await
     .map_err(|e| ApiError::AnalysisFailed(e.to_string()))?;
 
-    let tree = flat_to_hierarchy(analysis_result.files);
+    let tree = flat_to_hierarchy(analysis_result.files)?;
 
     Ok(tree)
 }

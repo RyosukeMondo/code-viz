@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::models::TreeNode;
+use crate::error::ApiError;
 
 /// Finds the common root directory from a list of file paths
 ///
@@ -95,7 +96,10 @@ fn strip_prefix(path: &Path, prefix: &Path) -> PathBuf {
 /// * `files` - Flat vector of file metrics from code-viz-core analysis
 ///
 /// # Returns
-/// A single root TreeNode containing the entire directory hierarchy
+/// A Result containing the root TreeNode or an ApiError
+///
+/// # Errors
+/// Returns `ApiError::TransformError` if the root node cannot be extracted from the tree
 ///
 /// # Complexity
 /// O(n) where n is the number of files
@@ -118,17 +122,22 @@ fn strip_prefix(path: &Path, prefix: &Path) -> PathBuf {
 ///         dead_function_count: None,
 ///         dead_code_loc: None,
 ///         dead_code_ratio: None,
+///         coupling: None,
+///         code_churn: None,
+///         ai_bloat_index: None,
+///         cognitive_complexity: None,
+///         test_coverage: None,
 ///     },
 /// ];
 ///
-/// let tree = flat_to_hierarchy(files);
+/// let tree = flat_to_hierarchy(files).unwrap();
 /// assert_eq!(tree.name, "root");
 /// assert_eq!(tree.children.len(), 1);
 /// ```
-pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
+pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> {
     // Handle empty input - return empty root node
     if files.is_empty() {
-        return TreeNode {
+        return Ok(TreeNode {
             id: "/".to_string(),
             name: "root".to_string(),
             path: PathBuf::from("/"),
@@ -146,7 +155,7 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
             ai_bloat_index: None,
             cognitive_complexity: None,
             test_coverage: None,
-        };
+        });
     }
 
     // Check if paths are absolute (start with "/") or relative
@@ -253,8 +262,12 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
     // Third pass: aggregate metrics up the tree (bottom-up)
     aggregate_directory_metrics(&mut dir_map, &root_node_path);
 
-    // Extract root node
-    dir_map.remove(&root_node_path).unwrap()
+    // Extract root node - this should always succeed since we create the root node at the beginning
+    dir_map.remove(&root_node_path).ok_or_else(|| {
+        ApiError::TransformError(
+            "Root node missing from directory map after tree construction".to_string()
+        )
+    })
 }
 
 /// Ensures all parent directories exist in the directory map

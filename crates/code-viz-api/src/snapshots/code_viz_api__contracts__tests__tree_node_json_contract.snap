@@ -10,5 +10,8 @@ expression: json_str
   "complexity": 10,
   "type": "file",
   "children": [],
-  "lastModified": "2009-02-13T23:31:30.000Z"
+  "lastModified": "2009-02-13T23:31:30.000Z",
+  "language": "rust",
+  "sizeBytes": 2048,
+  "functionCount": 5
 }

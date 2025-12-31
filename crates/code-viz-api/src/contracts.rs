@@ -50,6 +50,12 @@ pub struct DeadCodeResponse {
 /// Contract validation - ensures both implementations produce identical JSON
 #[cfg(test)]
 pub mod test_utils {
+    //! Test utilities for contract validation
+    //!
+    //! Note: unwrap() and expect() calls in tests are acceptable as test panics
+    //! indicate fixture setup failures or assertion failures - which is expected
+    //! behavior in test contexts.
+
     use super::*;
     use std::path::PathBuf;
     use std::time::SystemTime;
@@ -106,6 +112,14 @@ pub mod test_utils {
             children: vec![],
             last_modified: SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: None,
+            language: Some("rust".to_string()),
+            size_bytes: Some(2048),
+            function_count: Some(5),
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         }
     }
 
@@ -159,6 +173,12 @@ pub mod test_utils {
 
 #[cfg(test)]
 mod tests {
+    //! Contract validation tests
+    //!
+    //! Note: unwrap() and expect() calls in tests are acceptable as test panics
+    //! indicate fixture setup failures or assertion failures - which is expected
+    //! behavior in test contexts.
+
     use super::*;
     use test_utils::*;
 

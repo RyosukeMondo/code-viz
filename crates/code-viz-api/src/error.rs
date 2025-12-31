@@ -15,6 +15,9 @@ pub enum ApiError {
     #[error("Invalid path: {0}")]
     InvalidPath(String),
 
+    #[error("Transform error: {0}")]
+    TransformError(String),
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
@@ -29,6 +32,7 @@ impl ApiError {
             ApiError::AnalysisFailed(msg) => format!("Analysis failed: {}", msg),
             ApiError::DeadCodeFailed(msg) => format!("Dead code analysis failed: {}", msg),
             ApiError::InvalidPath(msg) => format!("Invalid path: {}", msg),
+            ApiError::TransformError(msg) => format!("Transform error: {}", msg),
             ApiError::Io(e) => format!("File system error: {}", e),
             ApiError::Internal(e) => format!("Internal error: {}", e),
         }
