@@ -1,7 +1,76 @@
-use globset::{Glob, GlobSetBuilder};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+
+#[derive(Debug, Default)]
+struct ScanStats {
+    skipped_large: usize,
+    skipped_permission: usize,
+}
+
+fn validate_path(path: &Path) -> Result<(), ScanError> {
+    if !path.exists() {
+        return Err(ScanError::NotFound(path.to_path_buf()));
+    }
+    if !path.is_dir() {
+        return Err(ScanError::NotADirectory(path.to_path_buf()));
+    }
+    Ok(())
+}
+
+fn build_glob_set(exclude_patterns: &[String]) -> Result<GlobSet, ScanError> {
+    let mut builder = GlobSetBuilder::new();
+    for pattern in exclude_patterns {
+        builder.add(Glob::new(pattern).map_err(|e| {
+            tracing::error!(pattern = %pattern, error = %e, "Invalid glob pattern");
+            ScanError::InvalidPattern(e.to_string())
+        })?);
+    }
+    builder.build().map_err(|e| {
+        tracing::error!(error = %e, "Failed to build glob set");
+        ScanError::InvalidPattern(e.to_string())
+    })
+}
+
+fn is_supported_extension(ext: &str) -> bool {
+    matches!(
+        ext,
+        "ts" | "tsx" | "js" | "jsx" | "rs" | "py" | "go" | "cpp" | "cc" | "cxx" | "hpp" | "h"
+    )
+}
+
+fn should_include_file(path: &Path, stats: &mut ScanStats) -> bool {
+    // Check file size and permissions
+    match std::fs::metadata(path) {
+        Ok(metadata) => {
+            if metadata.len() > 10 * 1024 * 1024 {
+                tracing::warn!(
+                    path = %path.display(),
+                    size_mb = metadata.len() / (1024 * 1024),
+                    "Skipping large file (>10MB)"
+                );
+                stats.skipped_large += 1;
+                return false;
+            }
+        }
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::PermissionDenied {
+                tracing::warn!(path = %path.display(), "Permission denied");
+                stats.skipped_permission += 1;
+            } else {
+                tracing::warn!(path = %path.display(), error = %e, "Failed to get metadata");
+            }
+            return false;
+        }
+    }
+
+    // Check extension
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(is_supported_extension)
+        .unwrap_or(false)
+}
 
 #[tracing::instrument(skip(exclude_patterns), fields(path = %path.display(), pattern_count = exclude_patterns.len()))]
 pub fn scan_directory(
@@ -10,104 +79,39 @@ pub fn scan_directory(
 ) -> Result<Vec<PathBuf>, ScanError> {
     tracing::info!("Starting directory scan");
 
-    if !path.exists() {
-        return Err(ScanError::NotFound(path.to_path_buf()));
-    }
-    if !path.is_dir() {
-        return Err(ScanError::NotADirectory(path.to_path_buf()));
-    }
-
-    let mut builder = GlobSetBuilder::new();
-    for pattern in exclude_patterns {
-        builder.add(Glob::new(pattern).map_err(|e| {
-            tracing::error!(pattern = %pattern, error = %e, "Invalid glob pattern");
-            ScanError::InvalidPattern(e.to_string())
-        })?);
-    }
-    let glob_set = builder
-        .build()
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to build glob set");
-            ScanError::InvalidPattern(e.to_string())
-        })?;
+    validate_path(path)?;
+    let glob_set = build_glob_set(exclude_patterns)?;
 
     tracing::debug!("Glob patterns configured");
 
-    let root_path = path.to_path_buf(); // Capture for closure
-
-    // Use ignore::WalkBuilder which respects .gitignore, .ignore, etc.
+    let root_path = path.to_path_buf();
     let walker = WalkBuilder::new(path)
         .follow_links(false)
-        .git_ignore(true) // Respect .gitignore files in git repos
-        .git_global(true) // Respect global gitignore
-        .git_exclude(true) // Respect .git/info/exclude
-        .add_custom_ignore_filename(".gitignore") // Also respect .gitignore in non-git dirs
-        .hidden(true) // Skip hidden files/dirs
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .add_custom_ignore_filename(".gitignore")
+        .hidden(true)
         .build()
-        .filter_map(|result| result.ok()) // Skip errors, log them separately
+        .filter_map(|result| result.ok())
         .filter(move |entry| {
-            let path = entry.path();
-
-            // Allow root directory
             if entry.depth() == 0 {
                 return true;
             }
-
-            // Check additional exclude patterns (on top of gitignore)
-            let relative_path = path.strip_prefix(&root_path).unwrap_or(path);
-            if glob_set.is_match(relative_path) {
-                return false;
-            }
-
-            true
+            let relative_path = entry.path().strip_prefix(&root_path).unwrap_or(entry.path());
+            !glob_set.is_match(relative_path)
         });
 
     let mut files = Vec::new();
-    let mut skipped_large = 0;
-    let mut skipped_permission = 0;
+    let mut stats = ScanStats::default();
 
     for entry in walker {
         let path = entry.path();
-
-        // Skip directories
         if path.is_dir() {
             continue;
         }
-
-        // Check file size > 10MB
-        // Use std::fs::metadata directly since ignore::DirEntry might not have metadata cached
-        match std::fs::metadata(path) {
-            Ok(metadata) => {
-                if metadata.len() > 10 * 1024 * 1024 {
-                    tracing::warn!(
-                        path = %path.display(),
-                        size_mb = metadata.len() / (1024 * 1024),
-                        "Skipping large file (>10MB)"
-                    );
-                    skipped_large += 1;
-                    continue;
-                }
-            }
-            Err(e) => {
-                if e.kind() == std::io::ErrorKind::PermissionDenied {
-                    tracing::warn!(path = %path.display(), "Permission denied");
-                    skipped_permission += 1;
-                } else {
-                    tracing::warn!(path = %path.display(), error = %e, "Failed to get metadata");
-                }
-                continue;
-            }
-        }
-
-        // Filter by extension
-        if let Some(ext) = path.extension() {
-            let ext_str = ext.to_string_lossy();
-            match ext_str.as_ref() {
-                "ts" | "tsx" | "js" | "jsx" | "rs" | "py" | "go" | "cpp" | "cc" | "cxx" | "hpp" | "h" => {
-                    files.push(path.to_path_buf());
-                }
-                _ => {}
-            }
+        if should_include_file(path, &mut stats) {
+            files.push(path.to_path_buf());
         }
     }
 
@@ -115,8 +119,8 @@ pub fn scan_directory(
 
     tracing::info!(
         files_found = files.len(),
-        skipped_large = skipped_large,
-        skipped_permission = skipped_permission,
+        skipped_large = stats.skipped_large,
+        skipped_permission = stats.skipped_permission,
         "Directory scan completed"
     );
 
