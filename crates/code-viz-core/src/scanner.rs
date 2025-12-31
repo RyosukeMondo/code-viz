@@ -144,6 +144,12 @@ mod tests {
     use std::fs::{self, File};
     use tempfile::TempDir;
 
+    // NOTE: Test code uses unwrap() for test fixtures and assertions.
+    // This is acceptable because:
+    // 1. Test data is controlled and known to be valid
+    // 2. Test failures (panics) are the desired outcome when setup fails
+    // 3. Panics in tests provide clear failure points for debugging
+
     #[test]
     fn test_scan_empty_dir() {
         let temp_dir = TempDir::new().unwrap();

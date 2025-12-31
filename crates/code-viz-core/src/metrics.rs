@@ -330,6 +330,12 @@ fn main() {
     // 9. empty (skip)
     // Total LOC: 4
 
+    // NOTE: Test code uses unwrap() for test fixtures and assertions.
+    // This is acceptable because:
+    // 1. Test data is controlled and known to be valid
+    // 2. Test failures (panics) are the desired outcome when setup fails
+    // 3. Panics in tests provide clear failure points for debugging
+
     #[test]
     fn test_rust_loc_calculation() {
         // Note: We don't have RustParser yet, using JS as proxy or just mock?

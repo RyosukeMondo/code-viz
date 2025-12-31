@@ -59,6 +59,12 @@ mod tests {
     use crate::traits::git_provider::Commit;
     use std::path::PathBuf;
 
+    // NOTE: Test code uses unwrap() for test fixtures and assertions.
+    // This is acceptable because:
+    // 1. Test data is controlled and known to be valid
+    // 2. Test failures (panics) are the desired outcome when setup fails
+    // 3. Panics in tests provide clear failure points for debugging
+
     #[tokio::test]
     async fn test_analyze_ai_commits_no_ai() {
         let commits = vec![
