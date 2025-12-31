@@ -19,6 +19,12 @@ pub trait MetricsFormatter {
 
 #[cfg(test)]
 mod tests {
+    //! Test module for output formatters.
+    //!
+    //! Note: unwrap() calls in tests are acceptable as test panics indicate
+    //! test fixture setup failures or assertion failures, which is the expected
+    //! behavior in test contexts.
+
     use super::*;
     use code_viz_core::models::{Summary, FileMetrics};
     use std::path::PathBuf;

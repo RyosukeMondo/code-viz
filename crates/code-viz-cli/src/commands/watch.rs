@@ -73,16 +73,24 @@ pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppCont
     let running = Arc::new(Mutex::new(true));
     let r = running.clone();
     ctrlc::set_handler(move || {
-        let mut running = r.lock().unwrap();
-        *running = false;
+        // Safety: Mutex lock should never fail here as we control all access points
+        // and don't panic while holding the lock
+        if let Ok(mut running) = r.lock() {
+            *running = false;
+        }
         // We can't break the loop easily from here unless we send a signal or checking flag
         // The main loop checks flag
-    }).expect("Error setting Ctrl-C handler");
+    }).map_err(|e| WatchError::IoError(std::io::Error::other(format!("Failed to set Ctrl-C handler: {}", e))))?;
 
     // Loop
     loop {
         // Check running flag
-        if !*running.lock().unwrap() {
+        // Safety: Mutex lock should never fail as we control all access and don't panic while holding lock
+        let should_stop = running.lock()
+            .map(|guard| !*guard)
+            .unwrap_or(true); // If mutex is poisoned, stop watching
+
+        if should_stop {
             if format != "json" {
                 println!("\nStopping watch mode...");
             }
@@ -157,26 +165,25 @@ fn handle_changes(
             // Re-analyze file
             match process_file_with_fs(&path, fs) {
                 Ok(metrics) => {
+                    let metrics_path = metrics.path.clone();
+                    let metrics_loc = metrics.loc;
+                    let metrics_function_count = metrics.function_count;
+
                     // Update result.files
                     if let Some(existing) = result.files.iter_mut().find(|f| f.path == metrics.path) {
                         *existing = metrics;
                     } else {
                         result.files.push(metrics);
                     }
+
                     if format != "json" {
-                        // Print update
-                        // Find the metrics we just added/updated to get correct reference or use `metrics` variable
-                        // Using `metrics` variable directly
-                        // We need to re-fetch it from array to be safe? No, `metrics` is owned.
-                        // Wait, I moved metrics into array.
-                        // I'll assume it worked.
-                        let m = result.files.iter().find(|f| f.path == path).unwrap();
+                        // Print update using captured values
                         println!(
                             "[{}] {}: {} LOC ({} funcs)",
                             chrono::Local::now().format("%H:%M:%S"),
-                            m.path.display(),
-                            m.loc,
-                            m.function_count
+                            metrics_path.display(),
+                            metrics_loc,
+                            metrics_function_count
                         );
                     }
                     updated = true;

@@ -136,43 +136,45 @@ fn format_text(result: &code_viz_dead_code::DeadCodeResult) -> String {
     let mut output = String::new();
 
     // Summary section
-    writeln!(&mut output, "Dead Code Analysis Summary").unwrap();
-    writeln!(&mut output, "===========================").unwrap();
-    writeln!(&mut output).unwrap();
-    writeln!(
+    // Note: Writing to String never fails, so these write operations are safe to unwrap
+    // or we can use expect with clear messages. Using let _ = is cleaner for infallible operations.
+    let _ = writeln!(&mut output, "Dead Code Analysis Summary");
+    let _ = writeln!(&mut output, "===========================");
+    let _ = writeln!(&mut output);
+    let _ = writeln!(
         &mut output,
         "Total files analyzed:       {}",
         result.summary.total_files
-    ).unwrap();
-    writeln!(
+    );
+    let _ = writeln!(
         &mut output,
         "Files with dead code:       {}",
         result.summary.files_with_dead_code
-    ).unwrap();
-    writeln!(
+    );
+    let _ = writeln!(
         &mut output,
         "Dead functions:             {}",
         result.summary.dead_functions
-    ).unwrap();
-    writeln!(
+    );
+    let _ = writeln!(
         &mut output,
         "Dead classes:               {}",
         result.summary.dead_classes
-    ).unwrap();
-    writeln!(
+    );
+    let _ = writeln!(
         &mut output,
         "Total dead LOC:             {}",
         result.summary.total_dead_loc
-    ).unwrap();
-    writeln!(
+    );
+    let _ = writeln!(
         &mut output,
         "Dead code ratio:            {:.2}%",
         result.summary.dead_code_ratio * 100.0
-    ).unwrap();
-    writeln!(&mut output).unwrap();
+    );
+    let _ = writeln!(&mut output);
 
     if result.files.is_empty() {
-        writeln!(&mut output, "No dead code found!").unwrap();
+        let _ = writeln!(&mut output, "No dead code found!");
         return output;
     }
 
@@ -195,65 +197,65 @@ fn format_text(result: &code_viz_dead_code::DeadCodeResult) -> String {
 
     // High confidence section
     if !high_confidence.is_empty() {
-        writeln!(&mut output, "High Confidence Deletions (>= 80%)").unwrap();
-        writeln!(&mut output, "-----------------------------------").unwrap();
+        let _ = writeln!(&mut output, "High Confidence Deletions (>= 80%)");
+        let _ = writeln!(&mut output, "-----------------------------------");
         for (file, symbol) in &high_confidence {
-            writeln!(
+            let _ = writeln!(
                 &mut output,
                 "  {} ({}:{})",
                 symbol.symbol,
                 file.path.display(),
                 symbol.line_start
-            ).unwrap();
-            writeln!(
+            );
+            let _ = writeln!(
                 &mut output,
                 "    Kind: {:?}, Lines: {}-{}, Confidence: {}%",
                 symbol.kind, symbol.line_start, symbol.line_end, symbol.confidence
-            ).unwrap();
+            );
         }
-        writeln!(&mut output).unwrap();
+        let _ = writeln!(&mut output);
     }
 
     // Medium confidence section
     if !medium_confidence.is_empty() {
-        writeln!(&mut output, "Medium Confidence (60-79%)").unwrap();
-        writeln!(&mut output, "--------------------------").unwrap();
+        let _ = writeln!(&mut output, "Medium Confidence (60-79%)");
+        let _ = writeln!(&mut output, "--------------------------");
         for (file, symbol) in &medium_confidence {
-            writeln!(
+            let _ = writeln!(
                 &mut output,
                 "  {} ({}:{})",
                 symbol.symbol,
                 file.path.display(),
                 symbol.line_start
-            ).unwrap();
-            writeln!(
+            );
+            let _ = writeln!(
                 &mut output,
                 "    Kind: {:?}, Lines: {}-{}, Confidence: {}%",
                 symbol.kind, symbol.line_start, symbol.line_end, symbol.confidence
-            ).unwrap();
+            );
         }
-        writeln!(&mut output).unwrap();
+        let _ = writeln!(&mut output);
     }
 
     // Low confidence section
     if !low_confidence.is_empty() {
-        writeln!(&mut output, "Low Confidence (< 60%)").unwrap();
-        writeln!(&mut output, "----------------------").unwrap();
+        let _ = writeln!(&mut output, "Low Confidence (< 60%)");
+        let _ = writeln!(&mut output, "----------------------");
         for (file, symbol) in &low_confidence {
-            writeln!(
+            let _ = writeln!(
                 &mut output,
                 "  {} ({}:{})",
                 symbol.symbol,
                 file.path.display(),
                 symbol.line_start
-            ).unwrap();
-            writeln!(
+            );
+            let _ = writeln!(
                 &mut output,
                 "    Kind: {:?}, Lines: {}-{}, Confidence: {}%",
                 symbol.kind, symbol.line_start, symbol.line_end, symbol.confidence
-            ).unwrap();
+            );
         }
-        writeln!(&mut output).unwrap();
+        let _ = writeln!(&mut output);
     }
 
     output

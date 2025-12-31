@@ -235,6 +235,12 @@ fn format_symbol_kind(kind: SymbolKind) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    //! Test module for dead code output formatting.
+    //!
+    //! Note: unwrap() calls in tests are acceptable as test panics indicate
+    //! test fixture setup failures or assertion failures, which is the expected
+    //! behavior in test contexts.
+
     use super::*;
     use code_viz_dead_code::{DeadCodeSummary, DeadSymbol, FileDeadCode};
     use std::path::PathBuf;

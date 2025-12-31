@@ -53,6 +53,12 @@ pub fn load_config(project_root: &Path) -> Result<ConfigFile, ConfigError> {
 
 #[cfg(test)]
 mod tests {
+    //! Test module for configuration loading.
+    //!
+    //! Note: unwrap() calls in tests are acceptable as test panics indicate
+    //! test fixture setup failures or assertion failures, which is the expected
+    //! behavior in test contexts.
+
     use super::*;
     use tempfile::TempDir;
     use std::io::Write;
