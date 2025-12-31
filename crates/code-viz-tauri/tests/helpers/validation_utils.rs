@@ -16,6 +16,14 @@ pub fn create_test_tree() -> TreeNode {
         children: vec![],
         last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1600000000),
         dead_code_ratio: Some(0.1),
+        language: None,
+        size_bytes: None,
+        function_count: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
     };
 
     let utils_rs = TreeNode {
@@ -28,6 +36,14 @@ pub fn create_test_tree() -> TreeNode {
         children: vec![],
         last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1600000000),
         dead_code_ratio: None,
+        language: None,
+        size_bytes: None,
+        function_count: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
     };
 
     let src_dir = TreeNode {
@@ -40,6 +56,14 @@ pub fn create_test_tree() -> TreeNode {
         children: vec![main_rs, utils_rs],
         last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1600000000),
         dead_code_ratio: Some(0.05),
+        language: None,
+        size_bytes: None,
+        function_count: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
     };
 
     TreeNode {
@@ -52,6 +76,14 @@ pub fn create_test_tree() -> TreeNode {
         children: vec![src_dir],
         last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1600000000),
         dead_code_ratio: None,
+        language: None,
+        size_bytes: None,
+        function_count: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
     }
 }
 

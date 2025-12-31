@@ -165,6 +165,7 @@ mod tests {
             test_coverage: None,
         };
 
+        // Test-only expect: Serialization failure in tests indicates fixture/setup issues
         let json = serde_json::to_value(&node).expect("Failed to serialize");
 
         // Verify lastModified is a string (not object)

@@ -37,7 +37,8 @@ mod path_handling_tests {
             create_file_with_abs_path("/home/user/project/src/lib.rs", 200),
         ];
 
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         // The root should contain only relative paths, not the full filesystem path
         assert_eq!(tree.children.len(), 1);
@@ -58,7 +59,8 @@ mod path_handling_tests {
             create_file_with_abs_path("/home/user/my-project/README.md", 50),
         ];
 
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         // Root name should be the project name, not generic "root"
         assert_eq!(tree.name, "my-project");
@@ -72,12 +74,14 @@ mod path_handling_tests {
             create_file_with_abs_path("/home/user/project/tests/test1.rs", 50),
         ];
 
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         // Verify that we can drill down using just the directory name
         // not the full absolute path
         assert_eq!(tree.children.len(), 2);
 
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let src_dir = tree.children.iter().find(|c| c.name == "src").unwrap();
         assert_eq!(src_dir.name, "src");
 

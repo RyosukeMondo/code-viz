@@ -24,11 +24,13 @@ async fn test_analyze_repository_with_mock_context() {
         .to_string();
 
     // 3. Execute the shared API handler (SSOT)
+    let options = code_viz_api::AnalysisOptions::default();
     let result = code_viz_api::analyze_repository_handler(
         ctx.clone(),
         fs,
         git,
         current_dir,
+        options,
         Some("test-request-id".to_string())
     ).await;
 
@@ -93,6 +95,14 @@ async fn test_ssot_contract_consistency() {
         children: vec![],
         last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
         dead_code_ratio: Some(0.25),
+        language: None,
+        size_bytes: None,
+        function_count: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
     };
 
     // Convert to Tauri TreeNode

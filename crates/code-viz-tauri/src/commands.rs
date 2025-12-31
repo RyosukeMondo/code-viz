@@ -79,10 +79,19 @@ mod integration_tests {
             children: vec![],
             last_modified: UNIX_EPOCH + std::time::Duration::from_secs(1234567890),
             dead_code_ratio: None,
+            language: None,
+            size_bytes: None,
+            function_count: None,
+            coupling: None,
+            code_churn: None,
+            ai_bloat_index: None,
+            cognitive_complexity: None,
+            test_coverage: None,
         };
 
         let tauri_node: TreeNode = api_node.clone().into();
 
+        // Test-only unwrap: Serialization failure in tests indicates fixture/setup issues
         // Both should serialize to identical JSON
         let api_json = serde_json::to_value(&api_node).unwrap();
         let tauri_json = serde_json::to_value(&tauri_node).unwrap();

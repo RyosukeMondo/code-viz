@@ -3,6 +3,7 @@
 //! This module provides functions to transform the flat Vec<FileMetrics> output
 //! from code-viz-core into hierarchical TreeNode structures for visualization.
 
+use code_viz_api::error::ApiError;
 use code_viz_core::models::FileMetrics;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -118,17 +119,22 @@ fn strip_prefix(path: &Path, prefix: &Path) -> PathBuf {
 ///         dead_function_count: None,
 ///         dead_code_loc: None,
 ///         dead_code_ratio: None,
+///         coupling: None,
+///         code_churn: None,
+///         ai_bloat_index: None,
+///         cognitive_complexity: None,
+///         test_coverage: None,
 ///     },
 /// ];
 ///
-/// let tree = flat_to_hierarchy(files);
+/// let tree = flat_to_hierarchy(files).unwrap();
 /// assert_eq!(tree.name, "root");
 /// assert_eq!(tree.children.len(), 1);
 /// ```
-pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
+pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> {
     // Handle empty input - return empty root node
     if files.is_empty() {
-        return TreeNode {
+        return Ok(TreeNode {
             id: "/".to_string(),
             name: "root".to_string(),
             path: PathBuf::from("/"),
@@ -146,7 +152,7 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
             ai_bloat_index: None,
             cognitive_complexity: None,
             test_coverage: None,
-        };
+        });
     }
 
     // Check if paths are absolute (start with "/") or relative
@@ -253,8 +259,12 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> TreeNode {
     // Third pass: aggregate metrics up the tree (bottom-up)
     aggregate_directory_metrics(&mut dir_map, &root_node_path);
 
-    // Extract root node
-    dir_map.remove(&root_node_path).unwrap()
+    // Extract root node - this should always succeed since we create the root node at the beginning
+    dir_map.remove(&root_node_path).ok_or_else(|| {
+        ApiError::TransformError(
+            "Root node missing from directory map after tree construction".to_string()
+        )
+    })
 }
 
 /// Ensures all parent directories exist in the directory map
@@ -436,7 +446,8 @@ mod tests {
 
     #[test]
     fn test_empty_input() {
-        let tree = flat_to_hierarchy(vec![]);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(vec![]).unwrap();
         assert_eq!(tree.name, "root");
         assert_eq!(tree.loc, 0);
         assert_eq!(tree.children.len(), 0);
@@ -446,7 +457,8 @@ mod tests {
     #[test]
     fn test_single_file() {
         let files = vec![create_test_file("main.rs", 100)];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.name, "root");
         assert_eq!(tree.loc, 100);
@@ -467,7 +479,8 @@ mod tests {
             create_test_file("src/lib.rs", 200),
             create_test_file("tests/test1.rs", 50),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.name, "root");
         assert_eq!(tree.loc, 350); // Sum of all files
@@ -475,6 +488,7 @@ mod tests {
         assert_eq!(tree.children.len(), 2); // "src" and "tests" directories
 
         // Check src directory
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let src_dir = tree.children.iter().find(|c| c.name == "src").unwrap();
         assert_eq!(src_dir.loc, 300);
         assert_eq!(src_dir.complexity, 30);
@@ -482,6 +496,7 @@ mod tests {
         assert_eq!(src_dir.node_type, "directory");
 
         // Check tests directory
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let tests_dir = tree.children.iter().find(|c| c.name == "tests").unwrap();
         assert_eq!(tests_dir.loc, 50);
         assert_eq!(tests_dir.complexity, 5);
@@ -493,7 +508,8 @@ mod tests {
         let files = vec![
             create_test_file("a/b/c/d/e/file.rs", 100),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 100);
         assert_eq!(tree.children.len(), 1);
@@ -537,7 +553,8 @@ mod tests {
             create_test_file("src/file2.rs", 200),
             create_test_file("src/file3.rs", 300),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 600);
         assert_eq!(tree.children.len(), 1);
@@ -557,17 +574,20 @@ mod tests {
             create_test_file("src/utils/config.rs", 30),
             create_test_file("tests/integration/test1.rs", 40),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 230);
         assert_eq!(tree.children.len(), 3); // README.md, src, tests
 
         // Verify root level file
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let readme = tree.children.iter().find(|c| c.name == "README.md").unwrap();
         assert_eq!(readme.node_type, "file");
         assert_eq!(readme.loc, 10);
 
         // Verify nested directories aggregate correctly
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let src = tree.children.iter().find(|c| c.name == "src").unwrap();
         assert_eq!(src.loc, 180);
         assert_eq!(src.children.len(), 2); // main.rs and utils/
@@ -584,10 +604,12 @@ mod tests {
             create_test_file("src/file_with_underscore.rs", 200),
             create_test_file("tests/test-1.rs", 50),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 350);
 
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let src = tree.children.iter().find(|c| c.name == "src").unwrap();
         assert_eq!(src.children.len(), 2);
 
@@ -605,22 +627,26 @@ mod tests {
             create_test_file("tests/main.rs", 200),
             create_test_file("examples/main.rs", 300),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 600);
         assert_eq!(tree.children.len(), 3);
 
         // Each directory should have its own main.rs with correct LOC
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let src = tree.children.iter().find(|c| c.name == "src").unwrap();
         let src_main = &src.children[0];
         assert_eq!(src_main.name, "main.rs");
         assert_eq!(src_main.loc, 100);
 
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let tests = tree.children.iter().find(|c| c.name == "tests").unwrap();
         let tests_main = &tests.children[0];
         assert_eq!(tests_main.name, "main.rs");
         assert_eq!(tests_main.loc, 200);
 
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let examples = tree.children.iter().find(|c| c.name == "examples").unwrap();
         let examples_main = &examples.children[0];
         assert_eq!(examples_main.name, "main.rs");
@@ -631,7 +657,8 @@ mod tests {
     fn test_very_long_path() {
         let long_path = "a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/file.rs";
         let files = vec![create_test_file(long_path, 50)];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 50);
         assert_eq!(tree.children.len(), 1);
@@ -656,7 +683,8 @@ mod tests {
         let files = vec![
             create_test_file("huge_file.rs", 10000), // Should cap at 100
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 10000);
         assert_eq!(tree.complexity, 100); // Should be capped
@@ -724,7 +752,8 @@ mod tests {
             },
         ];
 
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         // Root should have the most recent timestamp
         let src = &tree.children[0];
@@ -740,17 +769,21 @@ mod tests {
             create_test_file("backend/src/handler.rs", 150),
             create_test_file("shared/types.ts", 30),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         assert_eq!(tree.loc, 530);
         assert_eq!(tree.children.len(), 3); // frontend, backend, shared
 
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let frontend = tree.children.iter().find(|c| c.name == "frontend").unwrap();
         assert_eq!(frontend.loc, 150);
 
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let backend = tree.children.iter().find(|c| c.name == "backend").unwrap();
         assert_eq!(backend.loc, 350);
 
+        // Test-only unwrap: Test fixtures guarantee these directories exist
         let shared = tree.children.iter().find(|c| c.name == "shared").unwrap();
         assert_eq!(shared.loc, 30);
     }
@@ -767,7 +800,8 @@ mod tests {
         }
 
         let start = Instant::now();
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
         let duration = start.elapsed();
 
         // Verify correctness
@@ -787,7 +821,8 @@ mod tests {
             create_test_file("src/b.rs", 200),
             create_test_file("src/c.rs", 300),
         ];
-        let tree = flat_to_hierarchy(files);
+        // Test-only unwrap: Test fixtures are valid by construction
+        let tree = flat_to_hierarchy(files).unwrap();
 
         // Root should only have one "src" directory
         assert_eq!(tree.children.len(), 1);
