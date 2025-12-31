@@ -12,6 +12,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tree_sitter::QueryCursor;
 
+// Type aliases to reduce complexity
+type SymbolMap = HashMap<SymbolId, Symbol>;
+type ExportMap = HashMap<PathBuf, Vec<SymbolId>>;
+type ImportMap = HashMap<SymbolId, Vec<SymbolId>>;
+type SymbolExtractionResult = (PathBuf, Vec<Symbol>, Vec<SymbolId>);
+
 /// Builder for constructing symbol graphs
 pub struct SymbolGraphBuilder {
     graph: HashMap<SymbolId, Symbol>,
@@ -161,52 +167,108 @@ impl SymbolGraphBuilder {
         &mut self,
         files: Vec<(PathBuf, String)>,
     ) -> Result<SymbolGraph, GraphError> {
-        // Pre-allocate capacity more accurately (estimate 20 symbols per file)
         let file_count = files.len();
         let estimated_symbols = file_count * 20;
 
-        // Build a map of available files for import resolution
         let available_files: HashMap<PathBuf, bool> =
             files.iter().map(|(path, _)| (path.clone(), true)).collect();
 
-        // Use thread-safe containers for parallel processing
+        let (all_symbols, exports) = Self::extract_all_symbols(&files, estimated_symbols, file_count)?;
+        let imports = Self::build_dependency_edges(&files, &all_symbols, &exports, &available_files, estimated_symbols)?;
+
+        Ok(SymbolGraph {
+            symbols: all_symbols,
+            imports,
+            exports,
+        })
+    }
+
+    /// Extract all symbols from files in parallel
+    fn extract_all_symbols(
+        files: &[(PathBuf, String)],
+        estimated_symbols: usize,
+        file_count: usize,
+    ) -> Result<(SymbolMap, ExportMap), GraphError> {
         let all_symbols = Mutex::new(HashMap::with_capacity(estimated_symbols));
         let exports = Mutex::new(HashMap::with_capacity(file_count));
 
-        // First pass: Extract all symbols from all files IN PARALLEL
-        let symbol_results: Vec<Result<_, GraphError>> = files
+        let symbol_results: Vec<Result<SymbolExtractionResult, GraphError>> = files
             .par_iter()
             .map(|(file_path, source)| {
-                // Determine the parser based on file extension
-                let parser: Box<dyn LanguageParser> = if file_path
-                    .extension()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s == "ts" || s == "tsx")
-                    .unwrap_or(false)
-                {
-                    Box::new(code_viz_core::parser::TypeScriptParser)
-                } else {
-                    Box::new(code_viz_core::parser::JavaScriptParser)
-                };
-
-                // Extract symbols (each thread gets its own builder)
+                let parser = Self::create_parser(file_path);
                 let mut builder = SymbolGraphBuilder::new();
                 let symbols = builder.extract_symbols(file_path, source, parser.as_ref())?;
 
-                // Track exported symbols per file
-                let mut file_exports = Vec::new();
-                for symbol in &symbols {
-                    if symbol.is_exported {
-                        file_exports.push(symbol.id.clone());
-                    }
-                }
-
+                let file_exports = Self::collect_exports(&symbols);
                 Ok((file_path.clone(), symbols, file_exports))
             })
             .collect();
 
-        // Collect results and handle errors
-        for result in symbol_results {
+        Self::aggregate_symbols(symbol_results, all_symbols, exports)
+    }
+
+    /// Build dependency edges between symbols
+    fn build_dependency_edges(
+        files: &[(PathBuf, String)],
+        all_symbols: &SymbolMap,
+        exports: &ExportMap,
+        available_files: &HashMap<PathBuf, bool>,
+        estimated_symbols: usize,
+    ) -> Result<ImportMap, GraphError> {
+        let imports = Mutex::new(HashMap::with_capacity(estimated_symbols));
+
+        let import_results: Vec<Result<_, GraphError>> = files
+            .par_iter()
+            .map(|(file_path, source)| {
+                let parser = Self::create_parser(file_path);
+                let builder = SymbolGraphBuilder::new();
+                let import_sources = builder.extract_imports(file_path, source, parser.as_ref())?;
+
+                let file_imports = Self::resolve_file_imports(
+                    file_path,
+                    &import_sources,
+                    all_symbols,
+                    exports,
+                    available_files,
+                );
+
+                Ok(file_imports)
+            })
+            .collect();
+
+        Self::aggregate_imports(import_results, imports)
+    }
+
+    /// Create appropriate parser based on file extension
+    fn create_parser(file_path: &Path) -> Box<dyn LanguageParser> {
+        if file_path
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s == "ts" || s == "tsx")
+            .unwrap_or(false)
+        {
+            Box::new(code_viz_core::parser::TypeScriptParser)
+        } else {
+            Box::new(code_viz_core::parser::JavaScriptParser)
+        }
+    }
+
+    /// Collect exported symbols from a symbol list
+    fn collect_exports(symbols: &[Symbol]) -> Vec<SymbolId> {
+        symbols
+            .iter()
+            .filter(|s| s.is_exported)
+            .map(|s| s.id.clone())
+            .collect()
+    }
+
+    /// Aggregate symbol extraction results
+    fn aggregate_symbols(
+        results: Vec<Result<SymbolExtractionResult, GraphError>>,
+        all_symbols: Mutex<SymbolMap>,
+        exports: Mutex<ExportMap>,
+    ) -> Result<(SymbolMap, ExportMap), GraphError> {
+        for result in results {
             let (file_path, symbols, file_exports) = result?;
 
             // Safe: Mutex is not poisoned (no panics in parallel processing)
@@ -223,83 +285,59 @@ impl SymbolGraphBuilder {
         }
 
         // Safe: into_inner only fails if Mutex is poisoned, which cannot happen
-        // because parallel processing uses Result-based error handling
-        let all_symbols = all_symbols.into_inner().unwrap();
-        let exports = exports.into_inner().unwrap();
+        Ok((all_symbols.into_inner().unwrap(), exports.into_inner().unwrap()))
+    }
 
-        // Second pass: Build import relationships IN PARALLEL
-        let imports = Mutex::new(HashMap::with_capacity(estimated_symbols));
+    /// Resolve imports for a single file
+    fn resolve_file_imports(
+        file_path: &Path,
+        import_sources: &[String],
+        all_symbols: &SymbolMap,
+        exports: &ExportMap,
+        available_files: &HashMap<PathBuf, bool>,
+    ) -> Vec<(SymbolId, Vec<SymbolId>)> {
+        let mut file_imports = Vec::new();
 
-        let import_results: Vec<Result<_, GraphError>> = files
-            .par_iter()
-            .map(|(file_path, source)| {
-                let parser: Box<dyn LanguageParser> = if file_path
-                    .extension()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s == "ts" || s == "tsx")
-                    .unwrap_or(false)
-                {
-                    Box::new(code_viz_core::parser::TypeScriptParser)
-                } else {
-                    Box::new(code_viz_core::parser::JavaScriptParser)
-                };
+        for import_source in import_sources {
+            if let Some(resolved_path) =
+                resolve_import_path(file_path, import_source, available_files)
+            {
+                if let Some(exported_symbols) = exports.get(&resolved_path) {
+                    let file_symbols: Vec<SymbolId> = all_symbols
+                        .values()
+                        .filter(|s| s.path == *file_path)
+                        .map(|s| s.id.clone())
+                        .collect();
 
-                // Extract imports
-                let builder = SymbolGraphBuilder::new();
-                let import_sources = builder.extract_imports(file_path, source, parser.as_ref())?;
-
-                // Collect import relationships for this file
-                let mut file_imports: Vec<(SymbolId, Vec<SymbolId>)> = Vec::new();
-
-                // Resolve import paths to actual files
-                for import_source in import_sources {
-                    if let Some(resolved_path) =
-                        resolve_import_path(file_path, &import_source, &available_files)
-                    {
-                        // Find exported symbols from the imported file
-                        if let Some(exported_symbols) = exports.get(&resolved_path) {
-                            // Get all symbols in the current file that could depend on these imports
-                            let file_symbols: Vec<SymbolId> = all_symbols
-                                .values()
-                                .filter(|s| s.path == *file_path)
-                                .map(|s| s.id.clone())
-                                .collect();
-
-                            // For simplicity, mark all symbols in the importing file as depending
-                            // on all exported symbols from the imported file
-                            for symbol_id in file_symbols {
-                                file_imports.push((symbol_id, exported_symbols.clone()));
-                            }
-                        }
+                    for symbol_id in file_symbols {
+                        file_imports.push((symbol_id, exported_symbols.clone()));
                     }
                 }
+            }
+        }
 
-                Ok(file_imports)
-            })
-            .collect();
+        file_imports
+    }
 
-        // Collect import results
-        for result in import_results {
+    /// Aggregate import resolution results
+    fn aggregate_imports(
+        results: Vec<Result<Vec<(SymbolId, Vec<SymbolId>)>, GraphError>>,
+        imports: Mutex<ImportMap>,
+    ) -> Result<ImportMap, GraphError> {
+        for result in results {
             let file_imports = result?;
             // Safe: Mutex is not poisoned (no panics in parallel processing)
             let mut imports_guard = imports.lock().unwrap();
             for (symbol_id, deps) in file_imports {
                 imports_guard
                     .entry(symbol_id)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(deps);
             }
         }
 
-        // Safe: into_inner only fails if Mutex is poisoned, which cannot happen
-        // because parallel processing uses Result-based error handling
-        let imports = imports.into_inner().unwrap();
-
-        Ok(SymbolGraph {
-            symbols: all_symbols,
-            imports,
-            exports,
-        })
+        // Safe: into_inner only fails if Mutex is poisoned
+        Ok(imports.into_inner().unwrap())
     }
 }
 
