@@ -701,6 +701,7 @@ dependencies = [
  "csv",
  "ctrlc",
  "env_logger",
+ "git2",
  "log",
  "notify",
  "predicates",
