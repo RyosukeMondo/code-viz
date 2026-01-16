@@ -29,6 +29,14 @@ export class VoxelRenderer {
   private _tempMatrix = new THREE.Matrix4();
   private _tempColor = new THREE.Color();
 
+  // Selection state tracking
+  private selectedNodeId: string | null = null;
+  private hoveredNodeId: string | null = null;
+  private originalColors: Map<number, THREE.Color> = new Map();
+
+  // Animation state for smooth transitions
+  private animationTargets: Map<number, { target: THREE.Color; start: THREE.Color; progress: number }> = new Map();
+
   /**
    * Creates a new VoxelRenderer instance
    * @param scene - Three.js scene to add voxels to
@@ -160,6 +168,9 @@ export class VoxelRenderer {
           voxelLevel: y
         });
 
+        // Store original color for restoration
+        this.originalColors.set(currentInstanceId, voxelColor.clone());
+
         currentInstanceId++;
       }
     }
@@ -177,6 +188,38 @@ export class VoxelRenderer {
     console.log('First instance color:', testColor);
 
     return this.instancedMesh;
+  }
+
+  /**
+   * Updates animation state for smooth color transitions
+   * Should be called in the animation loop for smooth effects
+   * @param deltaTime - Time elapsed since last frame in seconds
+   */
+  update(deltaTime: number): void {
+    if (!this.instancedMesh || this.animationTargets.size === 0) return;
+
+    let needsUpdate = false;
+
+    // Update all ongoing animations
+    for (const [instanceId, animation] of this.animationTargets.entries()) {
+      animation.progress += deltaTime * 5; // 5x speed for quick transitions
+
+      if (animation.progress >= 1) {
+        // Animation complete
+        this.instancedMesh.setColorAt(instanceId, animation.target);
+        this.animationTargets.delete(instanceId);
+        needsUpdate = true;
+      } else {
+        // Interpolate color
+        const interpolated = animation.start.clone().lerp(animation.target, animation.progress);
+        this.instancedMesh.setColorAt(instanceId, interpolated);
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate) {
+      this.instancedMesh.instanceColor!.needsUpdate = true;
+    }
   }
 
   /**
@@ -222,45 +265,126 @@ export class VoxelRenderer {
   }
 
   /**
-   * Highlights a specific building by changing its voxels' colors
+   * Highlights a specific building by changing its voxels' colors with selection effect
+   * Uses a brighter, more saturated color with emissive-like glow
    * @param nodeId - ID of the node to highlight
-   * @param highlightColor - Color to use for highlighting
+   * @param highlightColor - Color to use for highlighting (default: bright yellow)
    */
-  highlightBuilding(nodeId: string, highlightColor: THREE.Color | string = '#ffffff'): void {
+  highlightBuilding(nodeId: string, highlightColor: THREE.Color | string = '#ffff00'): void {
     if (!this.instancedMesh) return;
+
+    this.selectedNodeId = nodeId;
 
     const color = typeof highlightColor === 'string'
       ? new THREE.Color(highlightColor)
       : highlightColor;
 
+    // Apply selection highlight with brightness boost
     for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
       if (mapping.nodeId === nodeId) {
-        this.instancedMesh.setColorAt(instanceId, color);
+        const originalColor = this.originalColors.get(instanceId);
+        if (originalColor) {
+          // Create a highlighted color by brightening and adding the highlight color
+          const highlightedColor = originalColor.clone()
+            .lerp(color, 0.5)  // Mix with highlight color
+            .multiplyScalar(1.5);  // Brighten
+
+          this._animateColorTransition(instanceId, highlightedColor);
+        }
       }
     }
-
-    this.instancedMesh.instanceColor!.needsUpdate = true;
   }
 
   /**
-   * Removes highlighting from a building by restoring original colors
+   * Removes highlighting from a building by restoring original colors with smooth transition
    * @param nodeId - ID of the node to unhighlight
    */
   unhighlightBuilding(nodeId: string): void {
     if (!this.instancedMesh) return;
 
-    const node = this.layoutNodes.find(n => n.id === nodeId);
-    if (!node) return;
-
-    const complexity = node.metrics?.complexity || 0;
-    const originalColor = complexityToColor(complexity);
-
-    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
-      if (mapping.nodeId === nodeId) {
-        this.instancedMesh.setColorAt(instanceId, originalColor);
-      }
+    if (this.selectedNodeId === nodeId) {
+      this.selectedNodeId = null;
     }
 
+    // Restore original colors with smooth transition
+    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
+      if (mapping.nodeId === nodeId) {
+        const originalColor = this.originalColors.get(instanceId);
+        if (originalColor) {
+          this._animateColorTransition(instanceId, originalColor.clone());
+        }
+      }
+    }
+  }
+
+  /**
+   * Applies hover effect to a building with subtle brightness increase
+   * @param nodeId - ID of the node to hover
+   */
+  hoverBuilding(nodeId: string): void {
+    if (!this.instancedMesh || this.hoveredNodeId === nodeId) return;
+
+    // Don't apply hover if already selected
+    if (this.selectedNodeId === nodeId) return;
+
+    this.hoveredNodeId = nodeId;
+
+    // Apply subtle hover effect (brightness increase)
+    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
+      if (mapping.nodeId === nodeId) {
+        const originalColor = this.originalColors.get(instanceId);
+        if (originalColor) {
+          const hoverColor = originalColor.clone().multiplyScalar(1.2);
+          this._animateColorTransition(instanceId, hoverColor);
+        }
+      }
+    }
+  }
+
+  /**
+   * Removes hover effect from a building
+   * @param nodeId - ID of the node to unhover
+   */
+  unhoverBuilding(nodeId: string): void {
+    if (!this.instancedMesh || this.hoveredNodeId !== nodeId) return;
+
+    // Don't remove hover if building is selected
+    if (this.selectedNodeId === nodeId) return;
+
+    this.hoveredNodeId = null;
+
+    // Restore original colors
+    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
+      if (mapping.nodeId === nodeId) {
+        const originalColor = this.originalColors.get(instanceId);
+        if (originalColor) {
+          this._animateColorTransition(instanceId, originalColor.clone());
+        }
+      }
+    }
+  }
+
+  /**
+   * Animates a smooth color transition for an instance
+   * @param instanceId - Instance to animate
+   * @param targetColor - Target color to transition to
+   */
+  private _animateColorTransition(instanceId: number, targetColor: THREE.Color): void {
+    if (!this.instancedMesh) return;
+
+    const currentColor = new THREE.Color();
+    this.instancedMesh.getColorAt(instanceId, currentColor);
+
+    // Store animation target
+    this.animationTargets.set(instanceId, {
+      target: targetColor,
+      start: currentColor,
+      progress: 0
+    });
+
+    // Immediate update for now (smooth animation would require update loop integration)
+    // For now, apply the color immediately for instant feedback
+    this.instancedMesh.setColorAt(instanceId, targetColor);
     this.instancedMesh.instanceColor!.needsUpdate = true;
   }
 
@@ -323,6 +447,10 @@ export class VoxelRenderer {
       this.instancedMesh = null;
       this.voxelToNodeMap.clear();
       this.layoutNodes = [];
+      this.originalColors.clear();
+      this.animationTargets.clear();
+      this.selectedNodeId = null;
+      this.hoveredNodeId = null;
 
       console.log('VoxelRenderer: Disposed all resources');
     }
