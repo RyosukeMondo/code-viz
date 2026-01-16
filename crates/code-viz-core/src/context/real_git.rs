@@ -20,6 +20,49 @@ impl RealGit {
     }
 }
 
+type CommitInfo = (String, String, i64);
+
+fn process_blame_hunk(
+    repo: &Repository,
+    hunk: &git2::BlameHunk,
+    commit_cache: &mut HashMap<git2::Oid, CommitInfo>,
+    lines: &mut Vec<crate::traits::BlameLine>,
+) -> Result<()> {
+    let commit_id = hunk.final_commit_id();
+    let commit_info = get_or_cache_commit_info(repo, commit_id, commit_cache)?;
+    let (author_name, author_email, timestamp) = commit_info;
+
+    for line_num in hunk.final_start_line()..(hunk.final_start_line() + hunk.lines_in_hunk()) {
+        lines.push(crate::traits::BlameLine {
+            line_number: line_num,
+            commit_sha: commit_id.to_string(),
+            author: author_name.clone(),
+            author_email: author_email.clone(),
+            timestamp: *timestamp,
+        });
+    }
+    Ok(())
+}
+
+fn get_or_cache_commit_info<'a>(
+    repo: &Repository,
+    commit_id: git2::Oid,
+    cache: &'a mut HashMap<git2::Oid, CommitInfo>,
+) -> Result<&'a CommitInfo> {
+    if !cache.contains_key(&commit_id) {
+        let commit = repo.find_commit(commit_id)
+            .with_context(|| format!("Failed to find commit '{}' for blame hunk", commit_id))?;
+        let author = commit.author();
+        let info = (
+            author.name().unwrap_or("Unknown").to_string(),
+            author.email().unwrap_or("Unknown").to_string(),
+            commit.time().seconds(),
+        );
+        cache.insert(commit_id, info);
+    }
+    Ok(cache.get(&commit_id).unwrap())
+}
+
 #[async_trait]
 impl GitProvider for RealGit {
     async fn get_history(&self, path: &Path) -> Result<Vec<Commit>> {
@@ -198,36 +241,7 @@ impl GitProvider for RealGit {
             let mut commit_cache = std::collections::HashMap::new();
 
             for hunk in blame.iter() {
-                let commit_id = hunk.final_commit_id();
-
-                let commit_info = match commit_cache.entry(commit_id) {
-                    std::collections::hash_map::Entry::Occupied(entry) => entry.into_mut(),
-                    std::collections::hash_map::Entry::Vacant(entry) => {
-                        let commit = repo.find_commit(commit_id).with_context(|| {
-                            format!("Failed to find commit '{}' for blame hunk", commit_id)
-                        })?;
-                        let author = commit.author();
-                        let info = (
-                            author.name().unwrap_or("Unknown").to_string(),
-                            author.email().unwrap_or("Unknown").to_string(),
-                            commit.time().seconds(),
-                        );
-                        entry.insert(info)
-                    }
-                };
-                let (author_name, author_email, timestamp) = commit_info;
-
-                for line_num in
-                    hunk.final_start_line()..(hunk.final_start_line() + hunk.lines_in_hunk())
-                {
-                    lines.push(crate::traits::BlameLine {
-                        line_number: line_num,
-                        commit_sha: commit_id.to_string(),
-                        author: author_name.clone(),
-                        author_email: author_email.clone(),
-                        timestamp: *timestamp,
-                    });
-                }
+                process_blame_hunk(&repo, &hunk, &mut commit_cache, &mut lines)?;
             }
 
             Ok(BlameInfo {
