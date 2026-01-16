@@ -1,6 +1,6 @@
 use crate::output::{self, MetricsFormatter};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use thiserror::Error;
 
@@ -169,7 +169,7 @@ pub async fn run(
     config: AnalyzeConfig,
     ctx: impl AppContext + Clone,
     fs: impl FileSystem + Clone,
-    git: impl GitProvider + Clone,
+    git: impl GitProvider,
 ) -> Result<(), AnalyzeError> {
     let orchestrator = AnalysisOrchestrator::new(config, ctx, fs, git);
     orchestrator.execute().await
@@ -224,7 +224,7 @@ fn create_formatter(format: &str) -> Box<dyn MetricsFormatter> {
 
 fn compare_with_baseline(
     fs: &impl FileSystem,
-    baseline_path: &PathBuf,
+    baseline_path: &Path,
     result: &code_viz_core::AnalysisResult,
 ) -> Result<(), AnalyzeError> {
     let baseline_content = fs.read_to_string(baseline_path)

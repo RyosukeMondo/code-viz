@@ -27,7 +27,7 @@ fn render_summary(summary: &code_viz_core::Summary) -> String {
         "| Total Functions | {}      |\n",
         summary.total_functions
     ));
-    s.push_str("\n");
+    s.push('\n');
     s
 }
 
@@ -47,7 +47,7 @@ fn render_language_breakdown(files: &[FileMetrics]) -> String {
     for (language, loc) in sorted_breakdown {
         s.push_str(&format!("| {}      | {}            |\n", language, loc));
     }
-    s.push_str("\n");
+    s.push('\n');
     s
 }
 

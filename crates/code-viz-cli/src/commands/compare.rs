@@ -15,7 +15,7 @@ pub struct CompareCommand {
 impl From<&CompareCommand> for CompareArgs {
     fn from(args: &CompareCommand) -> Self {
         let parts: Vec<&str> = args.spec.split("..").collect();
-        let base = parts.get(0).map(|s| s.to_string());
+        let base = parts.first().map(|s| s.to_string());
         let head = parts.get(1).map(|s| s.to_string());
         CompareArgs {
             base,

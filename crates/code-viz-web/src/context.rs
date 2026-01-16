@@ -12,7 +12,7 @@ use std::path::PathBuf;
 pub use code_viz_core::context::{RealFileSystem, RealGit};
 
 /// Web application context
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct WebContext;
 
 impl WebContext {
