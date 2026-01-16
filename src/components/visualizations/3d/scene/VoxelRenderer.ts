@@ -10,7 +10,8 @@ import { complexityToColor } from '../utils/colorMaps';
 import { MAX_HEIGHT, DEFAULT_VOXEL_SIZE, PERFORMANCE_THRESHOLDS } from '../utils/constants';
 import type { LayoutNode, VoxelMapping, RenderStats, VoxelRendererOptions } from '../types';
 import { VoxelOptimizer } from './VoxelOptimizer';
-import { VoxelSelection } from './VoxelSelection';
+import { VoxelVisibilityManager } from './VoxelVisibilityManager';
+import { VoxelHighlighter } from './VoxelHighlighter';
 
 /**
  * VoxelRenderer class that generates and renders voxel buildings using InstancedMesh
@@ -31,9 +32,10 @@ export class VoxelRenderer {
 
   private _tempMatrix = new THREE.Matrix4();
 
-  // Performance optimizer and selection manager
+  // Performance optimizer and managers
   private optimizer: VoxelOptimizer;
-  private selection: VoxelSelection;
+  private visibilityManager: VoxelVisibilityManager;
+  private highlighter: VoxelHighlighter;
 
   /**
    * Creates a new VoxelRenderer instance
@@ -46,7 +48,8 @@ export class VoxelRenderer {
     this.maxHeight = options.maxHeight || MAX_HEIGHT;
     this.maxVoxels = options.maxVoxels || PERFORMANCE_THRESHOLDS.MAX_VOXELS_PER_INSTANCE;
     this.optimizer = new VoxelOptimizer(this.maxHeight);
-    this.selection = new VoxelSelection();
+    this.visibilityManager = new VoxelVisibilityManager(this.voxelSize);
+    this.highlighter = new VoxelHighlighter();
   }
 
   /**
@@ -58,24 +61,19 @@ export class VoxelRenderer {
    * @returns The created instanced mesh
    */
   render(layoutNodes: LayoutNode[], worldWidth = 1000, worldDepth = 1000): THREE.InstancedMesh | null {
-    if (!layoutNodes || layoutNodes.length === 0) {
+    if (!layoutNodes?.length) {
       console.warn('VoxelRenderer: No layout nodes provided');
       return null;
     }
 
     this.layoutNodes = layoutNodes;
-
     this.centerOffsetX = worldWidth / 2;
     this.centerOffsetZ = worldDepth / 2;
     this.optimizer.setCenterOffsets(this.centerOffsetX, this.centerOffsetZ);
 
     const totalVoxels = this._calculateTotalVoxels(layoutNodes);
-
     if (totalVoxels > this.maxVoxels) {
-      console.warn(
-        `VoxelRenderer: Total voxels (${totalVoxels}) exceeds max (${this.maxVoxels}). ` +
-        'Some buildings will be capped.'
-      );
+      console.warn(`VoxelRenderer: Total voxels (${totalVoxels}) exceeds max (${this.maxVoxels})`);
     }
 
     const instanceCount = Math.min(totalVoxels, this.maxVoxels);
@@ -87,11 +85,9 @@ export class VoxelRenderer {
     }
 
     const currentInstanceId = this._renderBuildings(layoutNodes, instanceCount);
-
     this.instancedMesh.instanceMatrix.needsUpdate = true;
     this.instancedMesh.instanceColor!.needsUpdate = true;
 
-    // Handle material update (may be array or single material)
     if (Array.isArray(this.instancedMesh.material)) {
       this.instancedMesh.material.forEach(mat => mat.needsUpdate = true);
     } else {
@@ -99,12 +95,7 @@ export class VoxelRenderer {
     }
 
     this.scene.add(this.instancedMesh);
-
-    console.log(`VoxelRenderer: Created ${currentInstanceId} voxel instances from ${layoutNodes.length} buildings`);
-
-    const testColor = new THREE.Color();
-    this.instancedMesh.getColorAt(0, testColor);
-    console.log('First instance color:', testColor);
+    console.log(`VoxelRenderer: Created ${currentInstanceId} instances from ${layoutNodes.length} buildings`);
 
     return this.instancedMesh;
   }
@@ -116,37 +107,25 @@ export class VoxelRenderer {
    */
   private _createInstancedMesh(instanceCount: number): void {
     const geometry = new THREE.BoxGeometry(this.voxelSize, this.voxelSize, this.voxelSize);
-
-    const positionAttribute = geometry.getAttribute('position');
-    const colors: number[] = [];
-    for (let i = 0; i < positionAttribute.count; i++) {
-      colors.push(1, 1, 1);
-    }
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    const posAttr = geometry.getAttribute('position');
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(
+      new Array(posAttr.count * 3).fill(1), 3
+    ));
 
     const material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.8,
-      metalness: 0.0,
-      flatShading: false,
-      envMapIntensity: 0.3
+      vertexColors: true, roughness: 0.8, metalness: 0.0,
+      flatShading: false, envMapIntensity: 0.3
     });
 
     this.instancedMesh = new THREE.InstancedMesh(geometry, material, instanceCount);
-
-    if (!this.instancedMesh.instanceColor) {
-      const colors = new Float32Array(instanceCount * 3);
-      for (let i = 0; i < instanceCount; i++) {
-        colors[i * 3 + 0] = 1.0;
-        colors[i * 3 + 1] = 1.0;
-        colors[i * 3 + 2] = 1.0;
-      }
-      this.instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
-      console.log('✓ Manually initialized instanceColor buffer');
-    }
-
+    this.instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+      new Float32Array(instanceCount * 3).fill(1), 3
+    );
     this.instancedMesh.castShadow = true;
     this.instancedMesh.receiveShadow = true;
+
+    this.highlighter.setInstancedMesh(this.instancedMesh);
+    this.highlighter.setVoxelToNodeMap(this.voxelToNodeMap);
   }
 
   /**
@@ -160,6 +139,7 @@ export class VoxelRenderer {
     if (!this.instancedMesh) return 0;
 
     let currentInstanceId = 0;
+    this.visibilityManager.clear();
 
     for (const node of layoutNodes) {
       if (currentInstanceId >= instanceCount) {
@@ -183,6 +163,9 @@ export class VoxelRenderer {
 
       const centerX = (node.x0 + node.x1) / 2 - this.centerOffsetX;
       const centerZ = (node.y0 + node.y1) / 2 - this.centerOffsetZ;
+
+      // Track where this building's instances start
+      const buildingStartInstance = currentInstanceId;
 
       for (let y = 0; y < numVoxelsHeight; y++) {
         if (currentInstanceId >= instanceCount) break;
@@ -214,9 +197,16 @@ export class VoxelRenderer {
           voxelLevel: y
         });
 
-        this.selection.storeOriginalColor(currentInstanceId, voxelColor);
+        this.highlighter.getSelection().storeOriginalColor(currentInstanceId, voxelColor);
         currentInstanceId++;
       }
+
+      // Register building instance range with visibility manager
+      this.visibilityManager.registerBuilding(
+        node.id,
+        buildingStartInstance,
+        currentInstanceId - buildingStartInstance
+      );
     }
 
     return currentInstanceId;
@@ -226,10 +216,10 @@ export class VoxelRenderer {
    * Updates animation state for smooth color transitions
    * Should be called in the animation loop for smooth effects
    * @param deltaTime - Time elapsed since last frame in seconds
-   * @param _camera - Camera for frustum culling (optional, reserved for future use)
+   * @param camera - Camera for frustum culling and LOD
    * @param currentFps - Current FPS for adaptive quality (optional)
    */
-  update(deltaTime: number, _camera?: THREE.Camera, currentFps?: number): void {
+  update(deltaTime: number, camera?: THREE.Camera, currentFps?: number): void {
     if (!this.instancedMesh) return;
 
     // Update adaptive quality based on FPS
@@ -240,11 +230,19 @@ export class VoxelRenderer {
       }
     }
 
-    // Update animations
-    const needsUpdate = this.selection.updateAnimations(deltaTime, this.instancedMesh);
-    if (needsUpdate) {
-      this.instancedMesh.instanceColor!.needsUpdate = true;
+    // Apply frustum culling and LOD if camera provided
+    if (camera) {
+      this.visibilityManager.updateVisibility(
+        camera,
+        deltaTime,
+        this.layoutNodes,
+        this.instancedMesh,
+        this.optimizer
+      );
     }
+
+    // Update animations
+    this.highlighter.updateAnimations(deltaTime);
   }
 
   /**
@@ -258,24 +256,15 @@ export class VoxelRenderer {
     }
 
     let instanceId = 0;
-
     for (const node of this.layoutNodes) {
-      const buildingHeight = Math.min(node.height, this.maxHeight);
-      const numVoxelsHeight = Math.ceil(buildingHeight / this.voxelSize);
-
-      const complexity = node.metrics?.complexity || 0;
-      const color = complexityToColor(complexity, thresholds);
-
-      for (let y = 0; y < numVoxelsHeight; y++) {
-        if (instanceId >= this.instancedMesh.count) break;
-
+      const numVoxels = Math.ceil(Math.min(node.height, this.maxHeight) / this.voxelSize);
+      const color = complexityToColor(node.metrics?.complexity || 0, thresholds);
+      for (let y = 0; y < numVoxels && instanceId < this.instancedMesh.count; y++, instanceId++) {
         this.instancedMesh.setColorAt(instanceId, color);
-        instanceId++;
       }
     }
 
     this.instancedMesh.instanceColor!.needsUpdate = true;
-
     console.log('VoxelRenderer: Updated colors for all voxel instances');
   }
 
@@ -296,24 +285,7 @@ export class VoxelRenderer {
    * @param highlightColor - Color to use for highlighting (default: bright yellow)
    */
   highlightBuilding(nodeId: string, highlightColor: THREE.Color | string = '#ffff00'): void {
-    if (!this.instancedMesh) return;
-
-    this.selection.setSelectedNode(nodeId);
-
-    const color = typeof highlightColor === 'string'
-      ? new THREE.Color(highlightColor)
-      : highlightColor;
-
-    // Apply selection highlight with brightness boost
-    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
-      if (mapping.nodeId === nodeId) {
-        const originalColor = this.selection.getOriginalColor(instanceId);
-        if (originalColor) {
-          const highlightedColor = this.selection.createHighlightColor(originalColor, color);
-          this._animateColorTransition(instanceId, highlightedColor);
-        }
-      }
-    }
+    this.highlighter.highlightBuilding(nodeId, highlightColor);
   }
 
   /**
@@ -321,21 +293,7 @@ export class VoxelRenderer {
    * @param nodeId - ID of the node to unhighlight
    */
   unhighlightBuilding(nodeId: string): void {
-    if (!this.instancedMesh) return;
-
-    if (this.selection.isSelected(nodeId)) {
-      this.selection.setSelectedNode(null);
-    }
-
-    // Restore original colors with smooth transition
-    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
-      if (mapping.nodeId === nodeId) {
-        const originalColor = this.selection.getOriginalColor(instanceId);
-        if (originalColor) {
-          this._animateColorTransition(instanceId, originalColor.clone());
-        }
-      }
-    }
+    this.highlighter.unhighlightBuilding(nodeId);
   }
 
   /**
@@ -343,23 +301,7 @@ export class VoxelRenderer {
    * @param nodeId - ID of the node to hover
    */
   hoverBuilding(nodeId: string): void {
-    if (!this.instancedMesh || this.selection.isHovered(nodeId)) return;
-
-    // Don't apply hover if already selected
-    if (this.selection.isSelected(nodeId)) return;
-
-    this.selection.setHoveredNode(nodeId);
-
-    // Apply subtle hover effect (brightness increase)
-    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
-      if (mapping.nodeId === nodeId) {
-        const originalColor = this.selection.getOriginalColor(instanceId);
-        if (originalColor) {
-          const hoverColor = this.selection.createHoverColor(originalColor);
-          this._animateColorTransition(instanceId, hoverColor);
-        }
-      }
-    }
+    this.highlighter.hoverBuilding(nodeId);
   }
 
   /**
@@ -367,42 +309,9 @@ export class VoxelRenderer {
    * @param nodeId - ID of the node to unhover
    */
   unhoverBuilding(nodeId: string): void {
-    if (!this.instancedMesh || !this.selection.isHovered(nodeId)) return;
-
-    // Don't remove hover if building is selected
-    if (this.selection.isSelected(nodeId)) return;
-
-    this.selection.setHoveredNode(null);
-
-    // Restore original colors
-    for (const [instanceId, mapping] of this.voxelToNodeMap.entries()) {
-      if (mapping.nodeId === nodeId) {
-        const originalColor = this.selection.getOriginalColor(instanceId);
-        if (originalColor) {
-          this._animateColorTransition(instanceId, originalColor.clone());
-        }
-      }
-    }
+    this.highlighter.unhoverBuilding(nodeId);
   }
 
-  /**
-   * Animates a smooth color transition for an instance
-   * @param instanceId - Instance to animate
-   * @param targetColor - Target color to transition to
-   */
-  private _animateColorTransition(instanceId: number, targetColor: THREE.Color): void {
-    if (!this.instancedMesh) return;
-
-    const currentColor = new THREE.Color();
-    this.instancedMesh.getColorAt(instanceId, currentColor);
-
-    // Store animation target in selection manager
-    this.selection.addAnimation(instanceId, targetColor, currentColor);
-
-    // Apply color immediately for instant feedback
-    this.instancedMesh.setColorAt(instanceId, targetColor);
-    this.instancedMesh.instanceColor!.needsUpdate = true;
-  }
 
   /**
    * Calculates total number of voxels needed for all buildings
@@ -481,20 +390,12 @@ export class VoxelRenderer {
    * Applies LOD (Level of Detail) based on camera distance
    * Reduces visual quality for distant buildings
    * @param camera - Camera to calculate distances from
+   * @deprecated This method is now called automatically within update()
    */
   applyLOD(camera: THREE.Camera): void {
-    if (!this.instancedMesh) return;
-
-    // For each building, determine if it should be rendered in low detail
-    for (const node of this.layoutNodes) {
-      // Buildings beyond LOD distance get simplified rendering
-      // This could be extended to actually modify instance visibility
-      // For now, we track which buildings are in LOD range
-      if (this.optimizer.isBeyondLODDistance(node, camera)) {
-        // Could set alpha lower, or skip certain voxels
-        // Current implementation keeps all visible but tracked
-      }
-    }
+    // This method is now handled internally by _updateVisibility in update()
+    // Kept for backward compatibility
+    if (!this.instancedMesh || !camera) return;
   }
 
   /**
@@ -511,10 +412,19 @@ export class VoxelRenderer {
   }
 
   /**
+   * Enables or disables frustum culling
+   * @param enabled - Whether frustum culling should be enabled
+   */
+  setFrustumCullingEnabled(enabled: boolean): void {
+    this.visibilityManager.setFrustumCullingEnabled(enabled);
+  }
+
+  /**
    * Enables or disables LOD system
    * @param enabled - Whether LOD should be enabled
    */
   setLODEnabled(enabled: boolean): void {
+    this.visibilityManager.setLODEnabled(enabled);
     this.optimizer.setLODEnabled(enabled);
   }
 
@@ -550,26 +460,23 @@ export class VoxelRenderer {
    * Call this when removing the visualization to free GPU memory
    */
   dispose(): void {
-    if (this.instancedMesh) {
-      this.scene.remove(this.instancedMesh);
+    if (!this.instancedMesh) return;
 
-      this.instancedMesh.geometry.dispose();
+    this.scene.remove(this.instancedMesh);
+    this.instancedMesh.geometry.dispose();
 
-      // Handle material disposal (may be array or single material)
-      if (Array.isArray(this.instancedMesh.material)) {
-        this.instancedMesh.material.forEach(mat => mat.dispose());
-      } else {
-        this.instancedMesh.material.dispose();
-      }
-
-      this.instancedMesh = null;
-      this.voxelToNodeMap.clear();
-      this.layoutNodes = [];
-      this.selection.clear();
-      this.optimizer.reset();
-
-      console.log('VoxelRenderer: Disposed all resources');
+    if (Array.isArray(this.instancedMesh.material)) {
+      this.instancedMesh.material.forEach(mat => mat.dispose());
+    } else {
+      this.instancedMesh.material.dispose();
     }
+
+    this.instancedMesh = null;
+    this.voxelToNodeMap.clear();
+    this.layoutNodes = [];
+    this.highlighter.clear();
+    this.optimizer.reset();
+    console.log('VoxelRenderer: Disposed all resources');
   }
 }
 
