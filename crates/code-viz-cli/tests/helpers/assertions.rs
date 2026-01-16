@@ -43,45 +43,6 @@ pub fn assert_summary_stats(json_str: &str, expected_files: usize, min_loc: usiz
     );
 }
 
-/// Assert that output contains specific text
-pub fn assert_contains(output: &str, text: &str) {
-    assert!(
-        output.contains(text),
-        "Output does not contain expected text: '{}'\nActual output:\n{}",
-        text,
-        output
-    );
-}
-
-/// Assert that output does not contain specific text
-pub fn assert_not_contains(output: &str, text: &str) {
-    assert!(
-        !output.contains(text),
-        "Output unexpectedly contains text: '{}'\nActual output:\n{}",
-        text,
-        output
-    );
-}
-
-/// Assert that hotspot analysis was included
-pub fn assert_has_hotspots(json_str: &str, min_hotspots: usize) {
-    let json: Value = serde_json::from_str(json_str)
-        .expect("Failed to parse JSON output");
-
-    let hotspot_analysis = json.get("hotspot_analysis")
-        .expect("JSON missing 'hotspot_analysis' field");
-
-    let hotspots = hotspot_analysis.get("hotspots")
-        .and_then(|v| v.as_array())
-        .expect("hotspot_analysis.hotspots not found or not an array");
-
-    assert!(
-        hotspots.len() >= min_hotspots,
-        "Expected at least {} hotspots, got {}",
-        min_hotspots, hotspots.len()
-    );
-}
-
 /// Assert that duplication analysis was included
 pub fn assert_has_duplicates(json_str: &str) {
     let json: Value = serde_json::from_str(json_str)
@@ -97,24 +58,5 @@ pub fn assert_has_duplicates(json_str: &str) {
     assert!(
         !pairs.is_empty(),
         "Expected duplicate pairs, but found none"
-    );
-}
-
-/// Assert that coverage analysis was included
-pub fn assert_has_coverage(json_str: &str, min_coverage: f64) {
-    let json: Value = serde_json::from_str(json_str)
-        .expect("Failed to parse JSON output");
-
-    let coverage_analysis = json.get("coverage_analysis")
-        .expect("JSON missing 'coverage_analysis' field");
-
-    let overall_coverage = coverage_analysis.get("overall_coverage")
-        .and_then(|v| v.as_f64())
-        .expect("coverage_analysis.overall_coverage not found or not a number");
-
-    assert!(
-        overall_coverage >= min_coverage,
-        "Expected coverage >= {}%, got {}%",
-        min_coverage, overall_coverage
     );
 }
