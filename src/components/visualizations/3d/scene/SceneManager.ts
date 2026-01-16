@@ -10,7 +10,7 @@ import { CameraPersistence } from './CameraPersistence';
 import { RaycasterHandler, type SelectionCallback, type BuildingData } from './RaycasterHandler';
 
 /**
- * VoxelRenderer interface for raycaster integration
+ * VoxelRenderer interface for raycaster integration and optimization
  * Duck-typed to avoid circular dependency
  */
 interface IVoxelRenderer {
@@ -18,6 +18,9 @@ interface IVoxelRenderer {
   getNodeByInstanceId(instanceId: number): LayoutNode | undefined;
   highlightBuilding(nodeId: string, color: string): void;
   unhighlightBuilding(nodeId: string): void;
+  update?(deltaTime: number, camera?: THREE.Camera, currentFps?: number): void;
+  updateFrustum?(camera: THREE.Camera): void;
+  applyLOD?(camera: THREE.Camera): void;
 }
 
 /**
@@ -43,6 +46,11 @@ export class SceneManager {
   };
   private selectionCallbacks: Set<SelectionCallback> = new Set();
   private projectKey: string;
+  private voxelRenderer: IVoxelRenderer | null = null;
+
+  // Performance tracking
+  private fpsFrameTimes: number[] = [];
+  private currentFps = 60;
 
   /**
    * Creates a SceneManager instance
@@ -196,13 +204,67 @@ export class SceneManager {
 
     this.lastFrameTime = currentTime - (deltaTime % this.frameInterval);
 
+    // Calculate FPS
+    this._updateFPS(deltaTime);
+
+    // Update controls
     if (this.controls) {
       this.controls.update();
     }
 
+    // Update voxel renderer with optimization data
+    if (this.voxelRenderer && this.camera) {
+      const deltaSeconds = deltaTime / 1000;
+
+      // Update frustum for culling
+      if (this.voxelRenderer.updateFrustum) {
+        this.voxelRenderer.updateFrustum(this.camera);
+      }
+
+      // Apply LOD based on camera distance
+      if (this.voxelRenderer.applyLOD) {
+        this.voxelRenderer.applyLOD(this.camera);
+      }
+
+      // Update renderer with FPS for adaptive quality
+      if (this.voxelRenderer.update) {
+        this.voxelRenderer.update(deltaSeconds, this.camera, this.currentFps);
+      }
+    }
+
+    // Render scene
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
+  }
+
+  /**
+   * Updates FPS calculation
+   * @param deltaTime - Time since last frame in milliseconds
+   * @private
+   */
+  private _updateFPS(deltaTime: number): void {
+    // Track frame times for accurate FPS calculation
+    this.fpsFrameTimes.push(deltaTime);
+
+    // Keep only last 60 frames
+    if (this.fpsFrameTimes.length > 60) {
+      this.fpsFrameTimes.shift();
+    }
+
+    // Calculate average FPS
+    if (this.fpsFrameTimes.length > 0) {
+      const avgDelta = this.fpsFrameTimes.reduce((a, b) => a + b, 0) / this.fpsFrameTimes.length;
+      this.currentFps = avgDelta > 0 ? 1000 / avgDelta : 60;
+    }
+  }
+
+  /**
+   * Gets current FPS
+   * @returns Current frames per second
+   */
+  getCurrentFPS(): number {
+    return this.currentFps;
   }
 
   /**
@@ -266,6 +328,9 @@ export class SceneManager {
     if (!this.camera) {
       throw new Error('SceneManager: Camera not initialized. Call initialize() first.');
     }
+
+    // Store reference to voxel renderer for optimization updates
+    this.voxelRenderer = voxelRenderer;
 
     // Dispose existing raycaster if any
     if (this.raycasterHandler) {
@@ -411,6 +476,10 @@ export class SceneManager {
 
     // Clear selection callbacks
     this.selectionCallbacks.clear();
+
+    // Clear voxel renderer reference
+    this.voxelRenderer = null;
+    this.fpsFrameTimes = [];
 
     if (this.controls) {
       this.controls.dispose();
