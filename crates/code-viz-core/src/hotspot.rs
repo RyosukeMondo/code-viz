@@ -184,4 +184,64 @@ mod tests {
         assert_eq!(analysis.hotspots.len(), 0);
         assert_eq!(analysis.total_files_analyzed, 0);
     }
+
+    #[test]
+    fn test_hotspot_limit() {
+        let files = vec![
+            create_test_file("a.rs", 100, 10, 100, 80),
+            create_test_file("b.rs", 110, 11, 110, 85),
+            create_test_file("c.rs", 120, 12, 120, 90),
+            create_test_file("d.rs", 130, 13, 130, 95),
+            create_test_file("e.rs", 140, 14, 140, 100),
+        ];
+
+        let detector = HotspotDetector::new(2); // Limit to top 2
+        let analysis = detector.calculate(&files);
+
+        assert_eq!(analysis.hotspots.len(), 2);
+        assert_eq!(analysis.total_files_analyzed, 5);
+
+        // Should return the top 2 highest scoring files
+        assert!(analysis.hotspots[0].hotspot_score > analysis.hotspots[1].hotspot_score);
+    }
+
+    #[test]
+    fn test_empty_file_list() {
+        let files = vec![];
+        let detector = HotspotDetector::new(10);
+        let analysis = detector.calculate(&files);
+
+        assert_eq!(analysis.hotspots.len(), 0);
+        assert_eq!(analysis.total_files_analyzed, 0);
+    }
+
+    #[test]
+    fn test_zero_churn_file() {
+        let files = vec![create_test_file("zero.rs", 100, 10, 0, 0)];
+
+        let detector = HotspotDetector::new(10);
+        let analysis = detector.calculate(&files);
+
+        // File with zero churn should still be analyzed if it has other metrics
+        assert_eq!(analysis.total_files_analyzed, 1);
+    }
+
+    #[test]
+    fn test_hotspot_score_calculation() {
+        let file = create_test_file("test.rs", 100, 10, 50, 30);
+
+        let detector = HotspotDetector::new(10);
+        let analysis = detector.calculate(&vec![file.clone()]);
+
+        assert_eq!(analysis.hotspots.len(), 1);
+        let hotspot = &analysis.hotspots[0];
+
+        // Verify score components are calculated
+        assert!(hotspot.hotspot_score > 0.0);
+        assert_eq!(hotspot.path, PathBuf::from("test.rs"));
+        assert_eq!(hotspot.total_changes, 80); // 50 + 30
+        assert!(hotspot.churn_score > 0.0);
+        assert!(hotspot.complexity_score > 0.0);
+        assert!(hotspot.size_score > 0.0);
+    }
 }
