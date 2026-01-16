@@ -2,7 +2,6 @@
 use code_viz_commands::calculate_code_churn;
 use code_viz_core::mocks::{MockContext, MockFileSystem, MockGit};
 use code_viz_core::models::CodeChurn;
-use code_viz_core::traits::Diff;
 use std::path::{Path, PathBuf};
 
 #[tokio::test]

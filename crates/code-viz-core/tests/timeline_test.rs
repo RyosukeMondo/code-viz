@@ -1,9 +1,8 @@
 use anyhow::Result;
-use assert_cmd::prelude::*;
+use assert_cmd::{prelude::*, Command};
 use git2::{Commit, Repository, Signature};
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 use tempfile::tempdir;
 
 fn setup_git_repo(path: &Path) -> Result<Repository> {
@@ -40,6 +39,7 @@ fn commit_file<'a>(repo: &'a Repository, path: &Path, content: &str, msg: &str) 
 
 
 #[test]
+#[allow(deprecated)] // cargo_bin is deprecated but needed for cross-crate binary testing
 fn test_timeline_command() -> Result<()> {
     let dir = tempdir()?;
     let repo_path = dir.path();
