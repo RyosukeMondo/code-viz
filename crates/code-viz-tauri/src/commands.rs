@@ -60,12 +60,11 @@ pub async fn analyze_dead_code_command(
 mod integration_tests {
     use super::*;
     use serde_json;
-    use std::env;
 
     /// Verify Tauri TreeNode serialization matches code-viz-api contract
     #[test]
     fn test_tree_node_contract_consistency() {
-        use std::time::{SystemTime, UNIX_EPOCH};
+        use std::time::UNIX_EPOCH;
         use std::path::PathBuf;
 
         // Create both API and Tauri tree nodes with same data

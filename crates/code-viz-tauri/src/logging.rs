@@ -41,8 +41,6 @@ pub fn init_logging() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_init_logging_does_not_panic() {
         // Test that initialization doesn't panic
