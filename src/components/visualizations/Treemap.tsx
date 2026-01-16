@@ -30,7 +30,15 @@ import {
   GridComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import type { TreemapProps, TreeNode } from '../../types';
+import type {
+  TreemapProps,
+  TreeNode,
+  EChartsTreemapClickParams,
+  EChartsHoverParams,
+  EChartsTooltipParams,
+  EChartsLabelParams,
+  EChartsItemStyleParams,
+} from '../../types';
 import { treeNodeToECharts, getFileCount } from '../../utils/treeTransform';
 import { getComplexityLabel, deadCodeBorderColor } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
@@ -92,22 +100,24 @@ const TreemapComponent: React.FC<TreemapProps> = ({
   const shouldUseLazyRendering = fileCount > 50000;
 
   // Memoize event handlers to prevent unnecessary re-renders
-  const handleClick = useCallback((params: any) => {
-    console.log('[Treemap] FULL params object:', params);
-    console.log('[Treemap] params.treePathInfo:', params.treePathInfo);
+  // Note: Using Record for params as ECharts internal event types are complex
+  const handleClick = useCallback((params: Record<string, unknown>) => {
+    const typedParams = params as unknown as EChartsTreemapClickParams;
+    console.log('[Treemap] FULL params object:', typedParams);
+    console.log('[Treemap] params.treePathInfo:', typedParams.treePathInfo);
 
     // ECharts treemap stores actual node data in the last item of treePathInfo array
-    const actualNode = params.treePathInfo?.[params.treePathInfo.length - 1];
+    const actualNode = typedParams.treePathInfo?.[typedParams.treePathInfo.length - 1];
 
     if (actualNode && onNodeClick) {
       const clickedNode: TreeNode = {
         id: actualNode.path || actualNode.name,
         name: actualNode.name,
-        path: actualNode.path,
+        path: actualNode.path || '',
         loc: actualNode.value,
-        complexity: actualNode.complexity,
-        type: actualNode.type,
-        children: actualNode.children || [],
+        complexity: actualNode.complexity ?? 0,
+        type: actualNode.type || 'file',
+        children: (actualNode.children || []) as TreeNode[],
         lastModified: '',
       };
 
@@ -116,16 +126,17 @@ const TreemapComponent: React.FC<TreemapProps> = ({
     }
   }, [onNodeClick]);
 
-  const handleMouseOver = useCallback((params: any) => {
-    if (params.data && onNodeHover) {
+  const handleMouseOver = useCallback((params: Record<string, unknown>) => {
+    const typedParams = params as unknown as EChartsHoverParams;
+    if (typedParams.data && onNodeHover) {
       const hoveredNode: TreeNode = {
-        id: params.data.path || params.data.name,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
+        id: typedParams.data.path || typedParams.data.name,
+        name: typedParams.data.name,
+        path: typedParams.data.path,
+        loc: typedParams.data.value,
+        complexity: typedParams.data.complexity ?? 0,
+        type: typedParams.data.type,
+        children: (typedParams.data.children || []) as TreeNode[],
         lastModified: '',
       };
       onNodeHover(hoveredNode);
@@ -250,8 +261,9 @@ const TreemapComponent: React.FC<TreemapProps> = ({
       progressiveChunkMode: shouldUseLazyRendering ? 'mod' : undefined,
 
       tooltip: {
-        formatter: (info: any) => {
-          const { name, value, complexity, path, type, deadCodeRatio } = info.data;
+        formatter: (info: EChartsTooltipParams) => {
+          const { name, value, data } = info;
+          const { complexity, path, type, deadCodeRatio } = data;
           const complexityValue = complexity ?? 0;
           const complexityLabel = getComplexityLabel(complexityValue);
 
@@ -269,7 +281,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
           return `
             <div style="padding: 8px;">
               <div style="font-weight: 600; margin-bottom: 4px;">${formatPath(name)}</div>
-              <div style="color: #64748b; font-size: 12px; margin-bottom: 8px;">${type}</div>
+              <div style="color: #64748b; font-size: 12px; margin-bottom: 8px;">${type || 'unknown'}</div>
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 <div style="display: flex; justify-content: space-between; gap: 16px;">
                   <span style="color: #64748b;">Lines:</span>
@@ -281,7 +293,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
                 </div>
                 ${deadCodeSection}
                 <div style="color: #64748b; font-size: 11px; margin-top: 4px; max-width: 300px; word-break: break-all;">
-                  ${path}
+                  ${path || ''}
                 </div>
               </div>
             </div>
@@ -310,7 +322,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
           },
           label: {
             show: true,
-            formatter: (params: any) => {
+            formatter: (params: EChartsLabelParams) => {
               if (!params.data || !params.rect) return '';
               const { name, value } = params.data;
               // Show name and LOC for rectangles large enough
@@ -340,7 +352,7 @@ const TreemapComponent: React.FC<TreemapProps> = ({
           upperLabel: {
             show: true,
             height: 30,
-            formatter: (params: any) => {
+            formatter: (params: EChartsLabelParams) => {
               return params.name;
             },
             textStyle: {
@@ -350,14 +362,14 @@ const TreemapComponent: React.FC<TreemapProps> = ({
             },
           },
           itemStyle: {
-            borderColor: (params: any) => {
+            borderColor: (params: EChartsItemStyleParams) => {
               // Apply dead code border color if overlay is enabled and node has dead code
               if (deadCodeEnabled && params.data?.deadCodeRatio) {
                 return deadCodeBorderColor(params.data.deadCodeRatio);
               }
               return '#ffffff';
             },
-            borderWidth: (params: any) => {
+            borderWidth: (params: EChartsItemStyleParams) => {
               // Use thicker border for nodes with dead code when overlay is enabled
               if (deadCodeEnabled && params.data?.deadCodeRatio) {
                 return 3;

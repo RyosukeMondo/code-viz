@@ -1504,7 +1504,7 @@
   | **Success**: ✅ No hardcoded queries in coupling.rs, ✅ Uses language registry, ✅ Tests pass, ✅ Same output
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (registry integration, language detection refactor, query loading), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 40. Reduce TypeScript any usage
+- [x] 40. Reduce TypeScript any usage
   - **Files**: TypeScript files across frontend
   - **Purpose**: Improve type safety by replacing 82 any usages with proper types
   - **Requirements**: FR10, NFR1

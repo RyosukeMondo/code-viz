@@ -12,6 +12,17 @@ import type { TreeNode } from './bindings';
 export type { TreeNode, AnalysisOptions } from './bindings';
 export { analyzeRepository } from './bindings';
 
+// Re-export ECharts event types
+export type {
+  EChartsBaseParams,
+  TreePathInfo,
+  EChartsTreemapClickParams,
+  EChartsHoverParams,
+  EChartsTooltipParams,
+  EChartsLabelParams,
+  EChartsItemStyleParams,
+} from './echarts';
+
 /**
  * ECharts-compatible treemap data format
  *

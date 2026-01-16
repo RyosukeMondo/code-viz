@@ -57,8 +57,14 @@ export function setupEChartsMocks() {
 
 /**
  * Helper to extract event handler from mockOn calls
+ *
+ * Note: Using `any` here is necessary because Vitest's mock.calls type
+ * is dynamically typed and varies based on the mocked function signature.
+ * This is a test utility where type safety is less critical.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getEventHandler(mockOn: any, eventName: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const call = mockOn.mock.calls.find((c: any) => c[0] === eventName);
   return call?.[1];
 }

@@ -21,7 +21,13 @@ import {
   TooltipComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import type { TreemapProps, TreeNode } from '../../types';
+import type {
+  TreemapProps,
+  TreeNode,
+  EChartsHoverParams,
+  EChartsTooltipParams,
+  EChartsLabelParams,
+} from '../../types';
 import { treeNodeToEChartsWithDepth } from '../../utils/treeTransform';
 import { getComplexityLabel } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
@@ -68,12 +74,13 @@ const Sunburst: React.FC<TreemapProps> = memo(({
   }, []);
 
   // Click handler - center always goes back, clicking current node goes up
-  const handleClick = useCallback((params: any) => {
-    console.log('[Sunburst] Click params:', params);
+  const handleClick = useCallback((params: Record<string, unknown>) => {
+    const typedParams = params as unknown as EChartsHoverParams;
+    console.log('[Sunburst] Click params:', typedParams);
     console.log('[Sunburst] Current data:', { name: data?.name, path: data?.path });
 
     // ALWAYS navigate back if no data (center click) OR clicking on root level
-    if (!params.data || params.dataIndex === 0) {
+    if (!typedParams.data || typedParams.dataIndex === 0) {
       console.log('[Sunburst] Center/root clicked - navigating back');
       if (onNavigateBack) {
         onNavigateBack();
@@ -83,8 +90,8 @@ const Sunburst: React.FC<TreemapProps> = memo(({
 
     // Check if clicking on the current directory (same as data)
     // If so, navigate up instead of trying to drill into itself
-    if (params.data && data &&
-        (params.data.name === data.name && params.data.path === data.path)) {
+    if (typedParams.data && data &&
+        (typedParams.data.name === data.name && typedParams.data.path === data.path)) {
       console.log('[Sunburst] Clicked current directory - navigating back');
       if (onNavigateBack) {
         onNavigateBack();
@@ -93,10 +100,10 @@ const Sunburst: React.FC<TreemapProps> = memo(({
     }
 
     // Normal drill-down for other nodes
-    if (params.data && onNodeClick && data) {
+    if (typedParams.data && onNodeClick && data) {
       // Recursively search for the clicked node in the full tree (supports depth > 1)
       // The params.data is from ECharts (depth-limited), but we need the full node with all descendants
-      const clickedNode = findNodeInTree(data, params.data.path, params.data.name);
+      const clickedNode = findNodeInTree(data, typedParams.data.path, typedParams.data.name);
 
       if (clickedNode) {
         console.log('[Sunburst] Calling onNodeClick with full node:', clickedNode);
@@ -108,16 +115,17 @@ const Sunburst: React.FC<TreemapProps> = memo(({
   }, [data, onNodeClick, onNavigateBack, findNodeInTree]);
 
   // Hover handler
-  const handleMouseOver = useCallback((params: any) => {
-    if (params.data && onNodeHover) {
+  const handleMouseOver = useCallback((params: Record<string, unknown>) => {
+    const typedParams = params as unknown as EChartsHoverParams;
+    if (typedParams.data && onNodeHover) {
       const hoveredNode: TreeNode = {
-        id: params.data.path || params.data.name,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
+        id: typedParams.data.path || typedParams.data.name,
+        name: typedParams.data.name,
+        path: typedParams.data.path,
+        loc: typedParams.data.value,
+        complexity: typedParams.data.complexity ?? 0,
+        type: typedParams.data.type,
+        children: (typedParams.data.children || []) as TreeNode[],
         lastModified: '',
       };
       onNodeHover(hoveredNode);
@@ -140,7 +148,7 @@ const Sunburst: React.FC<TreemapProps> = memo(({
     const option: EChartsCoreOption = {
       tooltip: {
         trigger: 'item',
-        formatter: (params: any) => {
+        formatter: (params: EChartsTooltipParams) => {
           const { name, value, data } = params;
           const complexity = data?.complexity ?? 0;
           const type = data?.type ?? 'unknown';
@@ -182,7 +190,7 @@ const Sunburst: React.FC<TreemapProps> = memo(({
             textShadowBlur: 3,
             textShadowOffsetX: 0,
             textShadowOffsetY: 1,
-            formatter: (params: any) => {
+            formatter: (params: EChartsLabelParams) => {
               // Only show labels for directories or larger files
               if (params.data && params.data.type === 'directory') {
                 return params.name;

@@ -21,7 +21,13 @@ import {
   TooltipComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import type { TreemapProps, TreeNode } from '../../types';
+import type {
+  TreemapProps,
+  TreeNode,
+  EChartsHoverParams,
+  EChartsTooltipParams,
+  EChartsLabelParams,
+} from '../../types';
 import { treeNodeToECharts } from '../../utils/treeTransform';
 import { getComplexityLabel } from '../../utils/colors';
 import { formatNumber, formatPath } from '../../utils/formatting';
@@ -52,18 +58,19 @@ const CirclePacking: React.FC<TreemapProps> = memo(({
   }, [data]);
 
   // Click handler
-  const handleClick = useCallback((params: any) => {
-    console.log('[CirclePacking] Click params:', params);
+  const handleClick = useCallback((params: Record<string, unknown>) => {
+    const typedParams = params as unknown as EChartsHoverParams;
+    console.log('[CirclePacking] Click params:', typedParams);
 
-    if (params.data && onNodeClick) {
+    if (typedParams.data && onNodeClick) {
       const clickedNode: TreeNode = {
-        id: params.data.path || params.data.name,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
+        id: typedParams.data.path || typedParams.data.name,
+        name: typedParams.data.name,
+        path: typedParams.data.path,
+        loc: typedParams.data.value,
+        complexity: typedParams.data.complexity ?? 0,
+        type: typedParams.data.type,
+        children: (typedParams.data.children || []) as TreeNode[],
         lastModified: '',
       };
 
@@ -73,16 +80,17 @@ const CirclePacking: React.FC<TreemapProps> = memo(({
   }, [onNodeClick]);
 
   // Hover handler
-  const handleMouseOver = useCallback((params: any) => {
-    if (params.data && onNodeHover) {
+  const handleMouseOver = useCallback((params: Record<string, unknown>) => {
+    const typedParams = params as unknown as EChartsHoverParams;
+    if (typedParams.data && onNodeHover) {
       const hoveredNode: TreeNode = {
-        id: params.data.path || params.data.name,
-        name: params.data.name,
-        path: params.data.path,
-        loc: params.data.value,
-        complexity: params.data.complexity,
-        type: params.data.type,
-        children: params.data.children || [],
+        id: typedParams.data.path || typedParams.data.name,
+        name: typedParams.data.name,
+        path: typedParams.data.path,
+        loc: typedParams.data.value,
+        complexity: typedParams.data.complexity ?? 0,
+        type: typedParams.data.type,
+        children: (typedParams.data.children || []) as TreeNode[],
         lastModified: '',
       };
       onNodeHover(hoveredNode);
@@ -105,7 +113,7 @@ const CirclePacking: React.FC<TreemapProps> = memo(({
     const option: EChartsCoreOption = {
       tooltip: {
         trigger: 'item',
-        formatter: (params: any) => {
+        formatter: (params: EChartsTooltipParams) => {
           const { name, value, data } = params;
           const complexity = data?.complexity ?? 0;
           const type = data?.type ?? 'unknown';
@@ -144,10 +152,10 @@ const CirclePacking: React.FC<TreemapProps> = memo(({
             show: true,
             position: 'inside',
             fontSize: 10,
-            formatter: (params: any) => {
+            formatter: (params: EChartsLabelParams) => {
               const name = params.name || '';
               // Show label only if circle is large enough
-              return params.symbolSize > 30 ? name : '';
+              return (params.symbolSize && params.symbolSize > 30) ? name : '';
             },
           },
           itemStyle: {
