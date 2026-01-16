@@ -29,7 +29,6 @@ interface ExtendedCameraState extends CameraState {
 export class CameraPersistence {
   private readonly camera: THREE.PerspectiveCamera;
   private readonly controls: OrbitControls;
-  private readonly projectKey: string;
   private readonly storageKey: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private readonly debounceDelay = 1000; // Save max once per second
@@ -46,7 +45,6 @@ export class CameraPersistence {
   constructor(camera: THREE.PerspectiveCamera, controls: OrbitControls, projectKey = 'default') {
     this.camera = camera;
     this.controls = controls;
-    this.projectKey = projectKey;
     this.storageKey = `code-viz-camera-${projectKey}`;
   }
 

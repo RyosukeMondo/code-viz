@@ -61,7 +61,7 @@ export class TreemapLayout {
 
     root.each((node) => {
       if (!node.children && isFileNode(node.data)) {
-        const layoutNode = this._createLayoutNode(node);
+        const layoutNode = this._createLayoutNode(node as d3.HierarchyRectangularNode<HierarchyNode>);
         layoutNodes.push(layoutNode);
       }
     });

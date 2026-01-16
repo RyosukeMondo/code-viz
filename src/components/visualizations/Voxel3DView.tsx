@@ -121,8 +121,9 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
     onInitialized: () => {
       console.log('Scene initialized successfully');
 
-      // Create layout calculator
-      layoutRef.current = new TreemapLayout();
+      // Create layout calculator with world dimensions
+      // Default to 400x400 world size
+      layoutRef.current = new TreemapLayout(400, 400);
     },
     onError: (err) => {
       console.error('Scene initialization error:', err);

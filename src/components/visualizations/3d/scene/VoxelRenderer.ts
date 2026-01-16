@@ -27,7 +27,6 @@ export class VoxelRenderer {
   private centerOffsetZ = 0;
 
   private _tempMatrix = new THREE.Matrix4();
-  private _tempColor = new THREE.Color();
 
   // Selection state tracking
   private selectedNodeId: string | null = null;
@@ -177,7 +176,13 @@ export class VoxelRenderer {
 
     this.instancedMesh.instanceMatrix.needsUpdate = true;
     this.instancedMesh.instanceColor!.needsUpdate = true;
-    this.instancedMesh.material.needsUpdate = true;
+
+    // Handle material update (may be array or single material)
+    if (Array.isArray(this.instancedMesh.material)) {
+      this.instancedMesh.material.forEach(mat => mat.needsUpdate = true);
+    } else {
+      this.instancedMesh.material.needsUpdate = true;
+    }
 
     this.scene.add(this.instancedMesh);
 
@@ -442,7 +447,13 @@ export class VoxelRenderer {
       this.scene.remove(this.instancedMesh);
 
       this.instancedMesh.geometry.dispose();
-      this.instancedMesh.material.dispose();
+
+      // Handle material disposal (may be array or single material)
+      if (Array.isArray(this.instancedMesh.material)) {
+        this.instancedMesh.material.forEach(mat => mat.dispose());
+      } else {
+        this.instancedMesh.material.dispose();
+      }
 
       this.instancedMesh = null;
       this.voxelToNodeMap.clear();

@@ -92,6 +92,7 @@ void main() {
  * Defines the structure of uniform values passed to the shader
  */
 export interface HeatHazeUniforms {
+  [uniform: string]: { value: number | THREE.Color };
   time: { value: number };
   intensity: { value: number };
   color: { value: THREE.Color };

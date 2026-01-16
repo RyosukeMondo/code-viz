@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { HeatHazeShader, shouldUseHeatHaze } from './HeatHazeShader';
 import { complexityToColor } from '../utils/colorMaps';
-import { COMPLEXITY_THRESHOLDS, DEFAULT_VOXEL_SIZE } from '../utils/constants';
+import { COMPLEXITY_THRESHOLDS } from '../utils/constants';
 import type { LayoutNode } from '../types';
 
 /**
@@ -48,7 +48,6 @@ export interface HeatHazeEffectStats {
 export class HeatHazeEffect {
   private scene: THREE.Scene;
   private camera: THREE.Camera;
-  private voxelSize: number;
   private shader: HeatHazeShader;
   private effectMeshes: EffectMesh[];
   private layoutNodes: LayoutNode[];
@@ -63,7 +62,6 @@ export class HeatHazeEffect {
   constructor(scene: THREE.Scene, camera: THREE.Camera, options: HeatHazeEffectOptions = {}) {
     this.scene = scene;
     this.camera = camera;
-    this.voxelSize = options.voxelSize ?? DEFAULT_VOXEL_SIZE;
 
     // Shader manager
     this.shader = new HeatHazeShader({
@@ -135,15 +133,8 @@ export class HeatHazeEffect {
       buildingDepth * 0.95
     );
 
-    // Create mesh
-    const mesh = new THREE.Mesh(geometry, material) as EffectMesh;
-
-    // Position at building center
-    const centerX = (node.x0 + node.x1) / 2;
-    const centerZ = (node.y0 + node.y1) / 2;
-    const centerY = buildingHeight / 2;
-
-    mesh.position.set(centerX, centerY, centerZ);
+    // Create mesh with properly typed userData
+    const mesh = new THREE.Mesh(geometry, material);
 
     // Store reference to node for later updates
     mesh.userData = {
@@ -152,9 +143,16 @@ export class HeatHazeEffect {
       node: node
     };
 
+    // Position at building center
+    const centerX = (node.x0 + node.x1) / 2;
+    const centerZ = (node.y0 + node.y1) / 2;
+    const centerY = buildingHeight / 2;
+
+    mesh.position.set(centerX, centerY, centerZ);
+
     // Add to scene
     this.scene.add(mesh);
-    this.effectMeshes.push(mesh);
+    this.effectMeshes.push(mesh as unknown as EffectMesh);
   }
 
   /**
