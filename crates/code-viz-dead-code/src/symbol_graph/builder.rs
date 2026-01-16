@@ -17,6 +17,7 @@ type SymbolMap = HashMap<SymbolId, Symbol>;
 type ExportMap = HashMap<PathBuf, Vec<SymbolId>>;
 type ImportMap = HashMap<SymbolId, Vec<SymbolId>>;
 type SymbolExtractionResult = (PathBuf, Vec<Symbol>, Vec<SymbolId>);
+type ImportResolutionResult = Vec<(SymbolId, Vec<SymbolId>)>;
 
 /// Builder for constructing symbol graphs
 pub struct SymbolGraphBuilder {
@@ -129,7 +130,7 @@ impl SymbolGraphBuilder {
 
         let is_test = is_test_file(path);
         let query = get_symbol_query(parser.language_key())?;
-        let symbols = self.process_query_matches(&query, &tree, source, path, is_test);
+        let symbols = self.process_query_matches(query, &tree, source, path, is_test);
 
         Ok(symbols)
     }
@@ -344,7 +345,7 @@ impl SymbolGraphBuilder {
 
     /// Aggregate import resolution results
     fn aggregate_imports(
-        results: Vec<Result<Vec<(SymbolId, Vec<SymbolId>)>, GraphError>>,
+        results: Vec<Result<ImportResolutionResult, GraphError>>,
         imports: Mutex<ImportMap>,
     ) -> Result<ImportMap, GraphError> {
         for result in results {

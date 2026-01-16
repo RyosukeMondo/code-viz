@@ -292,7 +292,7 @@ pub fn analyze_dead_code(
     path: &Path,
     config: Option<AnalysisConfig>,
 ) -> Result<DeadCodeResult, AnalysisError> {
-    let config = config.unwrap_or_else(AnalysisConfig::default);
+    let config = config.unwrap_or_default();
     tracing::info!("Starting dead code analysis");
 
     // Step 1: Scan source files
