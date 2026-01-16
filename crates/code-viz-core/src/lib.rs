@@ -8,6 +8,7 @@ pub mod duplication;
 pub mod error;
 pub mod error_ext;
 pub mod hotspot;
+pub mod language;
 pub mod metrics;
 pub mod models;
 pub mod parser;

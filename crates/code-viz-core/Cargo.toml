@@ -32,7 +32,11 @@ levenshtein = "1.0"
 md5 = "0.7"
 
 [features]
+default = ["rust", "typescript", "python"]
 specta = ["dep:specta"]
+rust = []
+typescript = []
+python = []
 
 [dev-dependencies]
 assert_cmd.workspace = true

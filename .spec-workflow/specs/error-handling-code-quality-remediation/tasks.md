@@ -1400,7 +1400,7 @@
   | **Success**: ✅ 4 focused modules created, ✅ Orchestrator pattern implemented, ✅ Tests pass, ✅ Clear separation
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (analyzer module, graph_manager class, result_aggregator functions, orchestrator implementation), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 38. Create language plugin system
+- [x] 38. Create language plugin system
   - **Files**: `crates/code-viz-core/src/language/` (new module)
   - **Purpose**: Abstract hardcoded language support for extensibility
   - **Requirements**: FR9, NFR5
