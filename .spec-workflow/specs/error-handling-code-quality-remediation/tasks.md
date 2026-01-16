@@ -1182,7 +1182,7 @@
   | **Success**: ✅ All modules ≥80% coverage, ✅ Critical paths ≥90%, ✅ Dead code removed, ✅ Coverage gates pass
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (added test cases, dead code removals, coverage improvements), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 33. Add property-based tests for parsers
+- [x] 33. Add property-based tests for parsers
   - **Files**: `crates/code-viz-core/tests/parser_property_tests.rs`
   - **Purpose**: Validate parser robustness with random inputs
   - **Requirements**: FR7, NFR1
