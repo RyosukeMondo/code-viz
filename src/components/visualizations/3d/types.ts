@@ -57,6 +57,7 @@ export interface SceneManagerOptions {
   antialias?: boolean;
   shadowsEnabled?: boolean;
   targetFPS?: number;
+  projectKey?: string;
 }
 
 /**

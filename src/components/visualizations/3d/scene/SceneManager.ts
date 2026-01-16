@@ -4,8 +4,21 @@
  */
 
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import type { SceneManagerOptions } from '../types';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { SceneManagerOptions, SelectionState, LayoutNode, VoxelMapping } from '../types';
+import { CameraPersistence } from './CameraPersistence';
+import { RaycasterHandler, type SelectionCallback, type BuildingData } from './RaycasterHandler';
+
+/**
+ * VoxelRenderer interface for raycaster integration
+ * Duck-typed to avoid circular dependency
+ */
+interface IVoxelRenderer {
+  voxelToNodeMap: Map<number, VoxelMapping>;
+  getNodeByInstanceId(instanceId: number): LayoutNode | undefined;
+  highlightBuilding(nodeId: string, color: string): void;
+  unhighlightBuilding(nodeId: string): void;
+}
 
 /**
  * SceneManager manages the Three.js scene, camera, renderer, lights, and controls.
@@ -22,6 +35,14 @@ export class SceneManager {
   private targetFPS: number;
   private frameInterval: number;
   private handleResize: (() => void) | null = null;
+  private cameraPersistence: CameraPersistence | null = null;
+  private raycasterHandler: RaycasterHandler | null = null;
+  private selectionState: SelectionState = {
+    selectedNode: null,
+    hoveredNode: null
+  };
+  private selectionCallbacks: Set<SelectionCallback> = new Set();
+  private projectKey: string;
 
   /**
    * Creates a SceneManager instance
@@ -32,6 +53,7 @@ export class SceneManager {
     this.canvas = canvas;
     this.targetFPS = options.targetFPS || 60;
     this.frameInterval = 1000 / this.targetFPS;
+    this.projectKey = options.projectKey || 'default';
   }
 
   /**
@@ -137,6 +159,11 @@ export class SceneManager {
     this.controls.maxDistance = 500;
     this.controls.maxPolarAngle = Math.PI / 2;
 
+    // Initialize camera persistence
+    this.cameraPersistence = new CameraPersistence(this.camera, this.controls, this.projectKey);
+    this.cameraPersistence.restore();
+    this.cameraPersistence.startAutoSave();
+
     this.handleResize = this.onResize.bind(this);
     window.addEventListener('resize', this.handleResize);
   }
@@ -231,6 +258,133 @@ export class SceneManager {
   }
 
   /**
+   * Sets up raycaster handler for interactive selection
+   * @param instancedMesh - The voxel instanced mesh to raycast against
+   * @param voxelRenderer - VoxelRenderer instance for node lookups
+   */
+  setupRaycaster(instancedMesh: THREE.InstancedMesh, voxelRenderer: IVoxelRenderer): void {
+    if (!this.camera) {
+      throw new Error('SceneManager: Camera not initialized. Call initialize() first.');
+    }
+
+    // Dispose existing raycaster if any
+    if (this.raycasterHandler) {
+      this.raycasterHandler.dispose();
+    }
+
+    // Create internal selection callback that updates state and notifies listeners
+    const onSelect: SelectionCallback = (building: BuildingData | null) => {
+      this.handleSelection(building);
+    };
+
+    // Create raycaster handler
+    this.raycasterHandler = new RaycasterHandler(
+      this.canvas,
+      this.camera,
+      instancedMesh,
+      voxelRenderer,
+      onSelect
+    );
+  }
+
+  /**
+   * Handles selection changes from raycaster
+   * @param building - Selected building data or null
+   * @private
+   */
+  private handleSelection(building: BuildingData | null): void {
+    // Update selection state
+    if (building) {
+      // Convert BuildingData to LayoutNode for state
+      const layoutNode: LayoutNode = {
+        id: building.id,
+        name: building.name,
+        path: building.path,
+        x0: building.position.x,
+        x1: building.position.x + building.dimensions.width,
+        y0: building.position.y,
+        y1: building.position.y + building.dimensions.depth,
+        height: building.dimensions.height,
+        color: '', // Color not needed for selection state
+        metrics: building.metrics
+      };
+      this.selectionState.selectedNode = layoutNode;
+    } else {
+      this.selectionState.selectedNode = null;
+    }
+
+    // Notify all registered callbacks
+    this.selectionCallbacks.forEach(callback => {
+      callback(building);
+    });
+  }
+
+  /**
+   * Registers a callback to be called when selection changes
+   * @param callback - Callback function to register
+   */
+  onSelectionChange(callback: SelectionCallback): void {
+    this.selectionCallbacks.add(callback);
+  }
+
+  /**
+   * Unregisters a selection change callback
+   * @param callback - Callback function to unregister
+   */
+  offSelectionChange(callback: SelectionCallback): void {
+    this.selectionCallbacks.delete(callback);
+  }
+
+  /**
+   * Gets the current selection state
+   * @returns The current selection state
+   */
+  getSelectionState(): SelectionState {
+    return { ...this.selectionState };
+  }
+
+  /**
+   * Gets the selected node
+   * @returns The selected layout node or null
+   */
+  getSelectedNode(): LayoutNode | null {
+    return this.selectionState.selectedNode;
+  }
+
+  /**
+   * Programmatically select a building by node
+   * @param node - The layout node to select
+   */
+  selectNode(node: LayoutNode | null): void {
+    if (this.raycasterHandler) {
+      if (node) {
+        this.raycasterHandler.selectBuilding(node);
+      } else {
+        this.raycasterHandler.deselectBuilding();
+      }
+    }
+  }
+
+  /**
+   * Clears the current selection
+   */
+  clearSelection(): void {
+    if (this.raycasterHandler) {
+      this.raycasterHandler.deselectBuilding();
+    }
+  }
+
+  /**
+   * Updates the raycaster's instanced mesh reference
+   * @param instancedMesh - New instanced mesh
+   */
+  updateInstancedMesh(instancedMesh: THREE.InstancedMesh): void {
+    if (this.raycasterHandler) {
+      this.raycasterHandler.updateInstancedMesh(instancedMesh);
+    }
+  }
+
+  /**
    * Disposes of all Three.js resources and stops animation
    */
   dispose(): void {
@@ -242,6 +396,21 @@ export class SceneManager {
     if (this.handleResize) {
       window.removeEventListener('resize', this.handleResize);
     }
+
+    // Dispose camera persistence
+    if (this.cameraPersistence) {
+      this.cameraPersistence.dispose();
+      this.cameraPersistence = null;
+    }
+
+    // Dispose raycaster handler
+    if (this.raycasterHandler) {
+      this.raycasterHandler.dispose();
+      this.raycasterHandler = null;
+    }
+
+    // Clear selection callbacks
+    this.selectionCallbacks.clear();
 
     if (this.controls) {
       this.controls.dispose();
