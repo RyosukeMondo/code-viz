@@ -1462,7 +1462,7 @@
   | **Success**: ✅ LanguageProvider trait defined, ✅ Registry implemented, ✅ 3 languages migrated, ✅ Easy to add languages
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (LanguageProvider trait, LanguageRegistry class, language plugin implementations, query files), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 39. Migrate coupling.rs to use language registry
+- [x] 39. Migrate coupling.rs to use language registry
   - **File**: `crates/code-viz-core/src/coupling.rs`
   - **Purpose**: Remove hardcoded language queries using plugin system from task 38
   - **Requirements**: FR9, NFR5

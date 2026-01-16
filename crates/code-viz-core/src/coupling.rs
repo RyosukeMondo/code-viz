@@ -4,28 +4,7 @@ use crate::error::{CodeVizError, Result};
 use crate::models::{CouplingMetrics, FileMetrics};
 use crate::parser::{get_parser, LanguageParser};
 use crate::traits::FileSystem;
-
-// Tree-sitter queries for extracting import/export paths
-const TYPESCRIPT_QUERY: &str = r#"
-    [
-      (import_statement source: (string) @path)
-      (export_statement source: (string) @path)
-    ]
-"#;
-
-const RUST_QUERY: &str = r#"
-    [
-      (use_declaration argument: (_) @path)
-      (mod_item name: (identifier) @path)
-    ]
-"#;
-
-const PYTHON_QUERY: &str = r#"
-    [
-      (import_statement name: (dotted_name) @path)
-      (import_from_statement module_name: (_) @path)
-    ]
-"#;
+use crate::language::LanguageRegistry;
 
 fn extract_dependencies(
     source: &str,
@@ -69,6 +48,7 @@ pub fn calculate_coupling(
 ) {
     let mut dependency_graph: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
     let file_paths: Vec<PathBuf> = files.iter().map(|f| f.path.clone()).collect();
+    let registry = LanguageRegistry::new();
 
     // First pass: build the dependency graph
     for file in files.iter() {
@@ -82,12 +62,13 @@ pub fn calculate_coupling(
             Err(_) => continue,
         };
 
-        let query_str = match file.language.as_str() {
-            "typescript" => TYPESCRIPT_QUERY,
-            "rust" => RUST_QUERY,
-            "python" => PYTHON_QUERY,
-            _ => continue,
+        // Get language provider from registry
+        let provider = match registry.get_by_name(&file.language) {
+            Some(p) => p,
+            None => continue, // Skip unsupported languages
         };
+
+        let query_str = provider.coupling_query();
 
         let dependencies = match extract_dependencies(&source, parser.as_ref(), query_str) {
             Ok(deps) => deps,
