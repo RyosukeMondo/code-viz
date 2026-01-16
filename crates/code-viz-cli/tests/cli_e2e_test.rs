@@ -4,7 +4,6 @@ use predicates::prelude::*;
 use std::io::{BufRead, BufReader};
 use std::process::Stdio;
 use std::time::Duration;
-use std::thread;
 
 #[test]
 #[ignore]

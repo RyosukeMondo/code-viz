@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::fs;
 
 mod helpers;
-use helpers::{CliTest, assert_json_has_fields, assert_summary_stats, assert_has_duplicates, assert_has_hotspots};
+use helpers::{CliTest, assert_json_has_fields, assert_summary_stats, assert_has_duplicates};
 
 fn get_test_repo_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

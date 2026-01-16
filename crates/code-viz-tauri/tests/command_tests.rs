@@ -82,7 +82,7 @@ async fn test_ssot_contract_consistency() {
     use code_viz_tauri::models::TreeNode as TauriTreeNode;
     use code_viz_api::TreeNode as ApiTreeNode;
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::UNIX_EPOCH;
 
     // Create an API TreeNode
     let api_node = ApiTreeNode {
