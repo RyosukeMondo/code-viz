@@ -1360,7 +1360,7 @@
   | **Success**: ✅ 3 focused modules created, ✅ Each ≤150 lines, ✅ Clear responsibilities, ✅ Tests pass, ✅ Public API clean
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (loc_calculator functions, function_counter logic, complexity_analyzer methods, public API), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 37. Split dead_code lib.rs into orchestrator pattern
+- [x] 37. Split dead_code lib.rs into orchestrator pattern
   - **File**: `crates/code-viz-dead-code/src/lib.rs:140` → multiple modules
   - **Purpose**: Fix 161-line function God object
   - **Requirements**: FR8, NFR5
