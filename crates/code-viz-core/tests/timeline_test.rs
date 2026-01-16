@@ -1,5 +1,5 @@
 use anyhow::Result;
-use assert_cmd::{cargo::CommandCargoExt, Command};
+use assert_cmd::Command;
 use git2::{Commit, Repository, Signature};
 use std::fs;
 use std::path::Path;
