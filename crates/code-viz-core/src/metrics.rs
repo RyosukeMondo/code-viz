@@ -69,9 +69,7 @@ fn calculate_cognitive_complexity(
         }
 
         // Navigate tree
-        if !visited_children && cursor.goto_first_child() {
-            visited_children = false;
-        } else if cursor.goto_next_sibling() {
+        if (!visited_children && cursor.goto_first_child()) || cursor.goto_next_sibling() {
             visited_children = false;
         } else if cursor.goto_parent() {
             visited_children = true;
@@ -219,9 +217,38 @@ fn calculate_loc(source: &str, comment_ranges: &[tree_sitter::Range]) -> usize {
     loc
 }
 
+fn skip_to_comment_end(
+    chars: &mut std::iter::Peekable<std::str::CharIndices>,
+    end_col: usize,
+) {
+    while let Some((c_col, _)) = chars.peek() {
+        if *c_col < end_col {
+            chars.next();
+        } else {
+            break;
+        }
+    }
+}
+
+fn check_comment_at_position(
+    row: usize,
+    col: usize,
+    comment_ranges: &[tree_sitter::Range],
+) -> Option<Option<usize>> {
+    for range in comment_ranges {
+        if is_in_range(row, col, range) {
+            if range.end_point.row == row {
+                return Some(Some(range.end_point.column));
+            }
+            return Some(None); // Comment extends to later line
+        }
+    }
+    None // Not in comment
+}
+
 fn contains_code(row: usize, line: &str, comment_ranges: &[tree_sitter::Range]) -> bool {
     let mut chars = line.char_indices().peekable();
-    
+
     // Find first non-whitespace char
     while let Some((_col, c)) = chars.peek() {
         if !c.is_whitespace() {
@@ -229,47 +256,16 @@ fn contains_code(row: usize, line: &str, comment_ranges: &[tree_sitter::Range]) 
         }
         chars.next();
     }
-    
+
     // Iterate through content
     while let Some((col, _c)) = chars.next() {
-        // Current position is (row, col)
-        // Check if this position is inside any comment range
-        let mut in_comment = false;
-        let mut comment_end_col = None;
-
-        for range in comment_ranges {
-            if is_in_range(row, col, range) {
-                in_comment = true;
-                // If in range, we can skip to the end of this range on this line
-                if range.end_point.row == row {
-                    comment_end_col = Some(range.end_point.column);
-                } else {
-                    // Ends on later line, so the rest of this line is comment
-                    return false; // No code found on this line after this point
-                }
-                break;
-            }
-        }
-
-        if !in_comment {
-            // Found non-whitespace character that is NOT in a comment!
-            return true;
-        }
-        
-        // If we are in a comment, advance to end of comment
-        if let Some(end_col) = comment_end_col {
-            // Skip until end_col
-            while let Some((c_col, _)) = chars.peek() {
-                if *c_col < end_col {
-                    chars.next();
-                } else {
-                    break;
-                }
-            }
-            // Now loop continues, will check next char
+        match check_comment_at_position(row, col, comment_ranges) {
+            None => return true, // Not in comment - found code!
+            Some(None) => return false, // Comment extends to end of line
+            Some(Some(end_col)) => skip_to_comment_end(&mut chars, end_col),
         }
     }
-    
+
     false
 }
 

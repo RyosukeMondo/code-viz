@@ -10,7 +10,7 @@ use tokio::task;
 
 /// Production implementation of GitProvider that uses the git2 crate.
 /// Methods are executed on a blocking thread using tokio::task::spawn_blocking.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct RealGit;
 
 impl RealGit {
@@ -49,7 +49,9 @@ fn get_or_cache_commit_info<'a>(
     commit_id: git2::Oid,
     cache: &'a mut HashMap<git2::Oid, CommitInfo>,
 ) -> Result<&'a CommitInfo> {
-    if !cache.contains_key(&commit_id) {
+    use std::collections::hash_map::Entry;
+
+    if let Entry::Vacant(e) = cache.entry(commit_id) {
         let commit = repo.find_commit(commit_id)
             .with_context(|| format!("Failed to find commit '{}' for blame hunk", commit_id))?;
         let author = commit.author();
@@ -58,7 +60,7 @@ fn get_or_cache_commit_info<'a>(
             author.email().unwrap_or("Unknown").to_string(),
             commit.time().seconds(),
         );
-        cache.insert(commit_id, info);
+        e.insert(info);
     }
     cache.get(&commit_id).ok_or_else(|| anyhow!("Commit info not in cache after insertion"))
 }

@@ -216,7 +216,7 @@ async fn main() -> anyhow::Result<()> {
             path,
             format,
             min_confidence,
-            exclude,
+            exclude: _,
             verbose,
             threshold,
             output,

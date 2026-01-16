@@ -97,19 +97,20 @@ done
 # Check 3: unwrap() in staged files (fail if found in production code, allow in tests)
 echo "🚫 Checking for unwrap() in production code..."
 
-for file in $STAGED_FILES; do
-    if [[ -f "$file" ]] && [[ $file == *.rs ]]; then
-        # Skip test files
-        if [[ $file == *test*.rs ]] || [[ $file == */tests/* ]]; then
-            continue
-        fi
+check_unwrap_usage() {
+    local file=$1
 
-        # Check for unwrap() or expect()
-        if grep -n -E '\.unwrap\(\)|\.expect\(' "$file" > /dev/null; then
-            # Check if it's in a #[cfg(test)] block
-            local has_unwrap=0
-            local in_test_module=0
-            local line_num=0
+    # Skip test files
+    if [[ $file == *test*.rs ]] || [[ $file == */tests/* ]]; then
+        return 0
+    fi
+
+    # Check for unwrap() or expect()
+    if grep -n -E '\.unwrap\(\)|\.expect\(' "$file" > /dev/null; then
+        # Check if it's in a #[cfg(test)] block
+        local has_unwrap=0
+        local in_test_module=0
+        local line_num=0
 
             while IFS= read -r line; do
                 ((line_num++))
@@ -136,30 +137,41 @@ for file in $STAGED_FILES; do
                 fi
             done < "$file"
 
-            if [ $has_unwrap -eq 1 ]; then
-                ((ERRORS++))
-            fi
+        if [ $has_unwrap -eq 1 ]; then
+            ((ERRORS++))
         fi
+    fi
+}
+
+for file in $STAGED_FILES; do
+    if [[ -f "$file" ]] && [[ $file == *.rs ]]; then
+        check_unwrap_usage "$file"
     fi
 done
 
 # Check 4: TypeScript any usage (warn if found, provide guidance)
 echo "🔎 Checking for TypeScript 'any' usage..."
 
+check_typescript_any() {
+    local file=$1
+
+    # Skip test files for any check (more lenient)
+    if [[ $file == *.test.ts* ]] || [[ $file == */tests/* ]] || [[ $file == */__tests__/* ]]; then
+        return 0
+    fi
+
+    # Look for ': any' or 'as any'
+    if grep -n -E ':\s*any\b|as\s+any\b' "$file" > /dev/null; then
+        local any_count=$(grep -c -E ':\s*any\b|as\s+any\b' "$file" || true)
+        echo "${YELLOW}⚠${NC} $file: found $any_count usage(s) of 'any'"
+        echo "  → Consider using specific types or unknown/Record<string, unknown>"
+        ((WARNINGS++))
+    fi
+}
+
 for file in $STAGED_FILES; do
     if [[ -f "$file" ]] && [[ $file == *.ts ]] || [[ $file == *.tsx ]]; then
-        # Skip test files for any check (more lenient)
-        if [[ $file == *.test.ts* ]] || [[ $file == */tests/* ]] || [[ $file == */__tests__/* ]]; then
-            continue
-        fi
-
-        # Look for ': any' or 'as any'
-        if grep -n -E ':\s*any\b|as\s+any\b' "$file" > /dev/null; then
-            local any_count=$(grep -c -E ':\s*any\b|as\s+any\b' "$file" || true)
-            echo "${YELLOW}⚠${NC} $file: found $any_count usage(s) of 'any'"
-            echo "  → Consider using specific types or unknown/Record<string, unknown>"
-            ((WARNINGS++))
-        fi
+        check_typescript_any "$file"
     fi
 done
 

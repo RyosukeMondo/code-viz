@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Production implementation of FileSystem that delegates to std::fs and walkdir.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct RealFileSystem;
 
 impl RealFileSystem {

@@ -6,16 +6,18 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+type DiffCall = (String, Option<String>, String);
+
 /// Mock implementation of GitProvider for unit testing.
 /// Provides a configurable commit history and tracks operations.
 #[derive(Clone, Default)]
 pub struct MockGit {
     commits: Arc<Mutex<Vec<Commit>>>,
-    diffs: Arc<Mutex<Vec<(String, Option<String>, String)>>>,
+    diffs: Arc<Mutex<Vec<DiffCall>>>,
     mock_diffs: Arc<Mutex<HashMap<PathBuf, Diff>>>,
     churn_summary: Arc<Mutex<HashMap<PathBuf, (usize, usize)>>>,
     blames: Arc<Mutex<Vec<BlameInfo>>>,
-    diff_calls: Arc<Mutex<Vec<(String, Option<String>, String)>>>,
+    diff_calls: Arc<Mutex<Vec<DiffCall>>>,
     mock_diff: Arc<Mutex<Option<Diff>>>,
     changed_files: Arc<Mutex<Vec<ChangedFile>>>,
     file_contents: Arc<Mutex<HashMap<(PathBuf, String), String>>>,

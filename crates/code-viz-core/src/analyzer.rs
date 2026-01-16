@@ -36,7 +36,7 @@ pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMet
         .map_err(|e| AnalysisError::ParseFailed { path: path.to_path_buf(), source: e })?;
 
     let source = fs.read_to_string(path)
-        .map_err(|e| AnalysisError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        .map_err(|e| AnalysisError::IoError(std::io::Error::other(e)))?;
     tracing::debug!(source_size = source.len(), "File read successfully");
 
     let metrics = metrics::calculate_metrics(path, &source, parser.as_ref(), None)
