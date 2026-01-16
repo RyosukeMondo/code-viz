@@ -15,12 +15,10 @@
  * - Keyboard navigation support
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Sunburst from '@/components/visualizations/Sunburst';
-import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { DetailPanel } from '@/components/common/DetailPanel';
 import { DeadCodePanel } from '@/components/common/DeadCodePanel';
-import { AnalysisSettings } from '@/components/common/AnalysisSettings';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { DataDebugger } from '@/components/common/DataDebugger';
 import { ProgressBar } from '@/components/common/ProgressBar';
@@ -33,8 +31,10 @@ import {
   useAnalysisActions,
   useDeadCodeEnabled,
 } from '@/store/analysisStore';
-import type { TreeNode, AnalysisOptions } from '@/types/bindings';
+import type { AnalysisOptions } from '@/types/bindings';
 import { filterByPath } from '@/utils/treeTransform';
+import { AnalysisHeader } from './AnalysisHeader';
+import { useAnalysisHandlers } from './useAnalysisHandlers';
 
 /**
  * AnalysisView - Main feature component for code analysis and visualization
@@ -79,7 +79,7 @@ export function AnalysisView() {
   const selectedFile = useSelectedFile();
   const drillDownPath = useDrillDownPath();
   const deadCodeEnabled = useDeadCodeEnabled();
-  const { setSelectedFile, setDrillDownPath, toggleDeadCodeOverlay } = useAnalysisActions();
+  const { toggleDeadCodeOverlay } = useAnalysisActions();
 
   /**
    * Trigger dead code analysis when main analysis completes and overlay is enabled
@@ -91,171 +91,26 @@ export function AnalysisView() {
     }
   }, [data, deadCodeEnabled, repoPath, deadCodeResults, deadCodeLoading, analyzeDeadCode]);
 
-  /**
-   * Handle analysis options change
-   */
-  const handleOptionsChange = useCallback((newOptions: AnalysisOptions) => {
-    setAnalysisOptions(newOptions);
-    // Save to localStorage
-    try {
-      localStorage.setItem('analysisOptions', JSON.stringify(newOptions));
-    } catch (error) {
-      console.warn('[AnalysisView] Failed to save options to localStorage:', error);
-    }
-  }, []);
-
-  /**
-   * Handle analyze button click
-   */
-  const handleAnalyze = useCallback(async () => {
-    console.log('[AnalysisView] handleAnalyze called, repoPath:', repoPath, 'options:', analysisOptions);
-    if (!repoPath.trim()) {
-      console.warn('[AnalysisView] Empty path, aborting');
-      return;
-    }
-
-    // Save path to localStorage for next time
-    try {
-      localStorage.setItem('lastRepoPath', repoPath.trim());
-    } catch (error) {
-      console.warn('[AnalysisView] Failed to save path to localStorage:', error);
-    }
-
-    console.log('[AnalysisView] Calling analyze() with:', repoPath.trim());
-    try {
-      await analyze(repoPath.trim(), analysisOptions);
-      console.log('[AnalysisView] analyze() returned successfully');
-      // If dead code overlay is enabled, also run dead code analysis
-      if (deadCodeEnabled) {
-        console.log('[AnalysisView] Running dead code analysis');
-        await analyzeDeadCode(repoPath.trim(), 80);
-      }
-    } catch (error) {
-      console.error('[AnalysisView] analyze() threw error:', error);
-    }
-  }, [repoPath, analysisOptions, analyze, deadCodeEnabled, analyzeDeadCode]);
-
-  /**
-   * Handle Enter key in path input
-   */
-  const handlePathKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter') {
-        handleAnalyze();
-      }
-    },
-    [handleAnalyze]
-  );
-
-  /**
-   * Handle folder picker dialog
-   */
-  const handleBrowse = useCallback(async () => {
-    try {
-      const { open } = await import('@tauri-apps/plugin-dialog');
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: 'Select Repository Directory',
-      });
-
-      if (selected && typeof selected === 'string') {
-        setRepoPath(selected);
-      }
-    } catch (error) {
-      console.error('Failed to open folder picker:', error);
-    }
-  }, []);
-
-  /**
-   * Handle treemap node click for drill-down
-   */
-  const handleNodeClick = useCallback(
-    (node: TreeNode) => {
-      console.log('[AnalysisView] Node clicked:', {
-        name: node.name,
-        type: node.type,
-        path: node.path,
-        currentDrillDownPath: JSON.stringify(drillDownPath),
-      });
-
-      // If it's a directory, drill down
-      if (node.type === 'directory' && node.children.length > 0) {
-        // Build new drill-down path
-        const newPath = [...drillDownPath, node.name];
-        console.log('[AnalysisView] Drilling down, new path:', JSON.stringify(newPath));
-        setDrillDownPath(newPath);
-        setSelectedFile(null);
-      } else {
-        // If it's a file, show details
-        console.log('[AnalysisView] Selecting file');
-        setSelectedFile(node);
-      }
-    },
-    [drillDownPath, setDrillDownPath, setSelectedFile]
-  );
-
-  /**
-   * Handle treemap node hover
-   */
-  const handleNodeHover = useCallback(
-    (_node: TreeNode | null) => {
-      // Could implement tooltip or hover effects here
-      // For now, we rely on ECharts built-in tooltip
-    },
-    []
-  );
-
-  /**
-   * Handle breadcrumb navigation
-   * Index -1 means navigate to root, otherwise navigate to specific segment
-   */
-  const handleBreadcrumbNavigate = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        // Navigate to root
-        setDrillDownPath([]);
-      } else {
-        // Navigate to specific segment (inclusive)
-        setDrillDownPath(drillDownPath.slice(0, index + 1));
-      }
-      setSelectedFile(null);
-    },
-    [drillDownPath, setDrillDownPath, setSelectedFile]
-  );
-
-  /**
-   * Handle detail panel close
-   */
-  const handleDetailPanelClose = useCallback(() => {
-    setSelectedFile(null);
-  }, [setSelectedFile]);
-
-  /**
-   * Handle navigate back (Escape key in treemap)
-   */
-  const handleNavigateBack = useCallback(() => {
-    if (drillDownPath.length > 0) {
-      // Navigate up one level
-      setDrillDownPath(drillDownPath.slice(0, -1));
-      setSelectedFile(null);
-    }
-  }, [drillDownPath, setDrillDownPath, setSelectedFile]);
-
-  /**
-   * Handle reset button click
-   */
-  const handleReset = useCallback(() => {
-    reset();
-    setRepoPath('');
-  }, [reset]);
-
-  /**
-   * Handle dead code panel close
-   */
-  const handleDeadCodePanelClose = useCallback(() => {
-    setSelectedFile(null);
-  }, [setSelectedFile]);
+  // Event handlers (extracted to custom hook)
+  const {
+    handleOptionsChange,
+    handleAnalyze,
+    handlePathKeyDown,
+    handleBrowse,
+    handleNodeClick,
+    handleNodeHover,
+    handleBreadcrumbNavigate,
+    handleDetailPanelClose,
+    handleNavigateBack,
+    handleReset,
+    handleDeadCodePanelClose,
+  } = useAnalysisHandlers({
+    repoPath,
+    setRepoPath,
+    setAnalysisOptions,
+    analyze,
+    reset,
+  });
 
   /**
    * Compute current tree node based on drill-down path
@@ -285,96 +140,22 @@ export function AnalysisView() {
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Code Visualization
-          </h1>
-
-          {/* Repository Path Input */}
-          <div className="flex gap-3">
-            <div className="flex-1 flex gap-2">
-              <input
-                type="text"
-                value={repoPath}
-                onChange={(e) => setRepoPath(e.target.value)}
-                onKeyDown={handlePathKeyDown}
-                placeholder="Enter repository path..."
-                disabled={loading}
-                data-testid="repository-path-input"
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                         placeholder-gray-400 dark:placeholder-gray-500
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Repository path"
-              />
-              <button
-                onClick={handleBrowse}
-                disabled={loading}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-                         border border-gray-300 dark:border-gray-600 rounded-lg
-                         hover:bg-gray-200 dark:hover:bg-gray-600
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                         dark:focus:ring-offset-gray-800
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-colors"
-                aria-label="Browse for directory"
-              >
-                Browse
-              </button>
-            </div>
-
-            <button
-              onClick={handleAnalyze}
-              disabled={loading || !repoPath.trim()}
-              data-testid="analyze-button"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium
-                       hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                       dark:focus:ring-offset-gray-800
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       transition-colors"
-              aria-label="Analyze repository"
-            >
-              {loading ? 'Analyzing...' : 'Analyze'}
-            </button>
-
-            {data && !loading && (
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-                         border border-gray-300 dark:border-gray-600 rounded-lg
-                         hover:bg-gray-200 dark:hover:bg-gray-600
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                         dark:focus:ring-offset-gray-800
-                         transition-colors"
-                aria-label="Reset analysis"
-              >
-                Reset
-              </button>
-            )}
-          </div>
-
-          {/* Analysis Settings */}
-          <AnalysisSettings
-            options={analysisOptions}
-            onChange={handleOptionsChange}
-            disabled={loading}
-            deadCodeEnabled={deadCodeEnabled}
-            onToggleDeadCode={toggleDeadCodeOverlay}
-          />
-
-          {/* Breadcrumb Navigation */}
-          {data && !loading && (
-            <div className="mt-4">
-              <Breadcrumb
-                path={drillDownPath}
-                onNavigate={handleBreadcrumbNavigate}
-              />
-            </div>
-          )}
-        </div>
-      </header>
+      <AnalysisHeader
+        repoPath={repoPath}
+        onRepoPathChange={setRepoPath}
+        onPathKeyDown={handlePathKeyDown}
+        onBrowse={handleBrowse}
+        onAnalyze={handleAnalyze}
+        onReset={handleReset}
+        loading={loading}
+        hasData={!!data}
+        analysisOptions={analysisOptions}
+        onOptionsChange={handleOptionsChange}
+        deadCodeEnabled={deadCodeEnabled}
+        onToggleDeadCode={toggleDeadCodeOverlay}
+        drillDownPath={drillDownPath}
+        onBreadcrumbNavigate={handleBreadcrumbNavigate}
+      />
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
