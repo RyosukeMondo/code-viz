@@ -140,32 +140,16 @@ fn recently_modified(path: &Path, #[allow(unused_variables)] repo_root: Option<&
 /// Check git history for recent modifications
 #[cfg(feature = "git-integration")]
 fn check_git_modification(path: &Path, repo_root: &Path) -> bool {
-    use std::time::UNIX_EPOCH;
-
-    // Try to open git repository
     let repo = match git2::Repository::open(repo_root) {
         Ok(r) => r,
-        Err(_) => return false, // Not a git repo, fail gracefully
+        Err(_) => return false,
     };
 
-    // Get relative path from repo root
     let rel_path = match path.strip_prefix(repo_root) {
         Ok(p) => p,
         Err(_) => return false,
     };
 
-    // Get HEAD commit
-    let head = match repo.head() {
-        Ok(h) => h,
-        Err(_) => return false,
-    };
-
-    let commit = match head.peel_to_commit() {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-
-    // Walk commit history for this file
     let mut revwalk = match repo.revwalk() {
         Ok(r) => r,
         Err(_) => return false,
@@ -175,26 +159,31 @@ fn check_git_modification(path: &Path, repo_root: &Path) -> bool {
         return false;
     }
 
-    // Check last commit that touched this file
-    for oid in revwalk.take(100) {
-        // Limit to last 100 commits for performance
-        if let Ok(oid) = oid {
-            if let Ok(commit) = repo.find_commit(oid) {
-                let tree = match commit.tree() {
-                    Ok(t) => t,
-                    Err(_) => continue,
-                };
+    check_file_in_commits(&repo, revwalk, rel_path)
+}
 
-                // Check if file exists in this commit
-                if tree.get_path(rel_path).is_ok() {
-                    // Found the file, check commit time
-                    let commit_time =
-                        UNIX_EPOCH + Duration::from_secs(commit.time().seconds() as u64);
-                    if let Ok(elapsed) = SystemTime::now().duration_since(commit_time) {
-                        return elapsed < Duration::from_secs(30 * 24 * 60 * 60);
-                    }
-                    return false;
+#[cfg(feature = "git-integration")]
+fn check_file_in_commits(
+    repo: &git2::Repository,
+    revwalk: git2::Revwalk,
+    rel_path: &Path,
+) -> bool {
+    use std::time::UNIX_EPOCH;
+
+    for oid in revwalk.take(100).flatten() {
+        if let Ok(commit) = repo.find_commit(oid) {
+            let tree = match commit.tree() {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+
+            if tree.get_path(rel_path).is_ok() {
+                let commit_time =
+                    UNIX_EPOCH + Duration::from_secs(commit.time().seconds() as u64);
+                if let Ok(elapsed) = SystemTime::now().duration_since(commit_time) {
+                    return elapsed < Duration::from_secs(30 * 24 * 60 * 60);
                 }
+                return false;
             }
         }
     }
