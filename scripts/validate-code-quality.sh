@@ -76,7 +76,7 @@ echo "   Target: ≤8 imports per module (recommended)"
 MAX_IMPORTS=0
 MAX_IMPORTS_FILE=""
 for file in $(find crates -name "*.rs" -type f ! -path "*/tests/*" ! -path "*/target/*"); do
-    IMPORT_COUNT=$(grep -c "^use " "$file" 2>/dev/null || echo 0)
+    IMPORT_COUNT=$(grep "^use " "$file" 2>/dev/null | wc -l)
     if [ "$IMPORT_COUNT" -gt "$MAX_IMPORTS" ]; then
         MAX_IMPORTS=$IMPORT_COUNT
         MAX_IMPORTS_FILE=$file
