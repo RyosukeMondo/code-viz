@@ -105,12 +105,6 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    console.log('Renderer capabilities:', {
-      maxAttributes: this.renderer.capabilities.maxAttributes,
-      maxVertexUniforms: this.renderer.capabilities.maxVertexUniforms,
-      maxTextureSize: this.renderer.capabilities.maxTextureSize
-    });
-
     const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
     this.scene.add(hemisphereLight);
 
