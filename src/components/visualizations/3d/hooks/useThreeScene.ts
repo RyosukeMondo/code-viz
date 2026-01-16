@@ -110,6 +110,10 @@ export function useThreeScene(
   // Initialization flag ref to prevent double initialization
   const initializingRef = useRef(false);
 
+  // Store options in ref to avoid dependency issues
+  const optionsRef = useRef(sceneManagerOptions);
+  optionsRef.current = sceneManagerOptions;
+
   /**
    * Initialize the scene manager
    */
@@ -141,7 +145,7 @@ export function useThreeScene(
       }
 
       // Create and initialize scene manager
-      const manager = new SceneManager(canvas, sceneManagerOptions);
+      const manager = new SceneManager(canvas, optionsRef.current);
       manager.initialize();
       sceneManagerRef.current = manager;
 
@@ -180,7 +184,7 @@ export function useThreeScene(
     } finally {
       initializingRef.current = false;
     }
-  }, [sceneManagerOptions, onInitialized, onError]);
+  }, [onInitialized, onError]);
 
   /**
    * Manually trigger reinitialization
