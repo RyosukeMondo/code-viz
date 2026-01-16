@@ -1264,7 +1264,7 @@
   | **Success**: ✅ Benchmarks created, ✅ Baseline established, ✅ No >5% regression, ✅ Runs in CI
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (benchmark suites, baseline measurements, CI integration), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 35. Add CI coverage gates
+- [x] 35. Add CI coverage gates
   - **Files**: `.github/workflows/coverage.yml`
   - **Purpose**: Block PRs that reduce coverage below 80%
   - **Requirements**: NFR1
