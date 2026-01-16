@@ -117,7 +117,7 @@ async fn process_files(
 }
 
 fn should_report_progress(index: usize, total: usize) -> bool {
-    total > 0 && index % (total / 10).max(1) == 0
+    total > 0 && index.is_multiple_of((total / 10).max(1))
 }
 
 async fn analyze_file_with_churn(

@@ -34,7 +34,7 @@ pub async fn compare_branches(
 }
 
 async fn process_changed_file(
-    git: &(impl GitProvider + ?Sized),
+    git: &impl GitProvider,
     file: ChangedFile,
     base: &str,
     head: &str,
