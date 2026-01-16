@@ -5,8 +5,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ConfigPanel, loadSettings, saveSettings, DEFAULT_CONFIG } from './ConfigPanel';
-import type { Config3DSettings } from './ConfigPanel';
+import { ConfigPanel } from './ConfigPanel';
+import { loadSettings, saveSettings, DEFAULT_CONFIG, type Config3DSettings } from './configSettings';
 
 describe('ConfigPanel', () => {
   const mockOnSettingsChange = vi.fn();
