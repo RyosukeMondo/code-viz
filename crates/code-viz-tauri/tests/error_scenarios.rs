@@ -259,3 +259,198 @@ mod error_traits {
         assert!(debug.contains("debug test"));
     }
 }
+
+#[cfg(test)]
+mod resource_constraint_errors {
+    use super::*;
+    use std::io;
+
+    #[test]
+    fn test_out_of_memory_frontend_message() {
+        let io_err = io::Error::new(io::ErrorKind::OutOfMemory, "out of memory");
+        let error = CodeVizError::cache_with_source(
+            "analysis too large to fit in memory",
+            io_err
+        );
+
+        let msg = error.to_string();
+        // Frontend should show user-friendly message
+        assert!(msg.contains("analysis too large"));
+        assert!(msg.contains("memory"));
+    }
+
+    #[test]
+    fn test_disk_full_frontend_message() {
+        let path = PathBuf::from("cache/analysis.bin");
+        let io_err = io::Error::new(io::ErrorKind::Other, "disk full");
+        let error = CodeVizError::file_write(&path, io_err);
+
+        let msg = error.to_string();
+        assert!(msg.contains("Failed to write file"));
+    }
+
+    #[test]
+    fn test_too_many_files_warning() {
+        let error = CodeVizError::analysis(
+            "scanner",
+            "project too large (>50000 files), analysis may be slow"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("too large"));
+        assert!(msg.contains("may be slow"));
+    }
+}
+
+#[cfg(test)]
+mod timeout_scenarios {
+    use super::*;
+
+    #[test]
+    fn test_analysis_timeout_with_progress() {
+        let error = CodeVizError::analysis(
+            "coupling",
+            "analysis timeout after processing 1000/5000 files"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("timeout"));
+        assert!(msg.contains("1000/5000"));
+    }
+
+    #[test]
+    fn test_git_log_timeout() {
+        let error = CodeVizError::git(
+            Some(PathBuf::from("/large/repo")),
+            "git log timeout: repository history too large"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("timeout"));
+        assert!(msg.contains("history too large"));
+    }
+}
+
+#[cfg(test)]
+mod path_validation_errors {
+    use super::*;
+
+    #[test]
+    fn test_invalid_path_with_null_bytes() {
+        let error = CodeVizError::config("invalid path: contains null bytes");
+
+        let msg = error.to_string();
+        assert!(msg.contains("invalid path"));
+        assert!(msg.contains("null bytes"));
+    }
+
+    #[test]
+    fn test_path_outside_workspace() {
+        let error = CodeVizError::config(
+            "path is outside workspace: /etc/passwd"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("outside workspace"));
+    }
+
+    #[test]
+    fn test_symbolic_link_resolution_error() {
+        use std::io;
+
+        let path = PathBuf::from("symlink/to/nowhere");
+        let io_err = io::Error::new(io::ErrorKind::NotFound, "broken symlink");
+        let error = CodeVizError::file_read(&path, io_err);
+
+        let msg = error.to_string();
+        assert!(msg.contains("symlink"));
+    }
+}
+
+#[cfg(test)]
+mod concurrent_analysis_errors {
+    use super::*;
+
+    #[test]
+    fn test_concurrent_analysis_conflict() {
+        let error = CodeVizError::cache(
+            "analysis already in progress for this project"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("already in progress"));
+    }
+
+    #[test]
+    fn test_cache_corruption_during_concurrent_write() {
+        use std::io;
+
+        let io_err = io::Error::new(io::ErrorKind::Other, "cache corrupted");
+        let error = CodeVizError::cache_with_source(
+            "concurrent write detected, cache invalidated",
+            io_err
+        );
+
+        match error {
+            CodeVizError::Cache { message, source } => {
+                assert!(message.contains("concurrent write"));
+                assert!(source.is_some());
+            }
+            _ => panic!("Expected Cache error"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod progressive_error_handling {
+    use super::*;
+
+    #[test]
+    fn test_partial_results_with_errors() {
+        let error = CodeVizError::analysis(
+            "metrics",
+            "completed with warnings: 10 files skipped due to parse errors"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("completed with warnings"));
+        assert!(msg.contains("10 files skipped"));
+    }
+
+    #[test]
+    fn test_recoverable_error_message() {
+        let error = CodeVizError::coverage_missing(
+            "coverage data unavailable, showing uncovered metrics only"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("unavailable"));
+        assert!(msg.contains("uncovered metrics only"));
+    }
+}
+
+#[cfg(test)]
+mod user_cancellation {
+    use super::*;
+
+    #[test]
+    fn test_analysis_cancelled_by_user() {
+        let error = CodeVizError::analysis(
+            "cancelled",
+            "analysis cancelled by user"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("cancelled by user"));
+    }
+
+    #[test]
+    fn test_cancellation_cleanup() {
+        let error = CodeVizError::cache(
+            "cleaning up after cancellation"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("cleaning up"));
+    }
+}

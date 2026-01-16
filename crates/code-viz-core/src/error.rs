@@ -203,7 +203,7 @@ impl CodeVizError {
     pub fn file_read(path: impl Into<PathBuf>, source: io::Error) -> Self {
         let path = path.into();
         Self::FileSystem {
-            message: format!("Failed to read file"),
+            message: "Failed to read file".to_string(),
             path,
             source,
         }
@@ -218,7 +218,7 @@ impl CodeVizError {
     pub fn file_write(path: impl Into<PathBuf>, source: io::Error) -> Self {
         let path = path.into();
         Self::FileSystem {
-            message: format!("Failed to write file"),
+            message: "Failed to write file".to_string(),
             path,
             source,
         }

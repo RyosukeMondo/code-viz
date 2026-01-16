@@ -1,0 +1,277 @@
+/**
+ * SceneManager manages the Three.js scene, camera, renderer, lights, and controls
+ * @module components/visualizations/3d/scene/SceneManager
+ */
+
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import type { SceneManagerOptions } from '../types';
+
+/**
+ * SceneManager manages the Three.js scene, camera, renderer, lights, and controls.
+ * Provides initialization, animation loop, and resource cleanup functionality.
+ */
+export class SceneManager {
+  private canvas: HTMLCanvasElement;
+  private scene: THREE.Scene | null = null;
+  private camera: THREE.PerspectiveCamera | null = null;
+  private renderer: THREE.WebGLRenderer | null = null;
+  private controls: OrbitControls | null = null;
+  private animationId: number | null = null;
+  private lastFrameTime = 0;
+  private targetFPS: number;
+  private frameInterval: number;
+  private handleResize: (() => void) | null = null;
+
+  /**
+   * Creates a SceneManager instance
+   * @param canvas - The canvas element to render to
+   * @param options - Scene manager options
+   */
+  constructor(canvas: HTMLCanvasElement, options: SceneManagerOptions = {}) {
+    this.canvas = canvas;
+    this.targetFPS = options.targetFPS || 60;
+    this.frameInterval = 1000 / this.targetFPS;
+  }
+
+  /**
+   * Checks if WebGL is supported in the current browser
+   * @returns True if WebGL is supported
+   */
+  static isWebGLSupported(): boolean {
+    try {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      return !!context;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Initializes the Three.js scene, camera, renderer, lights, and controls
+   * @throws Error if WebGL is not supported
+   */
+  initialize(): void {
+    if (!SceneManager.isWebGLSupported()) {
+      throw new Error('WebGL is not supported in this browser. Please use a modern browser with WebGL support.');
+    }
+
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0xf5f5f5);
+
+    const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+    this.camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 2000);
+    this.camera.position.set(100, 160, 100);
+    this.camera.lookAt(0, 0, 0);
+
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: true,
+      alpha: false
+    });
+    this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    console.log('Renderer capabilities:', {
+      maxAttributes: this.renderer.capabilities.maxAttributes,
+      maxVertexUniforms: this.renderer.capabilities.maxVertexUniforms,
+      maxTextureSize: this.renderer.capabilities.maxTextureSize
+    });
+
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+    this.scene.add(hemisphereLight);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    this.scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    directionalLight.position.set(100, 200, 100);
+    directionalLight.castShadow = true;
+
+    directionalLight.shadow.mapSize.width = 4096;
+    directionalLight.shadow.mapSize.height = 4096;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 1000;
+    directionalLight.shadow.camera.left = -600;
+    directionalLight.shadow.camera.right = 600;
+    directionalLight.shadow.camera.top = 600;
+    directionalLight.shadow.camera.bottom = -600;
+    directionalLight.shadow.bias = -0.0001;
+    directionalLight.shadow.normalBias = 0.02;
+
+    this.scene.add(directionalLight);
+
+    const rimLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+    rimLight.position.set(-100, 150, -100);
+    this.scene.add(rimLight);
+
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    fillLight.position.set(-150, 100, 150);
+    this.scene.add(fillLight);
+
+    const groundSize = 1000;
+    const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.8,
+      metalness: 0.0,
+      side: THREE.DoubleSide
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5;
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+
+    const gridHelper = new THREE.GridHelper(groundSize, 100, 0xcccccc, 0xe0e0e0);
+    gridHelper.position.y = -0.4;
+    this.scene.add(gridHelper);
+
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.05;
+    this.controls.minDistance = 10;
+    this.controls.maxDistance = 500;
+    this.controls.maxPolarAngle = Math.PI / 2;
+
+    this.handleResize = this.onResize.bind(this);
+    window.addEventListener('resize', this.handleResize);
+  }
+
+  /**
+   * Handles window resize events
+   */
+  private onResize(): void {
+    if (!this.camera || !this.renderer) return;
+
+    this.camera.aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+    this.camera.updateProjectionMatrix();
+
+    this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  }
+
+  /**
+   * Animation loop that renders the scene at target FPS
+   * @param currentTime - Current timestamp from requestAnimationFrame
+   */
+  animate(currentTime = 0): void {
+    this.animationId = requestAnimationFrame((time) => this.animate(time));
+
+    const deltaTime = currentTime - this.lastFrameTime;
+
+    if (deltaTime < this.frameInterval) {
+      return;
+    }
+
+    this.lastFrameTime = currentTime - (deltaTime % this.frameInterval);
+
+    if (this.controls) {
+      this.controls.update();
+    }
+
+    if (this.renderer && this.scene && this.camera) {
+      this.renderer.render(this.scene, this.camera);
+    }
+  }
+
+  /**
+   * Adds an object to the scene
+   * @param object - The object to add
+   */
+  add(object: THREE.Object3D): void {
+    if (this.scene) {
+      this.scene.add(object);
+    }
+  }
+
+  /**
+   * Removes an object from the scene
+   * @param object - The object to remove
+   */
+  remove(object: THREE.Object3D): void {
+    if (this.scene) {
+      this.scene.remove(object);
+    }
+  }
+
+  /**
+   * Gets the current scene
+   * @returns The scene
+   */
+  getScene(): THREE.Scene | null {
+    return this.scene;
+  }
+
+  /**
+   * Gets the current camera
+   * @returns The camera
+   */
+  getCamera(): THREE.PerspectiveCamera | null {
+    return this.camera;
+  }
+
+  /**
+   * Gets the renderer
+   * @returns The renderer
+   */
+  getRenderer(): THREE.WebGLRenderer | null {
+    return this.renderer;
+  }
+
+  /**
+   * Gets the controls
+   * @returns The orbit controls
+   */
+  getControls(): OrbitControls | null {
+    return this.controls;
+  }
+
+  /**
+   * Disposes of all Three.js resources and stops animation
+   */
+  dispose(): void {
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+
+    if (this.handleResize) {
+      window.removeEventListener('resize', this.handleResize);
+    }
+
+    if (this.controls) {
+      this.controls.dispose();
+      this.controls = null;
+    }
+
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer = null;
+    }
+
+    if (this.scene) {
+      this.scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => material.dispose());
+            } else {
+              object.material.dispose();
+            }
+          }
+        }
+      });
+      this.scene.clear();
+      this.scene = null;
+    }
+
+    this.camera = null;
+  }
+}

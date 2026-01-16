@@ -991,7 +991,7 @@
   | **Success**: ✅ coupling.rs ≥90%, ✅ parser.rs ≥90%, ✅ hotspot.rs ≥80%, ✅ metrics.rs ≥90%, ✅ All tests pass
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (test modules, fixture files, property-based tests), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 28. Add integration tests for analysis pipeline
+- [x] 28. Add integration tests for analysis pipeline
   - **Files**: `crates/code-viz-core/tests/integration_tests.rs`
   - **Purpose**: Test full end-to-end analysis workflows
   - **Requirements**: FR7, NFR2
@@ -1030,7 +1030,7 @@
   | **Success**: ✅ End-to-end tests pass, ✅ Error recovery tested, ✅ Performance acceptable, ✅ Multi-language tested
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (integration test cases, test repository fixtures, performance benchmarks), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 29. Add negative/error scenario tests
+- [x] 29. Add negative/error scenario tests
   - **Files**: Test modules across all crates
   - **Purpose**: Ensure error handling works correctly in all failure modes
   - **Requirements**: FR1, FR7, NFR1

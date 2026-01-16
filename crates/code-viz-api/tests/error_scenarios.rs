@@ -241,3 +241,161 @@ mod error_propagation {
         }
     }
 }
+
+#[cfg(test)]
+mod resource_errors {
+    use super::*;
+    use std::io;
+
+    #[test]
+    fn test_out_of_memory_maps_to_500() {
+        let io_err = io::Error::new(io::ErrorKind::OutOfMemory, "out of memory");
+        let error = CodeVizError::cache_with_source("memory allocation failed", io_err);
+
+        // Out of memory should map to 500 Internal Server Error
+        let is_server_error = matches!(error, CodeVizError::Cache { .. });
+        assert!(is_server_error);
+    }
+
+    #[test]
+    fn test_disk_full_maps_to_500() {
+        let path = PathBuf::from("cache/analysis.bin");
+        let io_err = io::Error::new(io::ErrorKind::Other, "no space left on device");
+        let error = CodeVizError::file_write(&path, io_err);
+
+        // Disk full should map to 500 Internal Server Error
+        let is_server_error = matches!(error, CodeVizError::FileSystem { .. });
+        assert!(is_server_error);
+    }
+
+    #[test]
+    fn test_too_many_open_files_error() {
+        let path = PathBuf::from("src/file999.rs");
+        let io_err = io::Error::new(io::ErrorKind::Other, "too many open files");
+        let error = CodeVizError::file_read(&path, io_err);
+
+        match error {
+            CodeVizError::FileSystem { source, .. } => {
+                assert!(source.to_string().contains("too many open files"));
+            }
+            _ => panic!("Expected FileSystem error"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod timeout_errors {
+    use super::*;
+
+    #[test]
+    fn test_analysis_timeout_maps_to_504() {
+        let error = CodeVizError::analysis(
+            "coupling",
+            "analysis timeout after 120 seconds"
+        );
+
+        // Timeout should map to 504 Gateway Timeout
+        let is_timeout = matches!(error, CodeVizError::Analysis { .. });
+        assert!(is_timeout);
+        assert!(error.to_string().contains("timeout"));
+    }
+
+    #[test]
+    fn test_git_timeout_error() {
+        let error = CodeVizError::git(
+            Some(PathBuf::from("/repo")),
+            "git operation timeout"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("timeout"));
+    }
+}
+
+#[cfg(test)]
+mod rate_limiting_scenarios {
+    use super::*;
+
+    #[test]
+    fn test_concurrent_request_limit() {
+        let error = CodeVizError::analysis(
+            "api_limit",
+            "too many concurrent requests, please retry"
+        );
+
+        // This should map to 429 Too Many Requests
+        let msg = error.to_string();
+        assert!(msg.contains("too many concurrent"));
+        assert!(msg.contains("retry"));
+    }
+
+    #[test]
+    fn test_analysis_queue_full() {
+        let error = CodeVizError::analysis(
+            "queue",
+            "analysis queue is full, try again later"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("queue is full"));
+        assert!(msg.contains("try again"));
+    }
+}
+
+#[cfg(test)]
+mod malformed_requests {
+    use super::*;
+
+    #[test]
+    fn test_empty_path_error() {
+        let error = CodeVizError::config("path cannot be empty");
+
+        let msg = error.to_string();
+        assert!(msg.contains("path cannot be empty"));
+    }
+
+    #[test]
+    fn test_invalid_json_payload() {
+        let error = CodeVizError::config("invalid JSON in request body");
+
+        let msg = error.to_string();
+        assert!(msg.contains("invalid JSON"));
+    }
+
+    #[test]
+    fn test_path_traversal_attempt() {
+        let error = CodeVizError::config("invalid path: contains '..'");
+
+        let msg = error.to_string();
+        assert!(msg.contains("invalid path"));
+    }
+}
+
+#[cfg(test)]
+mod coverage_data_errors {
+    use super::*;
+
+    #[test]
+    fn test_malformed_coverage_file() {
+        let error = CodeVizError::coverage_missing("coverage file is malformed");
+
+        // Coverage errors should be non-critical (200 with partial data or 422)
+        match error {
+            CodeVizError::CoverageDataMissing { message, .. } => {
+                assert!(message.contains("malformed"));
+            }
+            _ => panic!("Expected CoverageDataMissing error"),
+        }
+    }
+
+    #[test]
+    fn test_missing_coverage_for_file() {
+        let error = CodeVizError::coverage_missing(
+            "no coverage data for src/new_file.rs"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("no coverage data"));
+        assert!(msg.contains("new_file.rs"));
+    }
+}

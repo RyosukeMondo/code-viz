@@ -682,6 +682,7 @@ dependencies = [
  "assert_cmd",
  "async-trait",
  "bincode",
+ "code-viz-commands",
  "git2",
  "globset",
  "ignore",

@@ -305,3 +305,231 @@ mod graceful_degradation {
         assert!(msg.contains("10 files failed"));
     }
 }
+
+#[cfg(test)]
+mod resource_errors {
+    use super::*;
+    use std::io;
+
+    #[test]
+    fn test_out_of_memory_during_graph_building() {
+        let io_err = io::Error::new(io::ErrorKind::OutOfMemory, "out of memory");
+        let error = CodeVizError::cache_with_source(
+            "symbol graph too large to fit in memory",
+            io_err
+        );
+
+        match error {
+            CodeVizError::Cache { message, source } => {
+                assert!(message.contains("too large"));
+                assert!(message.contains("memory"));
+                assert!(source.is_some());
+            }
+            _ => panic!("Expected Cache error"),
+        }
+    }
+
+    #[test]
+    fn test_too_many_symbols_warning() {
+        let error = CodeVizError::analysis(
+            "symbol_graph",
+            "graph contains >100000 symbols, analysis may be slow"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("100000 symbols"));
+        assert!(msg.contains("may be slow"));
+    }
+
+    #[test]
+    fn test_graph_too_complex_for_analysis() {
+        let error = CodeVizError::analysis(
+            "reachability",
+            "graph complexity exceeds limits (depth >1000)"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("exceeds limits"));
+        assert!(msg.contains("depth >1000"));
+    }
+}
+
+#[cfg(test)]
+mod entry_point_validation {
+    use super::*;
+
+    #[test]
+    fn test_multiple_main_functions_error() {
+        let error = CodeVizError::analysis(
+            "entry_point",
+            "multiple main functions found: src/main.rs, src/bin/alt_main.rs"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("multiple main functions"));
+    }
+
+    #[test]
+    fn test_entry_point_parse_error() {
+        let error = CodeVizError::parse(
+            PathBuf::from("src/main.rs"),
+            "rust",
+            Some(1),
+            "entry point file has syntax errors"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("main.rs"));
+        assert!(msg.contains("syntax errors"));
+    }
+
+    #[test]
+    fn test_exported_symbol_not_found() {
+        let error = CodeVizError::analysis(
+            "exports",
+            "exported symbol 'public_api' not found in module"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("public_api"));
+        assert!(msg.contains("not found"));
+    }
+}
+
+#[cfg(test)]
+mod parser_timeout_errors {
+    use super::*;
+
+    #[test]
+    fn test_timeout_during_symbol_extraction() {
+        let error = CodeVizError::parse(
+            PathBuf::from("src/generated_code.rs"),
+            "rust",
+            None,
+            "symbol extraction timeout: file too large"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("timeout"));
+        assert!(msg.contains("too large"));
+    }
+
+    #[test]
+    fn test_graph_traversal_timeout() {
+        let error = CodeVizError::analysis(
+            "reachability",
+            "graph traversal timeout: cycle detected in dependencies"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("timeout"));
+        assert!(msg.contains("cycle detected"));
+    }
+}
+
+#[cfg(test)]
+mod false_positive_handling {
+    use super::*;
+
+    #[test]
+    fn test_reflection_usage_cannot_detect() {
+        let error = CodeVizError::analysis(
+            "dead_code",
+            "warning: reflection usage detected, false positives possible"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("reflection"));
+        assert!(msg.contains("false positives"));
+    }
+
+    #[test]
+    fn test_macro_generated_code_limitation() {
+        let error = CodeVizError::analysis(
+            "dead_code",
+            "warning: macro-generated code may not be fully analyzed"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("macro-generated"));
+        assert!(msg.contains("not be fully analyzed"));
+    }
+
+    #[test]
+    fn test_foreign_function_interface_symbols() {
+        let error = CodeVizError::analysis(
+            "exports",
+            "FFI exports cannot be verified for usage"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("FFI exports"));
+        assert!(msg.contains("cannot be verified"));
+    }
+}
+
+#[cfg(test)]
+mod incremental_analysis_errors {
+    use super::*;
+
+    #[test]
+    fn test_cache_invalidation_on_file_change() {
+        let error = CodeVizError::cache(
+            "cache invalidated: source files modified since last analysis"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("invalidated"));
+        assert!(msg.contains("modified"));
+    }
+
+    #[test]
+    fn test_partial_cache_corruption() {
+        use std::io;
+
+        let io_err = io::Error::new(io::ErrorKind::InvalidData, "corrupted data");
+        let error = CodeVizError::cache_with_source(
+            "cache partially corrupted, rebuilding affected sections",
+            io_err
+        );
+
+        match error {
+            CodeVizError::Cache { message, source } => {
+                assert!(message.contains("partially corrupted"));
+                assert!(source.is_some());
+            }
+            _ => panic!("Expected Cache error"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod multi_language_errors {
+    use super::*;
+
+    #[test]
+    fn test_unsupported_language_in_project() {
+        let error = CodeVizError::parse(
+            PathBuf::from("lib.cpp"),
+            "cpp",
+            None,
+            "unsupported language: C++ not supported in dead code analysis"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("unsupported language"));
+        assert!(msg.contains("C++"));
+    }
+
+    #[test]
+    fn test_mixed_language_project_limitation() {
+        let error = CodeVizError::analysis(
+            "symbol_graph",
+            "cross-language references not supported (Rust <-> TypeScript)"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("cross-language"));
+        assert!(msg.contains("not supported"));
+    }
+}

@@ -217,3 +217,121 @@ mod analysis_timeout {
         }
     }
 }
+
+#[cfg(test)]
+mod resource_constraints {
+    use super::*;
+    use std::io;
+    use code_viz_core::error::CodeVizError;
+
+    #[test]
+    fn test_disk_full_error_on_output() {
+        let path = PathBuf::from("output/report.json");
+        let io_err = io::Error::new(io::ErrorKind::Other, "disk full");
+
+        let error = CodeVizError::file_write(&path, io_err);
+        let msg = error.to_string();
+
+        assert!(msg.contains("output/report.json"));
+        assert!(msg.contains("Failed to write file"));
+    }
+
+    #[test]
+    fn test_out_of_memory_during_large_analysis() {
+        let error = CodeVizError::analysis(
+            "metrics",
+            "out of memory while processing large codebase"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("out of memory"));
+        assert!(msg.contains("large codebase"));
+    }
+
+    #[test]
+    fn test_too_many_files_to_analyze() {
+        let error = CodeVizError::analysis(
+            "scanner",
+            "too many files (>50000), consider using --exclude"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("too many files"));
+        assert!(msg.contains("exclude"));
+    }
+}
+
+#[cfg(test)]
+mod malformed_input {
+    use super::*;
+    use code_viz_core::error::CodeVizError;
+
+    #[test]
+    fn test_binary_file_detected() {
+        let error = CodeVizError::parse(
+            PathBuf::from("assets/image.png"),
+            "unknown",
+            None,
+            "binary file detected, skipping"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("image.png"));
+        assert!(msg.contains("binary file"));
+    }
+
+    #[test]
+    fn test_empty_repository_error() {
+        let error = CodeVizError::git(
+            Some(PathBuf::from("/empty/repo")),
+            "repository has no commits"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("no commits"));
+    }
+
+    #[test]
+    fn test_unsupported_file_extension() {
+        let error = CodeVizError::parse(
+            PathBuf::from("README.md"),
+            "markdown",
+            None,
+            "unsupported language: markdown"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("unsupported language"));
+        assert!(msg.contains("markdown"));
+    }
+}
+
+#[cfg(test)]
+mod error_recovery {
+    use code_viz_core::error::CodeVizError;
+
+    #[test]
+    fn test_partial_analysis_on_errors() {
+        // When some files fail, analysis should continue with others
+        let error = CodeVizError::analysis(
+            "scanner",
+            "partial analysis: 5 files failed, 95 succeeded"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("partial analysis"));
+        assert!(msg.contains("5 files failed"));
+        assert!(msg.contains("95 succeeded"));
+    }
+
+    #[test]
+    fn test_graceful_degradation_message() {
+        let error = CodeVizError::coverage_missing(
+            "coverage data unavailable, continuing without coverage metrics"
+        );
+
+        let msg = error.to_string();
+        assert!(msg.contains("coverage data unavailable"));
+        assert!(msg.contains("continuing without"));
+    }
+}
