@@ -1,18 +1,15 @@
-use crate::churn::calculate_code_churn;
-use crate::shared::scan_and_filter_files;
+use crate::{churn::calculate_code_churn, shared::scan_and_filter_files};
 use anyhow::{Context, Result};
-use code_viz_core::analyzer;
-use code_viz_core::coverage;
-use code_viz_core::duplication::DuplicationDetector;
-use code_viz_core::hotspot::HotspotDetector;
-use code_viz_core::models::{AICommitAnalysis, AnalysisResult, FileMetrics};
-use code_viz_core::parser::LanguageParser;
-use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
-use code_viz_core::{calculate_summary, coupling, metrics, parser};
+use code_viz_core::{
+    analyzer, calculate_summary, coupling, coverage, metrics, parser,
+    duplication::DuplicationDetector,
+    hotspot::HotspotDetector,
+    models::{AICommitAnalysis, AnalysisResult, FileMetrics},
+    parser::LanguageParser,
+    traits::{AppContext, FileSystem, GitProvider},
+};
 use serde_json::json;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::{collections::HashMap, path::{Path, PathBuf}, time::SystemTime};
 
 #[derive(Clone, Copy)]
 pub struct DuplicationConfig {
