@@ -14,7 +14,7 @@
 //!
 //! fn read_config() -> code_viz_core::error::Result<String> {
 //!     fs::read_to_string("config.toml")
-//!         .with_context(|| "reading configuration file")?;
+//!         .with_context(|| "reading configuration file".to_string())?;
 //!     Ok("config".to_string())
 //! }
 //! ```
@@ -31,7 +31,7 @@
 //!     .map_err(|e| io_error!("file.txt", e))?;
 //!
 //! // Create parse errors with language context
-//! let error = parse_error!("src/main.rs", "rust", 42, "unexpected token");
+//! let error = parse_error!("src/main.rs", "rust", Some(42), "unexpected token");
 //! # Ok(())
 //! # }
 //! ```
