@@ -1153,7 +1153,7 @@
   | **Success**: ✅ Coverage reports generated, ✅ Per-file breakdown available, ✅ Gaps identified, ✅ Reports uploaded to CI
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (coverage scripts, report configurations, gap analysis), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 32. Fix coverage gaps below 80%
+- [x] 32. Fix coverage gaps below 80%
   - **Purpose**: Add tests to bring all modules above 80% threshold
   - **Requirements**: NFR1
   - **Leverage**: Coverage reports from task 31
