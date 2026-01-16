@@ -1314,7 +1314,7 @@
 
 ### Fix SOLID violations and improve extensibility
 
-- [ ] 36. Split metrics.rs into focused modules
+- [x] 36. Split metrics.rs into focused modules
   - **File**: `crates/code-viz-core/src/metrics.rs` → multiple modules
   - **Purpose**: Fix God object violating Single Responsibility Principle
   - **Requirements**: FR8, NFR5
