@@ -11,18 +11,16 @@ import { useAnalysis } from './useAnalysis';
 import { useAnalysisStore } from '../store/analysisStore';
 import type { TreeNode } from '../types/bindings';
 
-// Mock the useTauriCommand hook
-vi.mock('./useTauriCommand', () => ({
-  useTauriCommand: vi.fn(),
+// Mock the API client
+vi.mock('../api/client', () => ({
+  analyzeRepository: vi.fn(),
 }));
 
-import { useTauriCommand } from './useTauriCommand';
+import { analyzeRepository } from '../api/client';
 
 describe('useAnalysis', () => {
-  // Mock execute function
-  let mockExecute: ReturnType<typeof vi.fn>;
-  let mockOnSuccess: ((data: unknown) => void) | undefined;
-  let mockOnError: ((error: string) => void) | undefined;
+  // Mock analyze repository function
+  let mockAnalyzeRepository: ReturnType<typeof vi.fn>;
 
   // Mock tree data
   const mockTreeNode: TreeNode = {
@@ -51,23 +49,9 @@ describe('useAnalysis', () => {
     // Reset store before each test
     useAnalysisStore.getState().reset();
 
-    // Create mock execute function
-    mockExecute = vi.fn();
-
-    // Mock useTauriCommand to capture callbacks and return mock execute
-    vi.mocked(useTauriCommand).mockImplementation((command, options) => {
-      mockOnSuccess = options?.onSuccess;
-      mockOnError = options?.onError;
-
-      return {
-        data: null,
-        loading: false,
-        error: null,
-        requestId: null,
-        execute: mockExecute,
-        reset: vi.fn(),
-      };
-    });
+    // Create mock analyze repository function
+    mockAnalyzeRepository = vi.mocked(analyzeRepository);
+    mockAnalyzeRepository.mockResolvedValue(mockTreeNode);
 
     // Mock crypto.randomUUID
     vi.stubGlobal('crypto', {
@@ -97,13 +81,19 @@ describe('useAnalysis', () => {
     it('should set loading state when analysis starts', async () => {
       const { result } = renderHook(() => useAnalysis());
 
-      act(() => {
-        result.current.analyze('/test/repo');
+      // Start analysis
+      const analyzePromise = act(async () => {
+        await result.current.analyze('/test/repo');
       });
 
-      // Loading should be set immediately
-      expect(result.current.loading).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith({ path: '/test/repo' });
+      // Loading should be set during the analysis
+      await waitFor(() => {
+        expect(result.current.loading).toBe(true);
+      });
+
+      await analyzePromise;
+
+      expect(mockAnalyzeRepository).toHaveBeenCalledWith('/test/repo', {}, expect.any(String));
     });
 
     it('should update store with metrics on successful analysis', async () => {
@@ -111,11 +101,6 @@ describe('useAnalysis', () => {
 
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      // Simulate successful callback
-      act(() => {
-        mockOnSuccess!(mockTreeNode);
       });
 
       await waitFor(() => {
@@ -129,13 +114,11 @@ describe('useAnalysis', () => {
       const { result } = renderHook(() => useAnalysis());
       const errorMessage = 'Failed to analyze repository';
 
+      // Make the mock reject
+      mockAnalyzeRepository.mockRejectedValueOnce(new Error(errorMessage));
+
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      // Simulate error callback
-      act(() => {
-        mockOnError!(errorMessage);
       });
 
       await waitFor(() => {
@@ -153,18 +136,19 @@ describe('useAnalysis', () => {
       });
 
       expect(result.current.error).toBe('Invalid repository path');
-      expect(mockExecute).not.toHaveBeenCalled();
+      expect(mockAnalyzeRepository).not.toHaveBeenCalled();
     });
 
     it('should reject non-string path', async () => {
       const { result } = renderHook(() => useAnalysis());
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await result.current.analyze(null as any);
       });
 
       expect(result.current.error).toBe('Invalid repository path');
-      expect(mockExecute).not.toHaveBeenCalled();
+      expect(mockAnalyzeRepository).not.toHaveBeenCalled();
     });
 
     it('should call execute with correct path', async () => {
@@ -174,7 +158,7 @@ describe('useAnalysis', () => {
         await result.current.analyze('/test/path');
       });
 
-      expect(mockExecute).toHaveBeenCalledWith({ path: '/test/path' });
+      expect(mockAnalyzeRepository).toHaveBeenCalledWith('/test/path', {}, expect.any(String));
     });
 
     it('should clear drill-down path when new metrics are set', async () => {
@@ -189,11 +173,6 @@ describe('useAnalysis', () => {
 
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      // Simulate successful callback
-      act(() => {
-        mockOnSuccess!(mockTreeNode);
       });
 
       await waitFor(() => {
@@ -226,11 +205,6 @@ describe('useAnalysis', () => {
         await result.current.analyze('/test/repo');
       });
 
-      // Simulate successful callback
-      act(() => {
-        mockOnSuccess!(mockTreeNode);
-      });
-
       await waitFor(() => {
         expect(useAnalysisStore.getState().selectedFile).toBeNull();
       });
@@ -248,34 +222,24 @@ describe('useAnalysis', () => {
 
       // Wait for the first call to complete
       await waitFor(() => {
-        expect(mockExecute).toHaveBeenCalledTimes(1);
+        expect(mockAnalyzeRepository).toHaveBeenCalledTimes(1);
       });
 
-      expect(mockExecute).toHaveBeenCalledWith({ path: '/test/repo' });
+      expect(mockAnalyzeRepository).toHaveBeenCalledWith('/test/repo', {}, expect.any(String));
 
       // Clear the mock call count for clarity
-      mockExecute.mockClear();
+      mockAnalyzeRepository.mockClear();
 
-      // Refetch should call execute again with the same path
+      // Refetch should call analyzeRepository again with the same path
       await act(async () => {
         await result.current.refetch();
       });
 
-      // The refetch should either:
-      // 1. Call execute again (if lastPathRef works correctly)
-      // 2. Set an error (if lastPathRef closure has issues in test environment)
-      // Note: The hook uses a closure pattern for lastPathRef which may have
-      // issues in test environments due to how useCallback dependencies work
       await waitFor(() => {
-        expect(
-          mockExecute.mock.calls.length === 1 || result.current.error === 'No previous analysis to refetch'
-        ).toBe(true);
+        expect(mockAnalyzeRepository).toHaveBeenCalledTimes(1);
       });
 
-      // If execute was called, verify it was with correct arguments
-      if (mockExecute.mock.calls.length === 1) {
-        expect(mockExecute).toHaveBeenCalledWith({ path: '/test/repo' });
-      }
+      expect(mockAnalyzeRepository).toHaveBeenCalledWith('/test/repo', {}, expect.any(String));
     });
 
     it('should set error when refetch called without previous analysis', async () => {
@@ -286,7 +250,7 @@ describe('useAnalysis', () => {
       });
 
       expect(result.current.error).toBe('No previous analysis to refetch');
-      expect(mockExecute).not.toHaveBeenCalled();
+      expect(mockAnalyzeRepository).not.toHaveBeenCalled();
     });
 
     it('should use most recent path for refetch', async () => {
@@ -307,8 +271,8 @@ describe('useAnalysis', () => {
         await result.current.refetch();
       });
 
-      expect(mockExecute).toHaveBeenCalledTimes(3);
-      expect(mockExecute).toHaveBeenLastCalledWith({ path: '/test/repo2' });
+      expect(mockAnalyzeRepository).toHaveBeenCalledTimes(3);
+      expect(mockAnalyzeRepository).toHaveBeenLastCalledWith('/test/repo2', {}, expect.any(String));
     });
   });
 
@@ -319,10 +283,6 @@ describe('useAnalysis', () => {
       // Set up some state
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      act(() => {
-        mockOnSuccess!(mockTreeNode);
       });
 
       await waitFor(() => {
@@ -365,12 +325,18 @@ describe('useAnalysis', () => {
     it('should sync loading state with store', async () => {
       const { result } = renderHook(() => useAnalysis());
 
-      await act(async () => {
+      // Start analysis
+      const analyzePromise = act(async () => {
         await result.current.analyze('/test/repo');
       });
 
-      expect(useAnalysisStore.getState().loading).toBe(true);
-      expect(result.current.loading).toBe(true);
+      // Check loading state during analysis
+      await waitFor(() => {
+        expect(useAnalysisStore.getState().loading).toBe(true);
+        expect(result.current.loading).toBe(true);
+      });
+
+      await analyzePromise;
     });
 
     it('should sync metrics with store on success', async () => {
@@ -378,10 +344,6 @@ describe('useAnalysis', () => {
 
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      act(() => {
-        mockOnSuccess!(mockTreeNode);
       });
 
       await waitFor(() => {
@@ -394,12 +356,11 @@ describe('useAnalysis', () => {
       const { result } = renderHook(() => useAnalysis());
       const errorMessage = 'Analysis failed';
 
+      // Make the mock reject
+      mockAnalyzeRepository.mockRejectedValueOnce(new Error(errorMessage));
+
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      act(() => {
-        mockOnError!(errorMessage);
       });
 
       await waitFor(() => {
@@ -421,27 +382,26 @@ describe('useAnalysis', () => {
     });
   });
 
-  describe('useTauriCommand integration', () => {
-    it('should call useTauriCommand with correct command name', () => {
-      renderHook(() => useAnalysis());
+  describe('API client integration', () => {
+    it('should call analyzeRepository from API client', async () => {
+      const { result } = renderHook(() => useAnalysis());
 
-      expect(useTauriCommand).toHaveBeenCalledWith(
-        'analyze_repository',
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        })
-      );
+      await act(async () => {
+        await result.current.analyze('/test/repo');
+      });
+
+      expect(analyzeRepository).toHaveBeenCalledWith('/test/repo', {}, expect.any(String));
     });
 
-    it('should pass callbacks to useTauriCommand', () => {
-      renderHook(() => useAnalysis());
+    it('should pass options to analyzeRepository', async () => {
+      const { result } = renderHook(() => useAnalysis());
+      const options = { includeAiCommits: true, includeCoverage: true };
 
-      const callArgs = vi.mocked(useTauriCommand).mock.calls[0];
-      expect(callArgs[1]).toHaveProperty('onSuccess');
-      expect(callArgs[1]).toHaveProperty('onError');
-      expect(typeof callArgs[1]?.onSuccess).toBe('function');
-      expect(typeof callArgs[1]?.onError).toBe('function');
+      await act(async () => {
+        await result.current.analyze('/test/repo', options);
+      });
+
+      expect(analyzeRepository).toHaveBeenCalledWith('/test/repo', options, expect.any(String));
     });
   });
 
@@ -450,12 +410,9 @@ describe('useAnalysis', () => {
       const { result } = renderHook(() => useAnalysis());
 
       // First error
+      mockAnalyzeRepository.mockRejectedValueOnce(new Error('First error'));
       await act(async () => {
         await result.current.analyze('/test/repo1');
-      });
-
-      act(() => {
-        mockOnError!('First error');
       });
 
       await waitFor(() => {
@@ -463,12 +420,9 @@ describe('useAnalysis', () => {
       });
 
       // Second error should replace first
+      mockAnalyzeRepository.mockRejectedValueOnce(new Error('Second error'));
       await act(async () => {
         await result.current.analyze('/test/repo2');
-      });
-
-      act(() => {
-        mockOnError!('Second error');
       });
 
       await waitFor(() => {
@@ -480,12 +434,9 @@ describe('useAnalysis', () => {
       const { result } = renderHook(() => useAnalysis());
 
       // First analysis fails
+      mockAnalyzeRepository.mockRejectedValueOnce(new Error('Analysis failed'));
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      act(() => {
-        mockOnError!('Analysis failed');
       });
 
       await waitFor(() => {
@@ -493,12 +444,9 @@ describe('useAnalysis', () => {
       });
 
       // Second analysis succeeds
+      mockAnalyzeRepository.mockResolvedValueOnce(mockTreeNode);
       await act(async () => {
         await result.current.analyze('/test/repo');
-      });
-
-      act(() => {
-        mockOnSuccess!(mockTreeNode);
       });
 
       await waitFor(() => {
