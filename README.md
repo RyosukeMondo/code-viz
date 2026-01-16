@@ -19,7 +19,7 @@ CodeViz is a fast, parallelized CLI tool for analyzing codebase metrics (LOC, fu
 
 ## Features
 
-CodeViz provides 12 powerful code analysis features:
+CodeViz provides 13 powerful code analysis and visualization features:
 
 ### 1. **Basic Metrics** 📊
 Accurate LOC calculation excluding comments and blank lines, function counts, file sizes.
@@ -86,10 +86,89 @@ Real-time monitoring with incremental re-analysis on file changes.
 code-viz watch ./src --format text
 ```
 
+### 13. **3D Code Visualization** 🏙️
+Interactive 3D city visualization where files are buildings with GPU-accelerated rendering.
+*Available in desktop app and web interface*
+
+See the [3D Visualization Guide](docs/3d-visualization.md) for detailed documentation.
+
+## 3D Code Visualization
+
+Transform your codebase into an interactive 3D city where files become buildings in a virtual world. This powerful visualization makes complexity issues immediately visible and provides an intuitive way to explore code structure.
+
+### Key Features
+
+- **Buildings as Files**: Height represents LOC, color shows complexity
+- **Interactive Exploration**: Click to select, hover for info, pan/zoom/rotate camera
+- **GPU-Accelerated**: 60fps performance even for 100K+ LOC codebases
+- **Visual Effects**: Heat haze shader for high-complexity files
+- **Real-Time Stats**: Monitor FPS, memory usage, and rendering performance
+- **Persistent Camera**: Your view position saves between sessions
+- **Configurable**: Customize voxel size, height, colors, and performance settings
+
+### Quick Start
+
+Generate analysis data and open in 3D view:
+
+```bash
+# Analyze your codebase
+code-viz analyze ./src --format json --output metrics.json
+
+# Open in desktop app with 3D visualization
+code-viz-gui --load metrics.json
+```
+
+### Controls
+
+| Mouse | Action |
+|-------|--------|
+| Left-click + drag | Rotate camera |
+| Right-click + drag | Pan camera |
+| Mouse wheel | Zoom in/out |
+| Click building | Select and show details |
+
+| Keyboard | Action |
+|----------|--------|
+| **I** | Toggle info panel |
+| **S** | Toggle statistics |
+| **C** | Open configuration |
+| **ESC** | Clear selection |
+
+### Understanding the Visualization
+
+**Height**: Logarithmic scale based on Lines of Code
+- Small files: Short buildings
+- Large files: Tall buildings (capped at max height)
+
+**Colors**: Complexity gradient
+- 🟢 Green: Low complexity (0-10)
+- 🟡 Yellow: Moderate (10-30)
+- 🔴 Red: High complexity (30+)
+
+**Effects**: Heat haze shader on very complex files (>50 complexity)
+
+### Performance Tips
+
+For large codebases (100K+ LOC):
+1. Reduce voxel size to 0.5 or lower
+2. Disable shadows in configuration
+3. Lower max height to 100-150
+4. Monitor memory usage in statistics overlay
+
+### Documentation
+
+See the comprehensive [3D Visualization Guide](docs/3d-visualization.md) for:
+- Detailed controls and keyboard shortcuts
+- Configuration options and customization
+- Performance optimization strategies
+- Troubleshooting common issues
+- Technical architecture and API reference
+
 ## Documentation
 
 Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
+- **[3D Visualization](docs/3d-visualization.md)** - Interactive 3D code city visualization guide
 - **[Architecture](docs/architecture/)** - System architecture, design decisions, and diagrams
   - [Architecture Overview](docs/architecture/ARCHITECTURE.md) - Trait-based DI architecture
   - [Frontend-Backend Architecture](docs/architecture/diagrams/FRONTEND_BACKEND_ARCHITECTURE.md) - Full stack architecture with React + Tauri
