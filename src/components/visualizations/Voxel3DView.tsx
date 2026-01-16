@@ -85,6 +85,24 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
   const voxelRendererRef = useRef<VoxelRenderer | null>(null);
   const layoutRef = useRef<TreemapLayout | null>(null);
 
+  // Check for test data in window (for E2E testing)
+  const getDataSource = (): DataSource | undefined => {
+    if (dataSource) {
+      return dataSource;
+    }
+
+    // Check for test data injected by E2E tests
+    const win = window as typeof window & { __TEST_METRICS_DATA__?: object };
+    if (win.__TEST_METRICS_DATA__) {
+      return {
+        type: 'json',
+        data: win.__TEST_METRICS_DATA__,
+      };
+    }
+
+    return undefined;
+  };
+
   // Load metrics data
   const {
     data: metricsData,
@@ -92,7 +110,7 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
     isError,
     error: metricsError,
   } = useMetricsData({
-    source: dataSource,
+    source: getDataSource(),
     onSuccess: () => {
       if (onDataLoaded) {
         onDataLoaded();
