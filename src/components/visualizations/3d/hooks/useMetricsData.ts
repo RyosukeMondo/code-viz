@@ -217,7 +217,8 @@ export function useMetricsData(
     if (initialSource) {
       loadFromSource(initialSource);
     }
-  }, []); // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount, intentionally not including initialSource or loadFromSource
 
   // Hot reload in development
   useEffect(() => {
