@@ -1684,7 +1684,7 @@
   | **Success**: ✅ Overall ≥80%, ✅ Critical paths ≥90%, ✅ All modules pass, ✅ Report generated
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (coverage validation scripts, module-level reports, threshold checks), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 45. Run performance benchmarks
+- [x] 45. Run performance benchmarks
   - **Purpose**: Verify no performance regression from refactoring
   - **Requirements**: NFR2
   - **Leverage**: Benchmarks from task 34
