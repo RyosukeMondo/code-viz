@@ -72,9 +72,15 @@ check_function_size() {
         local function_name=""
         local brace_count=0
         local line_num=0
+        local max_lines=2000  # Safety limit to prevent infinite loops
 
         while IFS= read -r line; do
             ((line_num++))
+
+            # Safety check: prevent infinite loops
+            if [ $line_num -gt $max_lines ]; then
+                break
+            fi
 
             # Skip comments and blank lines
             if [[ $line =~ ^[[:space:]]*// ]] || [[ -z "${line// }" ]]; then
@@ -100,6 +106,13 @@ check_function_size() {
                 local open_braces="${line//[^\{]/}"
                 local close_braces="${line//[^\}]/}"
                 ((brace_count += ${#open_braces} - ${#close_braces}))
+
+                # Safety check: if brace_count goes negative, reset
+                if [ $brace_count -lt 0 ]; then
+                    brace_count=0
+                    in_function=0
+                    continue
+                fi
 
                 # Function ended
                 if [ $brace_count -eq 0 ] && [[ $line =~ \} ]]; then
