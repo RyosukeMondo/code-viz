@@ -1,4 +1,4 @@
-use assert_cmd::Command;
+use assert_cmd::cargo::*;
 use assert_fs::prelude::*;
 use predicates::prelude::*;
 
@@ -40,7 +40,7 @@ fn test_e2e_dead_code_json_output() {
     let temp = assert_fs::TempDir::new().unwrap();
     create_test_repo(&temp);
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .arg("--format")
@@ -60,7 +60,7 @@ fn test_e2e_dead_code_text_output() {
     let temp = assert_fs::TempDir::new().unwrap();
     create_test_repo(&temp);
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .assert()
@@ -78,7 +78,7 @@ fn test_e2e_min_confidence_filter() {
     create_test_repo(&temp);
 
     // Run with very high confidence filter (90)
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     let output_high = cmd
         .arg("dead-code")
         .arg(temp.path())
@@ -93,7 +93,7 @@ fn test_e2e_min_confidence_filter() {
         .clone();
 
     // Run with low confidence filter (0)
-    let mut cmd2 = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd2 = cargo_bin_cmd!("code-viz-cli");
     let output_low = cmd2
         .arg("dead-code")
         .arg(temp.path())
@@ -127,7 +127,7 @@ fn test_e2e_analyze_with_dead_code_flag() {
     let temp = assert_fs::TempDir::new().unwrap();
     create_test_repo(&temp);
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("analyze")
         .arg(temp.path())
         .arg("--dead-code")
@@ -139,7 +139,7 @@ fn test_e2e_analyze_with_dead_code_flag() {
         .stdout(predicate::str::contains("\"total_loc\""));
 
     // Verify CSV format includes dead code columns when enabled
-    let mut cmd2 = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd2 = cargo_bin_cmd!("code-viz-cli");
     cmd2.arg("analyze")
         .arg(temp.path())
         .arg("--dead-code")
@@ -158,7 +158,7 @@ fn test_e2e_threshold_violation_dead_code_ratio() {
     create_test_repo(&temp);
 
     // First, verify the repo has some dead code by running without threshold
-    let mut cmd_check = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd_check = cargo_bin_cmd!("code-viz-cli");
     let output = cmd_check
         .arg("dead-code")
         .arg(temp.path())
@@ -177,7 +177,7 @@ fn test_e2e_threshold_violation_dead_code_ratio() {
     if dead_ratio > 0.0 {
         // Set a threshold slightly below the actual ratio to trigger failure
         let threshold = dead_ratio * 0.5;
-        let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+        let mut cmd = cargo_bin_cmd!("code-viz-cli");
         cmd.arg("dead-code")
             .arg(temp.path())
             .arg("--threshold")
@@ -195,7 +195,7 @@ fn test_e2e_threshold_violation_dead_functions() {
     create_test_repo(&temp);
 
     // Get actual dead function count
-    let mut cmd_check = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd_check = cargo_bin_cmd!("code-viz-cli");
     let output = cmd_check
         .arg("dead-code")
         .arg(temp.path())
@@ -214,7 +214,7 @@ fn test_e2e_threshold_violation_dead_functions() {
     if dead_functions > 0 {
         // Set threshold below actual count
         let threshold = dead_functions - 1;
-        let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+        let mut cmd = cargo_bin_cmd!("code-viz-cli");
         cmd.arg("dead-code")
             .arg(temp.path())
             .arg("--threshold")
@@ -232,7 +232,7 @@ fn test_e2e_threshold_pass() {
     create_test_repo(&temp);
 
     // Set a very high threshold that won't be exceeded
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .arg("--threshold")
@@ -248,7 +248,7 @@ fn test_e2e_output_to_file() {
 
     let output_file = temp.child("dead-code-report.json");
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .arg("--format")
@@ -274,7 +274,7 @@ fn test_e2e_exclude_patterns() {
         .unwrap();
 
     // Exclude tests directory - should analyze fewer files
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     let output = cmd
         .arg("dead-code")
         .arg(temp.path())
@@ -301,7 +301,7 @@ fn test_e2e_verbose_logging() {
     let temp = assert_fs::TempDir::new().unwrap();
     create_test_repo(&temp);
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .arg("--verbose")
@@ -317,7 +317,7 @@ fn test_e2e_verbose_logging() {
 fn test_e2e_empty_directory() {
     let temp = assert_fs::TempDir::new().unwrap();
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .arg("--format")
@@ -336,7 +336,7 @@ fn test_e2e_no_dead_code() {
         .write_str("function main() { console.log('hello'); }\nmain();")
         .unwrap();
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .arg("--format")
@@ -352,7 +352,7 @@ fn test_e2e_invalid_threshold_format() {
     let temp = assert_fs::TempDir::new().unwrap();
     create_test_repo(&temp);
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("dead-code")
         .arg(temp.path())
         .arg("--threshold")
@@ -367,7 +367,7 @@ fn test_e2e_confidence_tiers_in_text_output() {
     let temp = assert_fs::TempDir::new().unwrap();
     create_test_repo(&temp);
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     let output = cmd
         .arg("dead-code")
         .arg(temp.path())
@@ -400,7 +400,7 @@ fn test_e2e_json_schema_validation() {
     let temp = assert_fs::TempDir::new().unwrap();
     create_test_repo(&temp);
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     let output = cmd
         .arg("dead-code")
         .arg(temp.path())
@@ -452,7 +452,7 @@ fn test_e2e_analyze_threshold_dead_code_ratio() {
     create_test_repo(&temp);
 
     // Get actual dead code ratio first
-    let mut cmd_check = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd_check = cargo_bin_cmd!("code-viz-cli");
     let output = cmd_check
         .arg("analyze")
         .arg(temp.path())
@@ -482,7 +482,7 @@ fn test_e2e_analyze_threshold_dead_code_ratio() {
     // Only test threshold if we have dead code
     if max_ratio > 0.0 {
         let threshold = max_ratio * 0.5;
-        let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+        let mut cmd = cargo_bin_cmd!("code-viz-cli");
         cmd.arg("analyze")
             .arg(temp.path())
             .arg("--dead-code")

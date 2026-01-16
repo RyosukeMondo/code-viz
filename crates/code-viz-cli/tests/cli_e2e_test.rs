@@ -1,4 +1,4 @@
-use assert_cmd::Command;
+use assert_cmd::cargo::*;
 use assert_fs::prelude::*;
 use predicates::prelude::*;
 use std::io::{BufRead, BufReader};
@@ -14,8 +14,8 @@ fn test_e2e_watch_mode() {
     let file = temp.child("src/main.ts");
     file.write_str("function a() {}").unwrap();
 
-    let bin = assert_cmd::cargo::cargo_bin("code-viz-cli");
-    let mut cmd = std::process::Command::new(bin);
+    let bin_path = cargo_bin!("code-viz-cli");
+    let mut cmd = std::process::Command::new(bin_path);
     let mut child = cmd
         .arg("watch")
         .arg(temp.path())
@@ -59,7 +59,7 @@ fn test_e2e_analyze_json_output() {
         .write_str("export const x = 1;")
         .unwrap();
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("analyze")
         .arg(temp.path())
         .arg("--format")
@@ -77,7 +77,7 @@ fn test_e2e_analyze_text_output() {
         .write_str("function main() { console.log('hello'); }")
         .unwrap();
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("analyze")
         .arg(temp.path())
         .assert()
@@ -93,7 +93,7 @@ fn test_e2e_threshold_violation() {
     let content = "x\n".repeat(600);
     temp.child("large.ts").write_str(&content).unwrap();
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.arg("analyze")
         .arg(temp.path())
         .arg("--threshold")
@@ -120,7 +120,7 @@ fn test_e2e_config_file_integration() {
     temp.child("src/main.ts").write_str("x").unwrap();
     temp.child("tests/test.ts").write_str("x").unwrap();
 
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     // We need to run analyze in the temp dir for it to pick up config?
     // analyze command currently loads config from `project_root` passed to `load_config`.
     // But `analyze` command logic in `run` doesn't call `load_config` yet!
@@ -151,7 +151,7 @@ fn test_e2e_config_file_integration() {
 fn test_e2e_config_init() {
     let temp = assert_fs::TempDir::new().unwrap();
     
-    let mut cmd = Command::cargo_bin("code-viz-cli").unwrap();
+    let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.current_dir(temp.path())
         .arg("config")
         .arg("init")
