@@ -43,7 +43,7 @@ export class SceneManager {
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
       return !!context;
-    } catch (e) {
+    } catch {
       return false;
     }
   }

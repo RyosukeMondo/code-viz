@@ -99,7 +99,7 @@ export function useAnalysisHandlers({
   );
 
   const handleNodeHover = useCallback(
-    (_node: TreeNode | null) => {
+    () => {
       // Placeholder for future hover functionality
     },
     []

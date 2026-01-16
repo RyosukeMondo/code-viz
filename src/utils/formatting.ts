@@ -194,7 +194,7 @@ export function formatDate(
     const formatOptions = options || defaultOptions;
 
     return new Intl.DateTimeFormat('en-US', formatOptions).format(dateObj);
-  } catch (error) {
+  } catch {
     return 'Unknown';
   }
 }
@@ -266,7 +266,7 @@ export function formatRelativeDate(
       month: 'short',
       day: 'numeric',
     });
-  } catch (error) {
+  } catch {
     return 'Unknown';
   }
 }

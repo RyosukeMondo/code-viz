@@ -49,8 +49,9 @@ describe('useAnalysis', () => {
     // Reset store before each test
     useAnalysisStore.getState().reset();
 
-    // Create mock analyze repository function
+    // Get and reset the mock analyze repository function
     mockAnalyzeRepository = vi.mocked(analyzeRepository);
+    mockAnalyzeRepository.mockClear();
     mockAnalyzeRepository.mockResolvedValue(mockTreeNode);
 
     // Mock crypto.randomUUID
@@ -60,7 +61,6 @@ describe('useAnalysis', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
     vi.unstubAllGlobals();
   });
 

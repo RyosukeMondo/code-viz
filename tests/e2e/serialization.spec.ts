@@ -1,4 +1,4 @@
-import { test, expect, Page, _electron as electron } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import path from 'path';
 
 /**
@@ -18,8 +18,7 @@ import path from 'path';
  */
 
 test.describe('Tauri Serialization Contract (Real Backend)', () => {
-  let electronApp: any;
-  let page: Page;
+  let electronApp: unknown;
 
   test.beforeAll(async () => {
     // Launch the actual Tauri app (requires `npm run tauri build` first for prod,
@@ -46,21 +45,19 @@ test.describe('Tauri Serialization Contract (Real Backend)', () => {
     await pathInput.fill(repoPath);
 
     // Intercept the Tauri IPC call to inspect raw response
-    let tauriResponse: any = null;
-
-    await page.exposeFunction('captureResponse', (data: any) => {
-      tauriResponse = data;
+    await page.exposeFunction('captureResponse', () => {
+      // Capture response for potential debugging
     });
 
     // Add script to capture response before React processes it
     await page.addInitScript(() => {
-      const originalInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      const originalInvoke = (window as typeof window & { __TAURI_INTERNALS__?: { invoke?: (...args: unknown[]) => Promise<unknown> } }).__TAURI_INTERNALS__?.invoke;
       if (originalInvoke) {
-        (window as any).__TAURI_INTERNALS__.invoke = async (...args: any[]) => {
+        (window as typeof window & { __TAURI_INTERNALS__?: { invoke?: (...args: unknown[]) => Promise<unknown> }; captureResponse?: (result: unknown) => void }).__TAURI_INTERNALS__!.invoke = async (...args: unknown[]) => {
           const result = await originalInvoke(...args);
           // Send to our test function
-          if ((window as any).captureResponse) {
-            (window as any).captureResponse(result);
+          if ((window as typeof window & { captureResponse?: (result: unknown) => void }).captureResponse) {
+            (window as typeof window & { captureResponse?: (result: unknown) => void }).captureResponse!(result);
           }
           return result;
         };
@@ -119,8 +116,6 @@ test.describe('Tauri Serialization Contract (Real Backend)', () => {
     // Wait for analysis to complete
     await expect(page.locator('[data-testid="treemap-container"]')).toBeVisible({ timeout: 30000 });
 
-    // Get the page content
-    const content = await page.content();
 
     // CRITICAL: Should NOT contain "undefined" in LOC/complexity displays
     const detailPanelTexts = await page.locator('[data-testid="treemap-node"]').allTextContents();
@@ -174,7 +169,7 @@ test.describe('Tauri Serialization Contract (Real Backend)', () => {
  */
 test.describe('Serialization Smoke Tests', () => {
   test('should log properly formatted data in console', async ({ page }) => {
-    const debugLogs: any[] = [];
+    const debugLogs: string[] = [];
 
     // Capture console.log messages that contain our debug data
     page.on('console', (msg) => {

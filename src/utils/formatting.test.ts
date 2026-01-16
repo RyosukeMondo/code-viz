@@ -5,7 +5,6 @@ import {
   formatBytes,
   formatDate,
   formatRelativeDate,
-  type PathTruncateOptions,
 } from './formatting'
 
 describe('formatting utilities', () => {
@@ -52,7 +51,7 @@ describe('formatting utilities', () => {
       })
 
       it('should return "0" for non-number values', () => {
-        expect(formatNumber('invalid' as any)).toBe('0')
+        expect(formatNumber('invalid' as unknown as number)).toBe('0')
       })
     })
   })
@@ -145,7 +144,7 @@ describe('formatting utilities', () => {
       })
 
       it('should return empty string for non-string values', () => {
-        expect(formatPath(123 as any)).toBe('')
+        expect(formatPath(123 as unknown as string)).toBe('')
       })
 
       it('should return empty string for empty string', () => {
@@ -231,7 +230,7 @@ describe('formatting utilities', () => {
       })
 
       it('should return "0 B" for non-number values', () => {
-        expect(formatBytes('invalid' as any)).toBe('0 B')
+        expect(formatBytes('invalid' as unknown as number)).toBe('0 B')
       })
     })
   })
@@ -311,7 +310,7 @@ describe('formatting utilities', () => {
       })
 
       it('should return "Unknown" for non-date values', () => {
-        expect(formatDate({} as any)).toBe('Unknown')
+        expect(formatDate({} as unknown as Date)).toBe('Unknown')
       })
     })
   })

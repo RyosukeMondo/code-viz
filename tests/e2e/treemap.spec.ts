@@ -22,8 +22,8 @@ async function waitForAnalysisComplete(page: Page) {
 async function setupTauriMocks(page: Page) {
   await page.addInitScript(() => {
     // Mock Tauri API for browser testing
-    (window as any).__TAURI_INTERNALS__ = {
-      invoke: async (cmd: string, args: any) => {
+    (window as typeof window & { __TAURI_INTERNALS__?: { invoke: (cmd: string, args: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__ = {
+      invoke: async (cmd: string) => {
         if (cmd === 'analyze_repository') {
           // Return mock analysis data
           return {
@@ -253,7 +253,6 @@ test.describe('Treemap Visualization E2E', () => {
   });
 
   test('should support keyboard navigation - Tab through interactive elements', async ({ page }) => {
-    const sampleRepoPath = path.resolve('./tests/fixtures/sample-repo');
 
     // Navigate using Tab key
     await page.keyboard.press('Tab');
@@ -308,8 +307,8 @@ test.describe('Treemap Visualization E2E', () => {
   test('should handle error states gracefully', async ({ page }) => {
     // Override mock to return error
     await page.addInitScript(() => {
-      (window as any).__TAURI_INTERNALS__ = {
-        invoke: async (cmd: string) => {
+      (window as typeof window & { __TAURI_INTERNALS__?: { invoke: (cmd: string) => Promise<never> } }).__TAURI_INTERNALS__ = {
+        invoke: async () => {
           throw new Error('Failed to analyze repository');
         },
       };

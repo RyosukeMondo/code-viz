@@ -5,7 +5,7 @@
  * for the dead code panel component.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DeadCodePanel } from './DeadCodePanel';
@@ -190,7 +190,7 @@ describe('DeadCodePanel', () => {
 
     it('should show confidence scores with correct colors (high confidence >80)', () => {
       const onClose = vi.fn();
-      const { container } = render(<DeadCodePanel file={mockFileWithDeadCode} onClose={onClose} />);
+      render(<DeadCodePanel file={mockFileWithDeadCode} onClose={onClose} />);
 
       // Find the confidence badge with 95%
       const highConfidenceBadge = screen.getByText('95%').parentElement;
@@ -199,7 +199,7 @@ describe('DeadCodePanel', () => {
 
     it('should show confidence scores with correct colors (medium confidence 60-80)', () => {
       const onClose = vi.fn();
-      const { container } = render(<DeadCodePanel file={mockFileWithDeadCode} onClose={onClose} />);
+      render(<DeadCodePanel file={mockFileWithDeadCode} onClose={onClose} />);
 
       // Find the confidence badge with 75%
       const mediumConfidenceBadge = screen.getByText('75%').parentElement;
@@ -208,7 +208,7 @@ describe('DeadCodePanel', () => {
 
     it('should show confidence scores with correct colors (low confidence <60)', () => {
       const onClose = vi.fn();
-      const { container } = render(<DeadCodePanel file={mockFileWithDeadCode} onClose={onClose} />);
+      render(<DeadCodePanel file={mockFileWithDeadCode} onClose={onClose} />);
 
       // Find the confidence badge with 50%
       const lowConfidenceBadge = screen.getByText('50%').parentElement;

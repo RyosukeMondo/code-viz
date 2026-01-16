@@ -124,7 +124,6 @@ export function getColorLegend(
   const low = thresholds.LOW ?? COMPLEXITY_THRESHOLDS.LOW;
   const medium = thresholds.MEDIUM ?? COMPLEXITY_THRESHOLDS.MEDIUM;
   const high = thresholds.HIGH ?? COMPLEXITY_THRESHOLDS.HIGH;
-  const veryHigh = thresholds.VERY_HIGH ?? COMPLEXITY_THRESHOLDS.VERY_HIGH;
 
   return [
     {

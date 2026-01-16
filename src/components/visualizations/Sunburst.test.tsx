@@ -554,7 +554,7 @@ describe('Sunburst', () => {
     });
 
     test('depth control has proper styling', () => {
-      const { container } = render(
+      render(
         <Sunburst
           data={mockTreeData}
           onNodeClick={vi.fn()}

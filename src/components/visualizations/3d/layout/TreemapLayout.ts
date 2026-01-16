@@ -4,7 +4,7 @@
  */
 
 import * as d3 from 'd3-hierarchy';
-import { calculateTotalLOC, isFileNode } from '../utils/schemas';
+import { isFileNode } from '../utils/schemas';
 import type { HierarchyNode, LayoutNode, LayoutStats } from '../types';
 
 /**

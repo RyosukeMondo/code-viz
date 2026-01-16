@@ -65,17 +65,17 @@ describe('colors utilities', () => {
       })
 
       it('should return gray for non-number values', () => {
-        const color = complexityToColor('invalid' as any)
+        const color = complexityToColor('invalid' as unknown as number)
         expect(color).toBe('#94a3b8')
       })
 
       it('should return gray for undefined', () => {
-        const color = complexityToColor(undefined as any)
+        const color = complexityToColor(undefined as unknown as number)
         expect(color).toBe('#94a3b8')
       })
 
       it('should return gray for null', () => {
-        const color = complexityToColor(null as any)
+        const color = complexityToColor(null as unknown as number)
         expect(color).toBe('#94a3b8')
       })
     })
@@ -224,9 +224,9 @@ describe('colors utilities', () => {
       })
 
       it('should return "Unknown" for non-number values', () => {
-        expect(getComplexityLabel('invalid' as any)).toBe('Unknown')
-        expect(getComplexityLabel(undefined as any)).toBe('Unknown')
-        expect(getComplexityLabel(null as any)).toBe('Unknown')
+        expect(getComplexityLabel('invalid' as unknown as number)).toBe('Unknown')
+        expect(getComplexityLabel(undefined as unknown as number)).toBe('Unknown')
+        expect(getComplexityLabel(null as unknown as number)).toBe('Unknown')
       })
     })
 

@@ -3,8 +3,6 @@
  * @module components/visualizations/3d/types
  */
 
-import type * as THREE from 'three';
-
 /**
  * File metrics from analysis
  */

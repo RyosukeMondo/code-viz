@@ -3,7 +3,7 @@
  * @module components/visualizations/3d/utils/schemas
  */
 
-import type { HierarchyNode, FileMetrics } from '../types';
+import type { HierarchyNode } from '../types';
 
 /**
  * Check if a node is a file node
