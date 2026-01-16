@@ -263,6 +263,7 @@ impl SymbolGraphCache {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     //! Test module for symbol graph caching
     //!

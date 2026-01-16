@@ -141,6 +141,7 @@ fn format_json(result: &code_viz_dead_code::DeadCodeResult) -> Result<String, De
         .map_err(|e| DeadCodeError::IoError(std::io::Error::other(e)))
 }
 
+#[allow(clippy::too_many_lines)]
 fn format_text(result: &code_viz_dead_code::DeadCodeResult) -> String {
     use std::fmt::Write;
 

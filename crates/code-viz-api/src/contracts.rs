@@ -49,6 +49,7 @@ pub struct DeadCodeResponse {
 
 /// Contract validation - ensures both implementations produce identical JSON
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod test_utils {
     //! Test utilities for contract validation
     //!
@@ -171,6 +172,7 @@ pub mod test_utils {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     //! Contract validation tests

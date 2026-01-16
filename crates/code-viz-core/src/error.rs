@@ -369,6 +369,7 @@ impl From<crate::parser::ParseError> for CodeVizError {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

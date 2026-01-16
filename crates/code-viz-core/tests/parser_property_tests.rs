@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::parser::{get_parser, ParseError};
 use proptest::prelude::*;
 use tree_sitter::Tree;

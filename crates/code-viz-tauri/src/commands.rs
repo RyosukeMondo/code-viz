@@ -56,6 +56,7 @@ pub async fn analyze_dead_code_command(
         .map_err(|e| e.to_user_message())
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod integration_tests {
     use super::*;

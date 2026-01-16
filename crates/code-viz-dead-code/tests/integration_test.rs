@@ -11,6 +11,8 @@
 //!
 //! See `fixtures/EXPECTED.md` for the complete ground truth.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use code_viz_dead_code::{analyze_dead_code, AnalysisConfig};
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -271,7 +273,7 @@ fn test_confidence_scores() {
         // Should be in range 40-90 (base 100 - exported 30 - other penalties)
         // Lowered minimum to 40 to account for multiple penalties stacking
         assert!(
-            avg_confidence >= 40 && avg_confidence <= 90,
+            (40..=90).contains(&avg_confidence),
             "Exported dead code confidence should be 40-90, found {}",
             avg_confidence
         );
@@ -462,7 +464,7 @@ fn test_analysis_result_snapshot() {
         "file_count": result.files.len(),
         "dead_symbols": result.files.iter().map(|f| {
             let path_str = f.path.to_string_lossy();
-            let file_name = path_str.split('/').last().unwrap_or("unknown").to_string();
+            let file_name = path_str.split('/').next_back().unwrap_or("unknown").to_string();
             (
                 file_name,
                 f.dead_code.iter().map(|d| d.symbol.clone()).collect::<Vec<_>>()

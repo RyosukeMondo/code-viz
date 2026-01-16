@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use thiserror::Error;
 
 /// Errors that can occur during contract validation

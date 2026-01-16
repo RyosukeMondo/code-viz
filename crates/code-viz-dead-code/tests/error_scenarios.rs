@@ -6,6 +6,7 @@
 use code_viz_core::error::CodeVizError;
 use std::path::PathBuf;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod symbol_graph_errors {
     use super::*;
@@ -59,6 +60,7 @@ mod symbol_graph_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod symbol_resolution_errors {
     use super::*;
@@ -105,6 +107,7 @@ mod symbol_resolution_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod entry_point_errors {
     use super::*;
@@ -138,6 +141,7 @@ mod entry_point_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod reachability_analysis_errors {
     use super::*;
@@ -167,6 +171,7 @@ mod reachability_analysis_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod partial_results {
     use super::*;
@@ -205,6 +210,7 @@ mod partial_results {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod cache_errors {
     use super::*;
@@ -239,6 +245,7 @@ mod cache_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod file_access_errors {
     use super::*;
@@ -274,6 +281,7 @@ mod file_access_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod graceful_degradation {
     use super::*;
@@ -306,6 +314,7 @@ mod graceful_degradation {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod resource_errors {
     use super::*;
@@ -354,6 +363,7 @@ mod resource_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod entry_point_validation {
     use super::*;
@@ -396,6 +406,7 @@ mod entry_point_validation {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod parser_timeout_errors {
     use super::*;
@@ -427,6 +438,7 @@ mod parser_timeout_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod false_positive_handling {
     use super::*;
@@ -468,6 +480,7 @@ mod false_positive_handling {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod incremental_analysis_errors {
     use super::*;
@@ -503,6 +516,7 @@ mod incremental_analysis_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod multi_language_errors {
     use super::*;

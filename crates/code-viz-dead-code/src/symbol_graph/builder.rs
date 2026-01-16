@@ -1,4 +1,9 @@
 //! Symbol graph builder implementation.
+//
+// Allow expect on Mutex operations - poisoned mutex is a programming error in parallel
+// processing, not a runtime error. If a mutex is poisoned, it indicates a panic occurred
+// during parallel processing and we should propagate that panic.
+#![allow(clippy::expect_used)]
 
 use super::extractors::{extract_symbol_name, is_symbol_exported, is_test_file};
 use super::queries::{get_import_query, get_symbol_query};

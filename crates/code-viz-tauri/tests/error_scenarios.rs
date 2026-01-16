@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Error scenario tests for code-viz-tauri
 //!
 //! Tests Tauri-specific error handling, ensuring errors propagate correctly
@@ -6,6 +7,7 @@
 use code_viz_core::error::CodeVizError;
 use std::path::PathBuf;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod ipc_error_propagation {
     use super::*;
@@ -52,6 +54,7 @@ mod ipc_error_propagation {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tauri_command_errors {
     use super::*;
@@ -96,6 +99,7 @@ mod tauri_command_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod transform_errors {
     use super::*;
@@ -129,6 +133,7 @@ mod transform_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod coverage_errors {
     use super::*;
@@ -165,6 +170,7 @@ mod coverage_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod cache_errors {
     use super::*;
@@ -199,6 +205,7 @@ mod cache_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod error_context {
     use super::*;
@@ -230,6 +237,7 @@ mod error_context {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod error_traits {
     use super::*;
@@ -260,6 +268,7 @@ mod error_traits {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod resource_constraint_errors {
     use super::*;
@@ -302,6 +311,7 @@ mod resource_constraint_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod timeout_scenarios {
     use super::*;
@@ -331,6 +341,7 @@ mod timeout_scenarios {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod path_validation_errors {
     use super::*;
@@ -367,6 +378,7 @@ mod path_validation_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod concurrent_analysis_errors {
     use super::*;
@@ -401,6 +413,7 @@ mod concurrent_analysis_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod progressive_error_handling {
     use super::*;
@@ -429,6 +442,7 @@ mod progressive_error_handling {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod user_cancellation {
     use super::*;

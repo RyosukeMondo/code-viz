@@ -73,6 +73,7 @@ fn should_include_file(path: &Path, stats: &mut ScanStats) -> bool {
 }
 
 #[tracing::instrument(skip(exclude_patterns), fields(path = %path.display(), pattern_count = exclude_patterns.len()))]
+#[allow(clippy::cognitive_complexity)]
 pub fn scan_directory(
     path: &Path,
     exclude_patterns: &[String],
@@ -143,6 +144,7 @@ pub enum ScanError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use std::fs::{self, File};

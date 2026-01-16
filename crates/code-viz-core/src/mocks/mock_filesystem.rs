@@ -1,3 +1,7 @@
+// Allow unwrap on Mutex locks in mock test code - poisoned mutex is a programming error,
+// not a runtime error. If a mutex is poisoned in tests, the test should panic.
+#![allow(clippy::unwrap_used)]
+
 use anyhow::{anyhow, Result};
 use crate::traits::FileSystem;
 use std::collections::HashMap;

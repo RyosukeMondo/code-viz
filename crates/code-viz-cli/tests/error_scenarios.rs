@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Error scenario tests for code-viz-cli
 //!
 //! Tests CLI-specific error handling, ensuring user-friendly error messages
@@ -5,6 +6,7 @@
 
 use std::path::PathBuf;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod cli_error_handling {
     #[test]
@@ -52,6 +54,7 @@ mod cli_error_handling {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod file_access_errors {
     use super::*;
@@ -99,6 +102,7 @@ mod file_access_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod argument_validation {
     use code_viz_core::error::CodeVizError;
@@ -135,6 +139,7 @@ mod argument_validation {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod git_errors {
     use super::*;
@@ -182,6 +187,7 @@ mod git_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod analysis_timeout {
     use code_viz_core::error::CodeVizError;
@@ -218,6 +224,7 @@ mod analysis_timeout {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod resource_constraints {
     use super::*;
@@ -261,6 +268,7 @@ mod resource_constraints {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod malformed_input {
     use super::*;
@@ -306,6 +314,7 @@ mod malformed_input {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod error_recovery {
     use code_viz_core::error::CodeVizError;

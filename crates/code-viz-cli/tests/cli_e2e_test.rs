@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use assert_cmd::cargo::*;
 use assert_fs::prelude::*;
 use predicates::prelude::*;

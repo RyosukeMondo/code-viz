@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Integration tests for the transform module
 
 use code_viz_core::models::FileMetrics;

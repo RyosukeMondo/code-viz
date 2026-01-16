@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_commands::analyze::{analyze_repository, DuplicationConfig, HotspotConfig};
 use code_viz_core::mocks::{MockContext, MockFileSystem, MockGit};
 use std::path::Path;
@@ -38,6 +39,7 @@ export function calculateAge(birthYear: number): number {
 }
 "#)
         .with_file("/test_repo/tests/test_lib.rs", r#"
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::parser::get_parser;
 use code_viz_core::scanner::scan_directory;
 use std::fs::{self, File};
@@ -451,6 +452,7 @@ fn test_unsupported_file_extensions_filtered() {
 // 7. PROPERTY-BASED TESTS (using proptest)
 // ============================================================================
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod property_tests {
     use super::*;

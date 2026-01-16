@@ -82,6 +82,7 @@ fn convert_core_to_api_tree(core_node: code_viz_core::models::TreeNode) -> code_
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -494,6 +495,7 @@ mod tests {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 #[path = "transform.test.rs"]
 mod transform_test;

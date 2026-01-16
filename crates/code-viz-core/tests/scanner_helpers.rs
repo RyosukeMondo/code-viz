@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::scanner::scan_directory;
 use std::fs;
 use std::path::PathBuf;

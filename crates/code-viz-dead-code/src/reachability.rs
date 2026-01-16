@@ -143,6 +143,7 @@ pub fn identify_dead_code(graph: &SymbolGraph, reachable: &HashSet<SymbolId>) ->
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     //! Test module for reachability analysis
     //!

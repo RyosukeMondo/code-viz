@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::coverage::{
     apply_coverage_to_metrics, calculate_coverage_analysis, parse_coverage_report,
     CoverageParser, LlvmCovParser, TarpaulinParser,

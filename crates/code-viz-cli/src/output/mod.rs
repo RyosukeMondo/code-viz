@@ -17,6 +17,7 @@ pub trait MetricsFormatter {
     fn format(&self, result: &AnalysisResult) -> Result<String, FormatterError>;
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     //! Test module for output formatters.

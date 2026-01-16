@@ -211,6 +211,7 @@ fn format_symbol_kind(kind: SymbolKind) -> &'static str {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     //! Test module for dead code output formatting.

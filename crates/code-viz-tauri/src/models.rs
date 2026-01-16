@@ -109,6 +109,7 @@ impl From<code_viz_api::TreeNode> for TreeNode {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

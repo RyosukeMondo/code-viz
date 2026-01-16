@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Integration tests for Tauri commands using MockContext
 //!
 //! These tests verify that the shared code-viz-api handlers work correctly

@@ -136,6 +136,7 @@ pub struct TreeNode {
     pub test_coverage: Option<code_viz_core::models::TestCoverage>,
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     //! Test module for API models

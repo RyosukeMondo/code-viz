@@ -52,6 +52,7 @@ pub async fn analyze_ai_commits(git: &impl GitProvider, path: &Path) -> Result<A
     })
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -51,6 +51,7 @@ pub fn load_config(project_root: &Path) -> Result<ConfigFile, ConfigError> {
     Ok(config)
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     //! Test module for configuration loading.

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use code_viz_dead_code::analyze_dead_code;
 use std::path::PathBuf;
 

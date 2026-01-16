@@ -261,6 +261,7 @@ fn has_test_coverage(symbol: &Symbol, graph: &SymbolGraph) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     //! Test module for confidence calculation
     //!

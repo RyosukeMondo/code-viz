@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use anyhow::Result;
 use assert_cmd::Command;
 use git2::{Commit, Repository, Signature};

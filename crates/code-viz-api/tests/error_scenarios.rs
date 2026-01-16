@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Error scenario tests for code-viz-api
 //!
 //! Tests API-specific error handling, ensuring proper HTTP status codes
@@ -6,6 +7,7 @@
 use code_viz_core::error::CodeVizError;
 use std::path::PathBuf;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod api_error_responses {
     use super::*;
@@ -64,6 +66,7 @@ mod api_error_responses {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod json_error_format {
     use super::*;
@@ -112,6 +115,7 @@ mod json_error_format {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod transform_errors {
     use super::*;
@@ -145,6 +149,7 @@ mod transform_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod request_validation {
     use super::*;
@@ -182,6 +187,7 @@ mod request_validation {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod concurrent_access_errors {
     use super::*;
@@ -206,6 +212,7 @@ mod concurrent_access_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod error_propagation {
     use super::*;
@@ -242,6 +249,7 @@ mod error_propagation {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod resource_errors {
     use super::*;
@@ -283,6 +291,7 @@ mod resource_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod timeout_errors {
     use super::*;
@@ -312,6 +321,7 @@ mod timeout_errors {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod rate_limiting_scenarios {
     use super::*;
@@ -342,6 +352,7 @@ mod rate_limiting_scenarios {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod malformed_requests {
     use super::*;
@@ -371,6 +382,7 @@ mod malformed_requests {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod coverage_data_errors {
     use super::*;

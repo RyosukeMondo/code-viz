@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::models::{CodeChurn, FileMetrics};
 use code_viz_core::hotspot::HotspotDetector;
 use std::path::PathBuf;

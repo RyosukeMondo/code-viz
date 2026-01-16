@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::coupling::calculate_coupling;
 use code_viz_core::mocks::MockFileSystem;
 use code_viz_core::models::FileMetrics;

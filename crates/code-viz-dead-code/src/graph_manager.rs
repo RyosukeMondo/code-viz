@@ -30,6 +30,7 @@ impl GraphManager {
 
     /// Load graph from cache or build it from files
     #[tracing::instrument(skip(self, files))]
+    #[allow(clippy::cognitive_complexity)]
     fn load_or_build_cached(&self, files: &[PathBuf]) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
         let cache_dir = self
             .config

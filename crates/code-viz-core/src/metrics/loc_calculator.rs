@@ -107,6 +107,7 @@ fn is_in_range(row: usize, col: usize, range: &Range) -> bool {
     true
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

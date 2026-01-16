@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_dead_code::models::SymbolKind;
 use code_viz_dead_code::{DeadCodeResult, DeadCodeSummary, DeadSymbol, FileDeadCode};
 use std::path::PathBuf;

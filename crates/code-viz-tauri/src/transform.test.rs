@@ -3,6 +3,7 @@
 //! These tests verify that absolute filesystem paths are correctly
 //! converted to relative paths within the project.
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod path_handling_tests {
     use super::super::*;

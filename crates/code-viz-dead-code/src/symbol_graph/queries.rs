@@ -1,4 +1,8 @@
 //! Tree-sitter query compilation for symbol and import extraction.
+//
+// Allow expect in static query initialization - these are programming errors (invalid hardcoded
+// queries), not runtime errors. If these panic, it's a bug in the code, not user input.
+#![allow(clippy::expect_used)]
 
 use super::GraphError;
 use std::path::PathBuf;

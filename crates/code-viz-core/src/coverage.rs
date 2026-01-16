@@ -215,6 +215,7 @@ pub fn parse_coverage_report(json: &str) -> Result<HashMap<PathBuf, TestCoverage
     anyhow::bail!("Unsupported coverage report format. Expected llvm-cov or Tarpaulin JSON.")
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -154,6 +154,7 @@ pub fn analyze_dead_code(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     //! Integration tests for dead code analysis
     //!

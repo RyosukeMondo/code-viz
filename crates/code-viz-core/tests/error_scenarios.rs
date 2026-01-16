@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Comprehensive error scenario tests for code-viz-core
 //!
 //! This test module validates all error paths across the crate,

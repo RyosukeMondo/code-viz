@@ -9,6 +9,7 @@ mod extractors;
 mod queries;
 mod resolver;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests;
 

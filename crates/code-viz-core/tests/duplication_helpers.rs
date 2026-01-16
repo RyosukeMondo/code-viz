@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::duplication::DuplicationDetector;
 use code_viz_core::parser;
 use std::collections::HashMap;

@@ -9,16 +9,19 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 use crate::traits::FileSystem;
 
-/// Process a single file with FileSystem trait (NEW - trait-based)
-#[tracing::instrument(skip(fs), fields(path = %path.display()))]
-pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMetrics, AnalysisError> {
-    tracing::debug!("Processing file");
-
-    let extension = path.extension()
+/// Extract file extension and convert to string
+fn get_file_extension(path: &Path) -> Result<&str, AnalysisError> {
+    path.extension()
         .and_then(|e| e.to_str())
-        .ok_or_else(|| AnalysisError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No extension")))?;
+        .ok_or_else(|| AnalysisError::IoError(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "No extension"
+        )))
+}
 
-    let language_key = match extension {
+/// Map file extension to language key
+fn extension_to_language(extension: &str) -> &str {
+    match extension {
         "ts" => "typescript",
         "tsx" => "tsx",
         "js" => "javascript",
@@ -28,7 +31,17 @@ pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMet
         "go" => "go",
         "cpp" | "cxx" | "cc" | "hpp" | "h" => "cpp",
         ext => ext,
-    };
+    }
+}
+
+/// Process a single file with FileSystem trait (NEW - trait-based)
+#[tracing::instrument(skip(fs), fields(path = %path.display()))]
+#[allow(clippy::cognitive_complexity)]
+pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMetrics, AnalysisError> {
+    tracing::debug!("Processing file");
+
+    let extension = get_file_extension(path)?;
+    let language_key = extension_to_language(extension);
 
     tracing::debug!(extension = %extension, language = %language_key, "Language detected");
 
@@ -47,7 +60,20 @@ pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMet
     Ok(metrics)
 }
 
+/// Extract the top N largest files by LOC
+fn get_largest_files(files: &[FileMetrics], count: usize) -> Vec<PathBuf> {
+    let mut sorted_files: Vec<&FileMetrics> = files.iter().collect();
+    sorted_files.sort_by(|a, b| b.loc.cmp(&a.loc));
+
+    sorted_files
+        .iter()
+        .take(count)
+        .map(|f| f.path.clone())
+        .collect()
+}
+
 #[tracing::instrument(skip(files), fields(file_count = files.len()))]
+#[allow(clippy::cognitive_complexity)]
 pub fn calculate_summary(files: &[FileMetrics]) -> Summary {
     tracing::debug!("Calculating summary statistics");
 
@@ -62,16 +88,7 @@ pub fn calculate_summary(files: &[FileMetrics]) -> Summary {
         "Basic statistics calculated"
     );
 
-    // Find top 10 largest files by LOC
-    let mut sorted_files: Vec<&FileMetrics> = files.iter().collect();
-    sorted_files.sort_by(|a, b| b.loc.cmp(&a.loc)); // Descending LOC
-
-    let largest_files: Vec<PathBuf> = sorted_files
-        .iter()
-        .take(10)
-        .map(|f| f.path.clone())
-        .collect();
-
+    let largest_files = get_largest_files(files, 10);
     tracing::debug!(largest_files_count = largest_files.len(), "Identified largest files");
 
     Summary {

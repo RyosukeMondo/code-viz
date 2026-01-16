@@ -6,6 +6,7 @@ pub fn subtract(a: i32, b: i32) -> i32 {
     a - b
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

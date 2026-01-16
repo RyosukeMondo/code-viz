@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::context::RealGit;
 use code_viz_core::traits::GitProvider;
 use git2::{Commit, Oid, Repository, Signature, Tree};

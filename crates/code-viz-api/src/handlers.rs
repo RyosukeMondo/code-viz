@@ -230,6 +230,7 @@ where
     Ok(filtered_result)
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

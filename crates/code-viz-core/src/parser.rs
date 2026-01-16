@@ -1,3 +1,7 @@
+// Allow expect in static query initialization - these are programming errors (invalid hardcoded
+// queries), not runtime errors. If these panic, it's a bug in the code, not user input.
+#![allow(clippy::expect_used)]
+
 use std::cell::RefCell;
 use std::sync::OnceLock;
 use thiserror::Error;
@@ -325,6 +329,7 @@ impl LanguageParser for CppParser {
 }
 
 #[tracing::instrument]
+#[allow(clippy::cognitive_complexity)]
 pub fn get_parser(language: &str) -> Result<Box<dyn LanguageParser>, ParseError> {
     tracing::debug!("Creating parser for language");
 
@@ -355,6 +360,7 @@ pub enum ParseError {
     TreeSitterError(String),
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

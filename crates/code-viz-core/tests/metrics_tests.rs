@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::metrics::calculate_metrics;
 use code_viz_core::parser::get_parser;
 use std::path::Path;
