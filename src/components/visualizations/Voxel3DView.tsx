@@ -10,6 +10,7 @@ import { useMetricsData, type DataSource } from './3d/hooks/useMetricsData';
 import { useSelection } from './3d/hooks/useSelection';
 import { InfoPanel } from './3d/ui/InfoPanel';
 import { StatisticsOverlay } from './3d/ui/StatisticsOverlay';
+import { ConfigPanel, loadSettings, type Config3DSettings } from './3d/ui/ConfigPanel';
 import { VoxelRenderer } from './3d/scene/VoxelRenderer';
 import { TreemapLayout } from './3d/layout/TreemapLayout';
 import type { RenderStats } from './3d/types';
@@ -40,6 +41,7 @@ export interface Voxel3DViewProps {
 const SHORTCUTS = {
   TOGGLE_INFO: 'i',
   TOGGLE_STATS: 's',
+  TOGGLE_CONFIG: 'c',
   CLEAR_SELECTION: 'Escape',
 } as const;
 
@@ -73,7 +75,11 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
   // UI state
   const [infoPanelVisible, setInfoPanelVisible] = useState(showInfoPanel);
   const [statsVisible, setStatsVisible] = useState(showStatistics);
+  const [configVisible, setConfigVisible] = useState(false);
   const [renderStats, setRenderStats] = useState<RenderStats | null>(null);
+
+  // Config settings (load from localStorage on mount)
+  const [configSettings, setConfigSettings] = useState<Config3DSettings>(() => loadSettings());
 
   // Refs for renderer and layout
   const voxelRendererRef = useRef<VoxelRenderer | null>(null);
@@ -118,6 +124,8 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
   } = useThreeScene({
     projectKey,
     targetFPS,
+    antialias: configSettings.antialias,
+    shadowsEnabled: configSettings.shadowsEnabled,
     onInitialized: () => {
       console.log('Scene initialized successfully');
 
@@ -133,52 +141,55 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
     },
   });
 
-  // Create voxel renderer when scene and data are ready
+  // Create voxel renderer when scene and data are ready, or recreate when settings change
   useEffect(() => {
-    if (!sceneManager || !sceneInitialized || !metricsData) {
+    if (!sceneManager || !sceneInitialized || !metricsData || !layoutRef.current) {
       return;
     }
 
-    // Create voxel renderer if it doesn't exist
-    if (!voxelRendererRef.current && layoutRef.current) {
-      console.log('Creating voxel renderer...');
+    console.log('Creating/updating voxel renderer...');
 
-      try {
-        // Calculate layout
-        const layoutNodes = layoutRef.current.compute(metricsData);
+    try {
+      // Dispose existing renderer
+      if (voxelRendererRef.current) {
+        voxelRendererRef.current.dispose();
+        voxelRendererRef.current = null;
+      }
 
-        // Get scene from scene manager
-        const scene = sceneManager.getScene();
-        if (!scene) {
-          throw new Error('Scene not initialized');
-        }
+      // Calculate layout
+      const layoutNodes = layoutRef.current.compute(metricsData);
 
-        // Create renderer
-        const renderer = new VoxelRenderer(scene, {
-          voxelSize: 2,
-          maxHeight: 100,
-          maxVoxels: 50000,
-        });
+      // Get scene from scene manager
+      const scene = sceneManager.getScene();
+      if (!scene) {
+        throw new Error('Scene not initialized');
+      }
 
-        // Render voxels
-        renderer.render(layoutNodes);
+      // Create renderer with config settings
+      const renderer = new VoxelRenderer(scene, {
+        voxelSize: configSettings.voxelSize,
+        maxHeight: configSettings.maxHeight,
+        maxVoxels: 50000,
+      });
 
-        // Update render stats
-        const stats = renderer.getStats();
-        setRenderStats(stats);
+      // Render voxels
+      renderer.render(layoutNodes);
 
-        // Store renderer ref
-        voxelRendererRef.current = renderer;
+      // Update render stats
+      const stats = renderer.getStats();
+      setRenderStats(stats);
 
-        console.log('Voxel renderer created:', stats);
-      } catch (err) {
-        console.error('Failed to create voxel renderer:', err);
-        if (onError) {
-          onError(err instanceof Error ? err.message : 'Failed to render visualization');
-        }
+      // Store renderer ref
+      voxelRendererRef.current = renderer;
+
+      console.log('Voxel renderer created/updated:', stats);
+    } catch (err) {
+      console.error('Failed to create voxel renderer:', err);
+      if (onError) {
+        onError(err instanceof Error ? err.message : 'Failed to render visualization');
       }
     }
-  }, [sceneManager, sceneInitialized, metricsData, onError]);
+  }, [sceneManager, sceneInitialized, metricsData, configSettings.voxelSize, configSettings.maxHeight, onError]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -195,8 +206,18 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
         case SHORTCUTS.TOGGLE_STATS:
           setStatsVisible((v) => !v);
           break;
+        case SHORTCUTS.TOGGLE_CONFIG:
+          setConfigVisible((v) => !v);
+          break;
         case SHORTCUTS.CLEAR_SELECTION:
-          clearSelection();
+          if (event.key === 'Escape') {
+            // ESC also closes config panel if open
+            if (configVisible) {
+              setConfigVisible(false);
+            } else {
+              clearSelection();
+            }
+          }
           break;
       }
     };
@@ -205,7 +226,7 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [clearSelection]);
+  }, [clearSelection, configVisible]);
 
   // Cleanup renderer on unmount
   useEffect(() => {
@@ -222,6 +243,16 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
   const handleCloseInfoPanel = useCallback(() => {
     clearSelection();
   }, [clearSelection]);
+
+  // Handle config settings change
+  const handleConfigChange = useCallback((newSettings: Config3DSettings) => {
+    setConfigSettings(newSettings);
+  }, []);
+
+  // Toggle config panel
+  const toggleConfigPanel = useCallback(() => {
+    setConfigVisible((v) => !v);
+  }, []);
 
   // Render loading state
   if (isLoading) {
@@ -323,6 +354,14 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
         />
       )}
 
+      {/* Config panel */}
+      <ConfigPanel
+        settings={configSettings}
+        onSettingsChange={handleConfigChange}
+        visible={configVisible}
+        onToggle={toggleConfigPanel}
+      />
+
       {/* Keyboard shortcuts help */}
       <div
         style={{
@@ -337,7 +376,7 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
           userSelect: 'none',
         }}
       >
-        I: Info | S: Stats | ESC: Clear
+        I: Info | S: Stats | C: Config | ESC: Clear
       </div>
     </div>
   );
