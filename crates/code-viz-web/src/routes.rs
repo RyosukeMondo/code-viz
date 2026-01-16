@@ -57,6 +57,7 @@ impl IntoResponse for WebError {
             code_viz_api::ApiError::InvalidPath(_) => (StatusCode::BAD_REQUEST, self.0.to_user_message()),
             code_viz_api::ApiError::AnalysisFailed(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
             code_viz_api::ApiError::DeadCodeFailed(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
+            code_viz_api::ApiError::TransformError(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
             code_viz_api::ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
             code_viz_api::ApiError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
         };
@@ -146,6 +147,7 @@ mod tests {
         // Web AnalyzeRequest must serialize to same JSON as Tauri would expect
         let web_req = AnalyzeRequest {
             path: "/test".to_string(),
+            options: AnalysisOptions::default(),
             request_id: Some("123".to_string()),
         };
 

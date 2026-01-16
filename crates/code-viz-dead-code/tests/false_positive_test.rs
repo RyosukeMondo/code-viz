@@ -103,7 +103,7 @@ fn project5_ground_truth() -> GroundTruth {
 
 #[derive(Debug)]
 struct ValidationResult {
-    project_name: String,
+    _project_name: String,
     true_positives: usize,
     false_positives: usize,
     false_negatives: usize,
@@ -218,7 +218,7 @@ fn validate_project(
     }
 
     ValidationResult {
-        project_name: project_name.to_string(),
+        _project_name: project_name.to_string(),
         true_positives,
         false_positives,
         false_negatives,
