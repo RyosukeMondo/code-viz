@@ -328,6 +328,111 @@ mod tests {
         assert_eq!(b.efferent_coupling, 0);
         assert_eq!(b.afferent_coupling, 1);
     }
+
+    #[test]
+    fn test_instability_calculation() {
+        let fs = MockFileSystem::new()
+            .with_file("stable.ts", "") // No dependencies, only depended upon
+            .with_file("unstable.ts", r#"import { Stable } from "./stable";"#); // Depends on others, nothing depends on it
+
+        let mut files = vec![
+            create_mock_file_metrics("stable.ts", "typescript"),
+            create_mock_file_metrics("unstable.ts", "typescript"),
+        ];
+
+        calculate_coupling(&mut files, &fs, Path::new(""));
+
+        let stable = files
+            .iter()
+            .find(|f| f.path == Path::new("stable.ts"))
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
+            .coupling
+            .as_ref()
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
+        assert_eq!(stable.instability, 0.0); // Maximally stable
+
+        let unstable = files
+            .iter()
+            .find(|f| f.path == Path::new("unstable.ts"))
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
+            .coupling
+            .as_ref()
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
+        assert_eq!(unstable.instability, 1.0); // Maximally unstable
+    }
+
+    #[test]
+    fn test_parse_error_handling() {
+        let fs = MockFileSystem::new()
+            .with_file("valid.ts", r#"import { B } from "./b";"#)
+            .with_file("invalid.ts", "import {{{"); // Invalid syntax
+
+        let mut files = vec![
+            create_mock_file_metrics("valid.ts", "typescript"),
+            create_mock_file_metrics("invalid.ts", "typescript"),
+        ];
+
+        calculate_coupling(&mut files, &fs, Path::new(""));
+
+        // Should handle parse errors gracefully and continue
+        let valid = files
+            .iter()
+            .find(|f| f.path == Path::new("valid.ts"))
+            .unwrap(); // Test-only unwrap: test data is guaranteed to have this file
+        assert!(valid.coupling.is_some());
+    }
+
+    #[test]
+    fn test_unsupported_language() {
+        let fs = MockFileSystem::new()
+            .with_file("file.unknown", "some code");
+
+        let mut files = vec![
+            create_mock_file_metrics("file.unknown", "unknown"),
+        ];
+
+        calculate_coupling(&mut files, &fs, Path::new(""));
+
+        // Should skip unsupported languages gracefully
+        let file = &files[0];
+        assert!(file.coupling.is_some()); // Gets default coupling of 0/0/0
+    }
+
+    #[test]
+    fn test_circular_dependencies() {
+        let fs = MockFileSystem::new()
+            .with_file("a.ts", r#"import { B } from "./b";"#)
+            .with_file("b.ts", r#"import { A } from "./a";"#);
+
+        let mut files = vec![
+            create_mock_file_metrics("a.ts", "typescript"),
+            create_mock_file_metrics("b.ts", "typescript"),
+        ];
+
+        calculate_coupling(&mut files, &fs, Path::new(""));
+
+        let a = files
+            .iter()
+            .find(|f| f.path == Path::new("a.ts"))
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
+            .coupling
+            .as_ref()
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
+        assert_eq!(a.efferent_coupling, 1);
+        assert_eq!(a.afferent_coupling, 1);
+        assert_eq!(a.instability, 0.5); // Balanced
+
+        let b = files
+            .iter()
+            .find(|f| f.path == Path::new("b.ts"))
+            .unwrap() // Test-only unwrap: test data is guaranteed to have this file
+            .coupling
+            .as_ref()
+            .unwrap(); // Test-only unwrap: coupling is calculated for all test files
+        assert_eq!(b.efferent_coupling, 1);
+        assert_eq!(b.afferent_coupling, 1);
+        assert_eq!(b.instability, 0.5); // Balanced
+    }
 }
 
 /// A simple path normalization function to handle `.` and `..`.
