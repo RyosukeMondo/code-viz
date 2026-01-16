@@ -39,3 +39,5 @@ assert_cmd.workspace = true
 insta = { workspace = true }
 predicates.workspace = true
 tempfile = { workspace = true }
+code-viz-commands = { path = "../code-viz-commands" }
+tokio = { version = "1", features = ["rt", "sync", "macros", "test-util"] }

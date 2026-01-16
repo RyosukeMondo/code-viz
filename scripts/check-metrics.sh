@@ -65,72 +65,26 @@ check_function_size() {
     local file=$1
 
     if [[ $file == *.rs ]]; then
-        # Simple heuristic: look for functions with excessive lines between fn and closing }
-        # This is a basic check - may have false positives/negatives
-        local in_function=0
-        local function_start_line=0
-        local function_name=""
-        local brace_count=0
-        local line_num=0
-        local max_lines=2000  # Safety limit to prevent infinite loops
+        # Use the dedicated find-long-functions.sh script for accurate checking
+        local output
+        output=$(./scripts/find-long-functions.sh 2>&1 | grep "^$file:" || true)
 
-        while IFS= read -r line; do
-            ((line_num++))
-
-            # Safety check: prevent infinite loops
-            if [ $line_num -gt $max_lines ]; then
-                break
-            fi
-
-            # Skip comments and blank lines
-            if [[ $line =~ ^[[:space:]]*// ]] || [[ -z "${line// }" ]]; then
-                continue
-            fi
-
-            # Detect function start (simplified - may need improvement)
-            if [[ $line =~ ^[[:space:]]*fn[[:space:]]+([a-zA-Z0-9_]+) ]] || \
-               [[ $line =~ ^[[:space:]]*(pub[[:space:]]+)?fn[[:space:]]+([a-zA-Z0-9_]+) ]]; then
-                if [ $in_function -eq 0 ]; then
-                    in_function=1
-                    function_start_line=$line_num
-                    function_name="${BASH_REMATCH[1]}"
-                    if [ -z "$function_name" ]; then
-                        function_name="${BASH_REMATCH[2]}"
-                    fi
-                    brace_count=0
-                fi
-            fi
-
-            # Count braces
-            if [ $in_function -eq 1 ]; then
-                local open_braces="${line//[^\{]/}"
-                local close_braces="${line//[^\}]/}"
-                ((brace_count += ${#open_braces} - ${#close_braces}))
-
-                # Safety check: if brace_count goes negative, reset
-                if [ $brace_count -lt 0 ]; then
-                    brace_count=0
-                    in_function=0
-                    continue
-                fi
-
-                # Function ended
-                if [ $brace_count -eq 0 ] && [[ $line =~ \} ]]; then
-                    local function_lines=$((line_num - function_start_line + 1))
-
-                    if [ "$function_lines" -gt 100 ]; then
-                        echo "${RED}✗${NC} $file:$function_start_line: function '$function_name' is $function_lines lines (max 100)"
+        if [ -n "$output" ]; then
+            while IFS= read -r line; do
+                # Extract line count from format "file:line: N lines"
+                if [[ $line =~ :\ ([0-9]+)\ lines$ ]]; then
+                    local lines="${BASH_REMATCH[1]}"
+                    if [ "$lines" -gt 100 ]; then
+                        echo "${RED}✗${NC} $line (max 100)"
                         echo "  → Break this function into smaller helpers"
                         ((ERRORS++))
-                    elif [ "$function_lines" -gt 50 ]; then
-                        echo "${YELLOW}⚠${NC} $file:$function_start_line: function '$function_name' is $function_lines lines (recommended max 50)"
+                    elif [ "$lines" -gt 50 ]; then
+                        echo "${YELLOW}⚠${NC} $line (recommended max 50)"
                         ((WARNINGS++))
                     fi
-
-                    in_function=0
                 fi
-            fi
-        done < "$file"
+            done <<< "$output"
+        fi
     fi
 }
 
