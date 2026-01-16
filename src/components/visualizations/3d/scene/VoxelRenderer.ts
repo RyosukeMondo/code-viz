@@ -12,6 +12,7 @@ import type { LayoutNode, VoxelMapping, RenderStats, VoxelRendererOptions } from
 import { VoxelOptimizer } from './VoxelOptimizer';
 import { VoxelVisibilityManager } from './VoxelVisibilityManager';
 import { VoxelHighlighter } from './VoxelHighlighter';
+import { estimateSceneMemory } from '../utils/memoryMonitor';
 
 /**
  * VoxelRenderer class that generates and renders voxel buildings using InstancedMesh
@@ -344,18 +345,16 @@ export class VoxelRenderer {
   }
 
   /**
-   * Estimates memory usage in bytes
+   * Estimates memory usage in bytes using comprehensive scene memory estimation
    */
   private _estimateMemoryUsage(): number {
     if (!this.instancedMesh) return 0;
 
-    const instanceCount = this.instancedMesh.count;
-
-    const bytesPerInstance = 64 + 12;
-
-    const geometryBytes = 24 * 3 * 4;
-
-    return instanceCount * bytesPerInstance + geometryBytes;
+    return estimateSceneMemory({
+      totalVoxels: this.instancedMesh.count,
+      instancedMeshCount: 1, // Single instanced mesh
+      totalBuildings: this.layoutNodes.length,
+    });
   }
 
   /**

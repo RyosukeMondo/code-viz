@@ -4,9 +4,15 @@
  * @module components/visualizations/3d/ui/StatisticsOverlay
  */
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import type { RenderStats } from '../types';
 import Stats from 'stats.js';
+import {
+  MemoryMonitor,
+  type MemoryWarning,
+  type MemoryInfo,
+  formatMemorySize,
+} from '../utils/memoryMonitor';
 
 /**
  * Position for the statistics overlay
@@ -25,6 +31,12 @@ export interface StatisticsOverlayProps {
   showFPS?: boolean;
   /** FPS threshold for performance warnings */
   fpsWarningThreshold?: number;
+  /** Whether to show memory monitoring */
+  showMemoryMonitor?: boolean;
+  /** Memory warning threshold percentage (default: 70) */
+  memoryWarningThreshold?: number;
+  /** Memory critical threshold percentage (default: 85) */
+  memoryCriticalThreshold?: number;
 }
 
 /**
@@ -63,11 +75,19 @@ export const StatisticsOverlay: React.FC<StatisticsOverlayProps> = ({
   position = 'top-right',
   showFPS = true,
   fpsWarningThreshold = 30,
+  showMemoryMonitor = true,
+  memoryWarningThreshold = 70,
+  memoryCriticalThreshold = 85,
 }) => {
   const fpsCounterRef = useRef<Stats | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastUpdateRef = useRef<number>(0);
   const currentFPSRef = useRef<number>(60);
+  const memoryMonitorRef = useRef<MemoryMonitor | null>(null);
+
+  // Memory monitoring state
+  const [memoryWarning, setMemoryWarning] = useState<MemoryWarning | null>(null);
+  const [memoryInfo, setMemoryInfo] = useState<MemoryInfo | null>(null);
 
   // Initialize FPS counter
   useEffect(() => {
@@ -119,6 +139,44 @@ export const StatisticsOverlay: React.FC<StatisticsOverlayProps> = ({
       fpsCounterRef.current = null;
     };
   }, [showFPS]);
+
+  // Initialize memory monitor
+  useEffect(() => {
+    if (!showMemoryMonitor) {
+      return;
+    }
+
+    const monitor = new MemoryMonitor({
+      warningThreshold: memoryWarningThreshold,
+      criticalThreshold: memoryCriticalThreshold,
+    });
+
+    // Subscribe to memory warnings
+    const unsubscribe = monitor.onWarning((warning) => {
+      setMemoryWarning(warning);
+    });
+
+    // Update memory info periodically
+    const updateMemoryInfo = () => {
+      setMemoryInfo(monitor.getCurrentInfo());
+    };
+
+    // Start monitoring (check every 5 seconds)
+    monitor.start(5000);
+    updateMemoryInfo();
+
+    // Update memory info every 2 seconds for display
+    const intervalId = window.setInterval(updateMemoryInfo, 2000);
+
+    memoryMonitorRef.current = monitor;
+
+    return () => {
+      unsubscribe();
+      monitor.stop();
+      clearInterval(intervalId);
+      memoryMonitorRef.current = null;
+    };
+  }, [showMemoryMonitor, memoryWarningThreshold, memoryCriticalThreshold]);
 
   // Check for low FPS
   const showFPSWarning = useMemo(
@@ -226,6 +284,19 @@ export const StatisticsOverlay: React.FC<StatisticsOverlayProps> = ({
         </div>
       </div>
 
+      {/* Memory Info */}
+      {showMemoryMonitor && memoryInfo && memoryInfo.isSupported && (
+        <div style={{ marginBottom: '12px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <div style={labelStyles}>Heap Memory</div>
+          <div style={{ ...valueStyles, fontSize: '14px', marginBottom: '4px' }}>
+            {formatMemorySize(memoryInfo.usedHeapSize)} / {formatMemorySize(memoryInfo.heapSizeLimit)}
+          </div>
+          <div style={{ ...labelStyles, fontSize: '9px' }}>
+            {memoryInfo.usagePercent.toFixed(1)}% used
+          </div>
+        </div>
+      )}
+
       {/* FPS Warning */}
       {showFPSWarning && (
         <div
@@ -241,6 +312,40 @@ export const StatisticsOverlay: React.FC<StatisticsOverlayProps> = ({
           role="alert"
         >
           ⚠ Performance Warning: FPS below {fpsWarningThreshold}
+        </div>
+      )}
+
+      {/* Memory Warning */}
+      {memoryWarning && (
+        <div
+          style={{
+            padding: '10px',
+            marginBottom: '8px',
+            backgroundColor: memoryWarning.level === 'critical'
+              ? 'rgba(239, 68, 68, 0.25)'
+              : 'rgba(251, 191, 36, 0.2)',
+            border: memoryWarning.level === 'critical'
+              ? '1px solid rgba(239, 68, 68, 0.6)'
+              : '1px solid rgba(251, 191, 36, 0.5)',
+            borderRadius: '4px',
+            fontSize: '11px',
+            color: memoryWarning.level === 'critical' ? '#ff6b6b' : '#fbbf24',
+          }}
+          role="alert"
+        >
+          <div style={{ fontWeight: 600, marginBottom: '6px' }}>
+            {memoryWarning.level === 'critical' ? '🔴' : '⚠️'} {memoryWarning.message}
+          </div>
+          {memoryWarning.suggestions.length > 0 && (
+            <div style={{ fontSize: '10px', opacity: 0.9 }}>
+              <div style={{ marginBottom: '3px', fontWeight: 500 }}>Suggestions:</div>
+              <ul style={{ margin: 0, paddingLeft: '16px' }}>
+                {memoryWarning.suggestions.slice(0, 2).map((suggestion, idx) => (
+                  <li key={idx} style={{ marginBottom: '2px' }}>{suggestion}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
