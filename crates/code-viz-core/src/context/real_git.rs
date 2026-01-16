@@ -60,7 +60,7 @@ fn get_or_cache_commit_info<'a>(
         );
         cache.insert(commit_id, info);
     }
-    Ok(cache.get(&commit_id).unwrap())
+    cache.get(&commit_id).ok_or_else(|| anyhow!("Commit info not in cache after insertion"))
 }
 
 #[async_trait]
