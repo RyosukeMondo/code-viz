@@ -225,7 +225,15 @@ async fn main() -> anyhow::Result<()> {
             let fs = RealFileSystem::new();
             let git = RealGit::new();
 
-            commands::dead_code::run(path, format, min_confidence, exclude, verbose, threshold, output, ctx, fs, git).await?;
+            let config = commands::dead_code::DeadCodeConfig {
+                path,
+                format,
+                min_confidence,
+                verbose,
+                threshold,
+                output,
+            };
+            commands::dead_code::run(config, ctx, fs, git).await?;
         }
         Commands::Timeline { file, since } => {
             let git = RealGit::new();

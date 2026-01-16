@@ -19,18 +19,29 @@ pub enum DeadCodeError {
 
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 
+pub struct DeadCodeConfig {
+    pub path: PathBuf,
+    pub format: String,
+    pub min_confidence: u8,
+    pub verbose: bool,
+    pub threshold: Option<String>,
+    pub output: Option<PathBuf>,
+}
+
 pub async fn run(
-    path: PathBuf,
-    format: String,
-    min_confidence: u8,
-    _exclude: Vec<String>,
-    verbose: bool,
-    threshold: Option<String>,
-    output: Option<PathBuf>,
+    config: DeadCodeConfig,
     ctx: impl AppContext,
     fs: impl FileSystem + Clone,
     git: impl GitProvider,
 ) -> Result<(), DeadCodeError> {
+    let DeadCodeConfig {
+        path,
+        format,
+        min_confidence,
+        verbose,
+        threshold,
+        output,
+    } = config;
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
     if verbose {
