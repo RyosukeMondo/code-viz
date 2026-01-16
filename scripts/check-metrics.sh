@@ -5,6 +5,7 @@
 # Exit codes: 0 = pass, 1 = fail
 
 set -e
+set -o pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -112,30 +113,30 @@ check_unwrap_usage() {
         local in_test_module=0
         local line_num=0
 
-            while IFS= read -r line; do
-                ((line_num++))
+        while IFS= read -r line; do
+            ((line_num++))
 
-                # Check for test module start
-                if [[ $line =~ \#\[cfg\(test\)\] ]]; then
-                    in_test_module=1
-                fi
+            # Check for test module start
+            if [[ $line =~ \#\[cfg\(test\)\] ]]; then
+                in_test_module=1
+            fi
 
-                # Check for module end (simplified)
-                if [[ $line =~ ^[[:space:]]*\}[[:space:]]*$ ]] && [ $in_test_module -eq 1 ]; then
-                    in_test_module=0
-                fi
+            # Check for module end (simplified)
+            if [[ $line =~ ^[[:space:]]*\}[[:space:]]*$ ]] && [ $in_test_module -eq 1 ]; then
+                in_test_module=0
+            fi
 
-                # Check for unwrap/expect outside test modules
-                if [ $in_test_module -eq 0 ] && [[ $line =~ \.unwrap\(\)|\.expect\( ]]; then
-                    # Check for "Test-only unwrap:" comment
-                    if ! [[ $line =~ Test-only\ unwrap: ]]; then
-                        echo "${RED}✗${NC} $file:$line_num: found unwrap()/expect() in production code"
-                        echo "  → Use proper error handling with Result and ?"
-                        echo "  → See MIGRATION.md for patterns"
-                        has_unwrap=1
-                    fi
+            # Check for unwrap/expect outside test modules
+            if [ $in_test_module -eq 0 ] && [[ $line =~ \.unwrap\(\)|\.expect\( ]]; then
+                # Check for "Test-only unwrap:" comment
+                if ! [[ $line =~ Test-only\ unwrap: ]]; then
+                    echo "${RED}✗${NC} $file:$line_num: found unwrap()/expect() in production code"
+                    echo "  → Use proper error handling with Result and ?"
+                    echo "  → See MIGRATION.md for patterns"
+                    has_unwrap=1
                 fi
-            done < "$file"
+            fi
+        done < "$file"
 
         if [ $has_unwrap -eq 1 ]; then
             ((ERRORS++))

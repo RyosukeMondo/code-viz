@@ -1078,7 +1078,7 @@
   | **Success**: ✅ All error variants tested, ✅ Error messages checked, ✅ Graceful degradation validated, ✅ Tests pass
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (error scenario tests, assertion helpers, failure mode coverage), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 30. Add edge case tests
+- [x] 30. Add edge case tests
   - **Files**: Test modules for edge case scenarios
   - **Purpose**: Test boundary conditions and unusual inputs
   - **Requirements**: FR7, NFR1
@@ -1114,7 +1114,7 @@
   | **Success**: ✅ All edge cases tested, ✅ Property-based tests added, ✅ No panics on extreme inputs, ✅ Tests pass
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (edge case tests, property-based tests, invariant checks), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 31. Run coverage reports
+- [x] 31. Run coverage reports
   - **Purpose**: Generate coverage reports to identify gaps
   - **Requirements**: NFR1
   - **Leverage**: Tests from tasks 26-30
