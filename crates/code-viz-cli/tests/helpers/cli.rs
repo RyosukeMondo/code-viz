@@ -24,21 +24,6 @@ impl CliTest {
     pub fn analyze(&self, path: &Path) -> CliCommand {
         CliCommand::new(&self.binary_path, "analyze", path)
     }
-
-    /// Run code-viz compare command
-    pub fn compare(&self, path: &Path, branches: &str) -> CliCommand {
-        let mut cmd = CliCommand::new(&self.binary_path, "compare", path);
-        cmd.arg(branches);
-        cmd
-    }
-
-    /// Run code-viz diff command
-    pub fn diff(&self, old: &Path, new: &Path) -> CliCommand {
-        let mut cmd = CliCommand::new(&self.binary_path, "diff", Path::new("."));
-        cmd.command.arg(old);
-        cmd.command.arg(new);
-        cmd
-    }
 }
 
 impl Default for CliTest {
@@ -60,18 +45,8 @@ impl CliCommand {
         Self { command }
     }
 
-    pub fn arg(&mut self, arg: &str) -> &mut Self {
-        self.command.arg(arg);
-        self
-    }
-
     pub fn format(&mut self, format: &str) -> &mut Self {
         self.command.arg("--format").arg(format);
-        self
-    }
-
-    pub fn verbose(&mut self) -> &mut Self {
-        self.command.arg("--verbose");
         self
     }
 
@@ -94,11 +69,6 @@ impl CliCommand {
 
     pub fn ai_commits(&mut self) -> &mut Self {
         self.command.arg("--ai-commits");
-        self
-    }
-
-    pub fn coverage_report(&mut self, path: &Path) -> &mut Self {
-        self.command.arg("--coverage-report").arg(path);
         self
     }
 
@@ -131,14 +101,5 @@ impl CliCommand {
             );
         }
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    }
-
-    /// Execute and expect failure
-    pub fn expect_failure(&mut self) -> Result<String> {
-        let output = self.run()?;
-        if output.status.success() {
-            anyhow::bail!("Command unexpectedly succeeded");
-        }
-        Ok(String::from_utf8_lossy(&output.stderr).to_string())
     }
 }
