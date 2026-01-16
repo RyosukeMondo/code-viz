@@ -1225,7 +1225,7 @@
   | **Success**: ✅ No panics on random input, ✅ 1000+ test cases pass, ✅ Properties validated, ✅ Fast execution
   | **After completing this task**: (1) Mark this task as in-progress [-] in tasks.md before starting, (2) Implement the changes, (3) Use log-implementation tool to record detailed artifacts (property-based tests, input generators, invariant checks), (4) Mark this task as complete [x] in tasks.md
 
-- [ ] 34. Add performance regression tests
+- [x] 34. Add performance regression tests
   - **Files**: `benches/analysis_benchmarks.rs`
   - **Purpose**: Ensure refactoring doesn't degrade performance
   - **Requirements**: NFR2

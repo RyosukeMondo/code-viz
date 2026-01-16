@@ -101,8 +101,8 @@ echo "🚫 Checking for unwrap() in production code..."
 check_unwrap_usage() {
     local file=$1
 
-    # Skip test files
-    if [[ $file == *test*.rs ]] || [[ $file == */tests/* ]]; then
+    # Skip test files and benchmarks
+    if [[ $file == *test*.rs ]] || [[ $file == */tests/* ]] || [[ $file == */benches/* ]]; then
         return 0
     fi
 
