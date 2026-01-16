@@ -16,9 +16,9 @@ fn test_e2e_watch_mode() {
     let file = temp.child("src/main.ts");
     file.write_str("function a() {}").unwrap();
 
-    let bin_path = cargo_bin!("code-viz-cli");
-    let mut cmd = std::process::Command::new(bin_path);
-    let mut child = cmd
+    let cmd = cargo_bin_cmd!("code-viz-cli");
+    let bin_path = cmd.get_program();
+    let mut child = std::process::Command::new(bin_path)
         .arg("watch")
         .arg(temp.path())
         .stdout(Stdio::piped())
