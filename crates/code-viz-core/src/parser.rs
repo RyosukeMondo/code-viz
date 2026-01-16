@@ -443,4 +443,110 @@ mod tests {
         let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
         insta::assert_debug_snapshot!(tree.root_node());
     }
+
+    #[test]
+    fn test_count_functions_rust() {
+        let parser = get_parser("rust").unwrap(); // Test-only unwrap: test data is known to be valid
+        let source = r#"
+            fn main() {}
+            fn helper() {}
+            impl MyStruct {
+                fn method(&self) {}
+            }
+        "#;
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_count_functions_python() {
+        let parser = get_parser("python").unwrap(); // Test-only unwrap: test data is known to be valid
+        let source = r#"
+def main():
+    pass
+
+def helper():
+    pass
+
+class MyClass:
+    def method(self):
+        pass
+        "#;
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_count_functions_go() {
+        let parser = get_parser("go").unwrap(); // Test-only unwrap: test data is known to be valid
+        let source = r#"
+package main
+
+func main() {}
+func helper() {}
+func (s *MyStruct) method() {}
+        "#;
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_count_functions_cpp() {
+        let parser = get_parser("cpp").unwrap(); // Test-only unwrap: test data is known to be valid
+        let source = r#"
+int main() { return 0; }
+void helper() {}
+class MyClass {
+    void method() {}
+};
+        "#;
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_parse_error_handling() {
+        let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
+        let source = "function incomplete("; // Severely malformed code
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: tree-sitter always produces a tree
+        assert!(tree.root_node().has_error());
+    }
+
+    #[test]
+    fn test_unsupported_language() {
+        let result = get_parser("fortran");
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Unsupported"));
+        }
+    }
+
+    #[test]
+    fn test_empty_source() {
+        let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
+        let source = "";
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: empty source is valid
+        assert!(!tree.root_node().has_error());
+        let count = parser.count_functions(&tree);
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_find_comment_ranges_typescript() {
+        let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
+        let source = r#"
+// Line comment
+function foo() {
+    /* Block comment */
+    return 42;
+}
+        "#;
+        let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
+        let comments = parser.find_comment_ranges(&tree);
+        assert!(comments.len() >= 2); // At least 2 comments
+    }
 }
