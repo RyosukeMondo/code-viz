@@ -4,9 +4,8 @@
  * @module components/visualizations/Voxel3DView
  */
 
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import { useThreeScene } from './3d/hooks/useThreeScene';
-import { useMetricsData, type DataSource } from './3d/hooks/useMetricsData';
 import { useSelection } from './3d/hooks/useSelection';
 import { InfoPanel } from './3d/ui/InfoPanel';
 import { StatisticsOverlay } from './3d/ui/StatisticsOverlay';
@@ -14,14 +13,14 @@ import { ConfigPanel } from './3d/ui/ConfigPanel';
 import { loadSettings, type Config3DSettings } from './3d/ui/configSettings';
 import { VoxelRenderer } from './3d/scene/VoxelRenderer';
 import { TreemapLayout } from './3d/layout/TreemapLayout';
-import type { RenderStats } from './3d/types';
+import type { RenderStats, HierarchyNode } from './3d/types';
+import { useMetrics, useLoading, useError } from '@/store/analysisStore';
+import type { TreeNode } from '@/types/bindings';
 
 /**
  * Props for Voxel3DView component
  */
 export interface Voxel3DViewProps {
-  /** Data source for metrics */
-  dataSource?: DataSource;
   /** Project key for camera persistence */
   projectKey?: string;
   /** Whether to show statistics overlay */
@@ -30,10 +29,25 @@ export interface Voxel3DViewProps {
   showInfoPanel?: boolean;
   /** Target FPS for rendering */
   targetFPS?: number;
-  /** Callback when data loads successfully */
-  onDataLoaded?: () => void;
-  /** Callback when an error occurs */
-  onError?: (error: string) => void;
+}
+
+/**
+ * Convert TreeNode from analysisStore to HierarchyNode for 3D visualization
+ */
+function convertTreeNodeToHierarchyNode(node: TreeNode): HierarchyNode {
+  return {
+    name: node.name,
+    type: node.type,
+    path: node.path,
+    children: node.children?.map(convertTreeNodeToHierarchyNode),
+    metrics: {
+      loc: node.loc,
+      complexity: node.complexity,
+      functions: node.functionCount || 0,
+      lastModified: node.lastModified,
+      churn: 0,
+    },
+  };
 }
 
 /**
@@ -65,13 +79,10 @@ const SHORTCUTS = {
  * - Performance monitoring
  */
 export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
-  dataSource,
   projectKey = 'default',
   showStatistics = true,
   showInfoPanel = true,
   targetFPS = 60,
-  onDataLoaded,
-  onError,
 }) => {
   // UI state
   const [infoPanelVisible, setInfoPanelVisible] = useState(showInfoPanel);
@@ -86,43 +97,21 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
   const voxelRendererRef = useRef<VoxelRenderer | null>(null);
   const layoutRef = useRef<TreemapLayout | null>(null);
 
-  // Check for test data in window (for E2E testing)
-  const getDataSource = (): DataSource | undefined => {
-    if (dataSource) {
-      return dataSource;
-    }
+  // Get data from analysisStore
+  const storeMetrics = useMetrics();
+  const storeLoading = useLoading();
+  const storeError = useError();
 
-    // Check for test data injected by E2E tests
-    const win = window as typeof window & { __TEST_METRICS_DATA__?: object };
-    if (win.__TEST_METRICS_DATA__) {
-      return {
-        type: 'json',
-        data: win.__TEST_METRICS_DATA__,
-      };
-    }
+  // Convert TreeNode to HierarchyNode
+  const metricsData = useMemo(() => {
+    if (!storeMetrics) return null;
+    return convertTreeNodeToHierarchyNode(storeMetrics);
+  }, [storeMetrics]);
 
-    return undefined;
-  };
-
-  // Load metrics data
-  const {
-    data: metricsData,
-    isLoading,
-    isError,
-    error: metricsError,
-  } = useMetricsData({
-    source: getDataSource(),
-    onSuccess: () => {
-      if (onDataLoaded) {
-        onDataLoaded();
-      }
-    },
-    onError: (errorMsg) => {
-      if (onError) {
-        onError(errorMsg);
-      }
-    },
-  });
+  // Use store loading/error states
+  const isLoading = storeLoading;
+  const isError = !!storeError;
+  const metricsError = storeError;
 
   // Selection state
   const {
@@ -154,9 +143,6 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
     },
     onError: (err) => {
       console.error('Scene initialization error:', err);
-      if (onError) {
-        onError(err.message);
-      }
     },
   });
 
@@ -204,11 +190,8 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
       console.log('Voxel renderer created/updated:', stats);
     } catch (err) {
       console.error('Failed to create voxel renderer:', err);
-      if (onError) {
-        onError(err instanceof Error ? err.message : 'Failed to render visualization');
-      }
     }
-  }, [sceneManager, sceneInitialized, metricsData, configSettings.voxelSize, configSettings.maxHeight, onError]);
+  }, [sceneManager, sceneInitialized, metricsData, configSettings.voxelSize, configSettings.maxHeight]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -290,6 +273,41 @@ export const Voxel3DView: React.FC<Voxel3DViewProps> = ({
           <div>Loading visualization...</div>
           <div style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>
             This may take a moment for large codebases
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render empty state (no data analyzed yet)
+  if (!metricsData && !isLoading && !isError) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f5f5f5',
+        }}
+      >
+        <div
+          style={{
+            textAlign: 'center',
+            maxWidth: '500px',
+            padding: '20px',
+          }}
+        >
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏙️</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px', color: '#333' }}>
+            No Repository Analyzed
+          </div>
+          <div style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+            Go to the Config tab to analyze a repository first.
+          </div>
+          <div style={{ color: '#999', fontSize: '12px' }}>
+            Once analyzed, your codebase will be visualized as a 3D city.
           </div>
         </div>
       </div>

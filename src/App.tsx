@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom'
+import { ConfigView } from '@/features/config/ConfigView'
 import { AnalysisView } from '@/features/analysis/AnalysisView'
 import { Voxel3DView } from '@/components/visualizations/Voxel3DView'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
@@ -28,7 +29,7 @@ function App() {
             <div className="px-4 py-3 flex items-center justify-between">
               <nav className="flex gap-1">
                 <NavLink
-                  to="/treemap"
+                  to="/config"
                   className={({ isActive }) =>
                     `px-4 py-2 rounded-lg font-medium transition-colors ${
                       isActive
@@ -37,7 +38,19 @@ function App() {
                     }`
                   }
                 >
-                  Treemap View
+                  Config
+                </NavLink>
+                <NavLink
+                  to="/2d"
+                  className={({ isActive }) =>
+                    `px-4 py-2 rounded-lg font-medium transition-colors ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`
+                  }
+                >
+                  2D
                 </NavLink>
                 <NavLink
                   to="/3d"
@@ -49,7 +62,7 @@ function App() {
                     }`
                   }
                 >
-                  3D View
+                  3D
                 </NavLink>
               </nav>
 
@@ -77,8 +90,9 @@ function App() {
           {/* Main Content */}
           <main className="flex-1 overflow-hidden">
             <Routes>
-              <Route path="/" element={<Navigate to="/treemap" replace />} />
-              <Route path="/treemap" element={<AnalysisView />} />
+              <Route path="/" element={<Navigate to="/config" replace />} />
+              <Route path="/config" element={<ConfigView />} />
+              <Route path="/2d" element={<AnalysisView />} />
               <Route path="/3d" element={<Voxel3DView />} />
             </Routes>
           </main>
