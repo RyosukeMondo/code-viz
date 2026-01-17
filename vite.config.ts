@@ -11,8 +11,8 @@ export default defineConfig({
 
   // Tauri expects a fixed port, fail if that port is not available
   server: {
-    host: '0.0.0.0', // Allow SSH tunnel access
-    port: 5173,
+    host: process.env.VITE_HOST || '0.0.0.0', // Allow SSH tunnel access
+    port: parseInt(process.env.VITE_PORT || '5180'),
     strictPort: true,
     watch: {
       // Ignore Rust build directories to prevent file watcher limit errors
