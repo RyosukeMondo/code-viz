@@ -55,6 +55,8 @@ interface UseAnalysisResult {
 export function useAnalysis(): UseAnalysisResult {
   // Get store state and actions
   const metrics = useAnalysisStore((state) => state.metrics);
+  const loading = useAnalysisStore((state) => state.loading);
+  const error = useAnalysisStore((state) => state.error);
   const setMetrics = useAnalysisStore((state) => state.setMetrics);
   const setLoading = useAnalysisStore((state) => state.setLoading);
   const setError = useAnalysisStore((state) => state.setError);
@@ -137,8 +139,8 @@ export function useAnalysis(): UseAnalysisResult {
 
   return {
     data: metrics,
-    loading: useAnalysisStore((state) => state.loading),
-    error: useAnalysisStore((state) => state.error),
+    loading,
+    error,
     analyze,
     refetch,
     reset,
