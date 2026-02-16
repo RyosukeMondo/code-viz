@@ -229,8 +229,8 @@ fn bench_hotspot_analysis(c: &mut Criterion) {
                 dead_code_loc: None,
                 dead_code_ratio: None,
                 code_churn: Some(CodeChurn {
-                    added_lines: (i * 20) as usize,
-                    deleted_lines: (i * 10) as usize,
+                    added_lines: i * 20,
+                    deleted_lines: i * 10,
                 }),
                 coupling: None,
                 ai_bloat_index: None,
