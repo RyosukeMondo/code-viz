@@ -7,7 +7,6 @@ use std::path::PathBuf;
 // Since CLI is a binary crate, we need to access the functions directly
 // We'll compile them into this test file for validation
 
-
 /// Format dead code result as pretty-printed JSON
 fn format_json(result: &DeadCodeResult) -> Result<String, String> {
     serde_json::to_string_pretty(result).map_err(|_| "JSON serialization failed".to_string())
