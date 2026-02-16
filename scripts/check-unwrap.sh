@@ -21,6 +21,7 @@ rg --type rust '\.(unwrap|expect)\(' crates/ \
   --glob '!**/*test*.rs' \
   --glob '!**/tests/**' \
   --glob '!**/build.rs' \
+  --glob '!**/benches/**' \
   --glob '!**/mocks/**' \
   --glob '!**/mock_*.rs' \
   --line-number \
@@ -51,6 +52,16 @@ while IFS= read -r line; do
   # Extract file and line number
   FILE=$(echo "$line" | cut -d: -f1)
   LINE_NUM=$(echo "$line" | cut -d: -f2)
+
+  # Check if this is a multi-line expect("BUG:...") - look at next line in file
+  LINE_CONTENT=$(echo "$line" | cut -d: -f3-)
+  if echo "$LINE_CONTENT" | grep -q "\.expect(\$"; then
+    NEXT_LINE_NUM=$((LINE_NUM + 1))
+    NEXT_LINE=$(sed -n "${NEXT_LINE_NUM}p" "$FILE")
+    if echo "$NEXT_LINE" | grep -q "BUG:"; then
+      continue
+    fi
+  fi
 
   # Check if this line is inside a #[test] function or #[cfg(test)] module
   # Strategy: Check if the file has a #[cfg(test)] module before this line
