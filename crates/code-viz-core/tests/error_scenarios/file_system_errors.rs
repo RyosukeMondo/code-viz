@@ -52,7 +52,7 @@ fn test_file_write_error() {
 
 #[test]
 fn test_disk_full_error() {
-    let io_err = io::Error::new(io::ErrorKind::Other, "no space left on device");
+    let io_err = io::Error::other("no space left on device");
     let path = PathBuf::from("output/analysis.json");
     let error = CodeVizError::file_write(&path, io_err);
 
@@ -69,7 +69,7 @@ fn test_disk_full_error() {
 
 #[test]
 fn test_too_many_open_files_error() {
-    let io_err = io::Error::new(io::ErrorKind::Other, "too many open files");
+    let io_err = io::Error::other("too many open files");
     let path = PathBuf::from("src/large_project/file_999.rs");
     let error = CodeVizError::file_read(&path, io_err);
 

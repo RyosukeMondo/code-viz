@@ -232,7 +232,7 @@ mod tests {
         let file = create_test_file("test.rs", 100, 10, 50, 30);
 
         let detector = HotspotDetector::new(10);
-        let analysis = detector.calculate(&vec![file.clone()]);
+        let analysis = detector.calculate(std::slice::from_ref(&file));
 
         assert_eq!(analysis.hotspots.len(), 1);
         let hotspot = &analysis.hotspots[0];

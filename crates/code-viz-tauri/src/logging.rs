@@ -52,6 +52,6 @@ mod tests {
         // Note: We can't actually call init_logging() multiple times in tests
         // as it can only be initialized once per process
         // This test just verifies the module compiles
-        assert!(true);
+        // Compilation-only test - no runtime assertions needed
     }
 }

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::hotspot::HotspotDetector;
 use code_viz_core::models::{CodeChurn, FileMetrics};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 fn create_file_with_churn(
@@ -181,13 +181,13 @@ fn test_complexity_score_calculation() {
     let complex = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("complex.rs"))
+        .find(|h| h.path == Path::new("complex.rs"))
         .unwrap(); // Test-only: known fixture
 
     let simple = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("simple.rs"))
+        .find(|h| h.path == Path::new("simple.rs"))
         .unwrap(); // Test-only: known fixture
 
     assert!(complex.complexity_score > simple.complexity_score);
@@ -208,13 +208,13 @@ fn test_size_score_calculation() {
     let large = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("large.rs"))
+        .find(|h| h.path == Path::new("large.rs"))
         .unwrap(); // Test-only: known fixture
 
     let small = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("small.rs"))
+        .find(|h| h.path == Path::new("small.rs"))
         .unwrap(); // Test-only: known fixture
 
     assert!(large.size_score > small.size_score);

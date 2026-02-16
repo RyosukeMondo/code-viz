@@ -283,7 +283,7 @@ mod resource_constraint_errors {
     #[test]
     fn test_disk_full_frontend_message() {
         let path = PathBuf::from("cache/analysis.bin");
-        let io_err = io::Error::new(io::ErrorKind::Other, "disk full");
+        let io_err = io::Error::other("disk full");
         let error = CodeVizError::file_write(&path, io_err);
 
         let msg = error.to_string();
@@ -385,7 +385,7 @@ mod concurrent_analysis_errors {
     fn test_cache_corruption_during_concurrent_write() {
         use std::io;
 
-        let io_err = io::Error::new(io::ErrorKind::Other, "cache corrupted");
+        let io_err = io::Error::other("cache corrupted");
         let error =
             CodeVizError::cache_with_source("concurrent write detected, cache invalidated", io_err);
 

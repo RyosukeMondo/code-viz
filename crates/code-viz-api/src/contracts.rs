@@ -47,7 +47,7 @@ pub struct DeadCodeResponse {
     pub result: DeadCodeResult,
 }
 
-/// Contract validation - ensures both implementations produce identical JSON
+// Contract validation - ensures both implementations produce identical JSON
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod test_utils {
@@ -65,6 +65,12 @@ pub mod test_utils {
 
     // Re-export RealFileSystem for tests
     pub struct RealFileSystem;
+    impl Default for RealFileSystem {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl RealFileSystem {
         pub fn new() -> Self {
             Self

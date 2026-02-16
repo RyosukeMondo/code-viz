@@ -8,7 +8,7 @@ fn assert_valid_tree_structure(tree: &Tree) {
     let root = tree.root_node();
 
     // Tree must have a root node
-    assert!(root.kind().len() > 0, "Root node must have a kind");
+    assert!(!root.kind().is_empty(), "Root node must have a kind");
 
     // Recursively validate node structure
     fn validate_node(node: tree_sitter::Node) {
@@ -228,7 +228,7 @@ proptest! {
             // Tree-sitter usually produces a tree even for malformed input
             // but it should be marked with errors
             let root = tree.root_node();
-            assert!(root.kind().len() > 0, "Should produce a tree");
+            assert!(!root.kind().is_empty(), "Should produce a tree");
         }
     }
 }

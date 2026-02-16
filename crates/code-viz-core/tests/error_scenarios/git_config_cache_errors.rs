@@ -124,7 +124,7 @@ fn test_cache_error_without_source() {
 
 #[test]
 fn test_cache_error_with_source() {
-    let io_err = io::Error::new(io::ErrorKind::Other, "disk full");
+    let io_err = io::Error::other("disk full");
     let error = CodeVizError::cache_with_source("cache write failed", io_err);
 
     match error {

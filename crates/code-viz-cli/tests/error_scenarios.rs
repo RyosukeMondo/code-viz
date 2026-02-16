@@ -223,7 +223,7 @@ mod resource_constraints {
     #[test]
     fn test_disk_full_error_on_output() {
         let path = PathBuf::from("output/report.json");
-        let io_err = io::Error::new(io::ErrorKind::Other, "disk full");
+        let io_err = io::Error::other("disk full");
 
         let error = CodeVizError::file_write(&path, io_err);
         let msg = error.to_string();

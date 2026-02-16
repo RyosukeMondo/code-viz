@@ -168,7 +168,7 @@ async fn test_get_diff_between_commits() {
 
     let git_provider = RealGit::new();
     let result = git_provider
-        .get_diff(&repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
+        .get_diff(repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
         .await;
 
     assert!(result.is_ok(), "get_diff failed: {:?}", result.err());
@@ -194,7 +194,7 @@ async fn test_get_diff_working_directory() {
 
     let git_provider = RealGit::new();
     let result = git_provider
-        .get_diff(&repo_path, None, &c1_oid.to_string())
+        .get_diff(repo_path, None, &c1_oid.to_string())
         .await;
 
     assert!(
@@ -218,7 +218,7 @@ async fn test_get_diff_invalid_revision() {
 
     let git_provider = RealGit::new();
     let result = git_provider
-        .get_diff(&repo_path, Some("invalid_sha"), "HEAD")
+        .get_diff(repo_path, Some("invalid_sha"), "HEAD")
         .await;
 
     assert!(result.is_err());
@@ -276,7 +276,7 @@ async fn test_get_changed_files() {
     let (c3_oid, _) = commit_file(&repo, "file1.txt", "modified\n", "Modify file1");
 
     // Change to the repo directory so get_changed_files can find the repo
-    std::env::set_current_dir(&repo_path).unwrap();
+    std::env::set_current_dir(repo_path).unwrap();
 
     let git_provider = RealGit::new();
     let result = git_provider
@@ -312,7 +312,7 @@ async fn test_get_churn_summary_returns_empty() {
 
     let git_provider = RealGit::new();
     let result = git_provider
-        .get_churn_summary(&repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
+        .get_churn_summary(repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
         .await;
 
     assert!(result.is_ok());
@@ -330,7 +330,7 @@ async fn test_real_git_new() {
 
 #[tokio::test]
 async fn test_real_git_default() {
-    let git = RealGit::default();
+    let git = RealGit;
     // Just ensure default works
     let _ = git;
 }
@@ -374,7 +374,7 @@ async fn test_get_diff_with_additions_only() {
 
     let git_provider = RealGit::new();
     let result = git_provider
-        .get_diff(&repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
+        .get_diff(repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
         .await;
 
     assert!(result.is_ok());
@@ -397,7 +397,7 @@ async fn test_get_diff_with_deletions_only() {
 
     let git_provider = RealGit::new();
     let result = git_provider
-        .get_diff(&repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
+        .get_diff(repo_path, Some(&c1_oid.to_string()), &c2_oid.to_string())
         .await;
 
     assert!(result.is_ok());

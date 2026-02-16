@@ -125,7 +125,7 @@ fn test_deeply_nested_code() {
     for _ in 0..500 {
         nested.push_str(" }");
     }
-    nested.push_str("}");
+    nested.push('}');
 
     let parser = RustParser;
     let result = parser.parse(&nested);

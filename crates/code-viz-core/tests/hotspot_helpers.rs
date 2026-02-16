@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use code_viz_core::hotspot::HotspotDetector;
 use code_viz_core::models::{CodeChurn, FileMetrics};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 /// Test helper for creating FileMetrics
@@ -84,13 +84,13 @@ fn test_hotspot_score_calculation() {
     let high_churn_hotspot = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("high_churn.rs"))
+        .find(|h| h.path == Path::new("high_churn.rs"))
         .expect("high_churn.rs should be in results");
 
     let baseline_hotspot = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("baseline.rs"))
+        .find(|h| h.path == Path::new("baseline.rs"))
         .expect("baseline.rs should be in results");
 
     assert!(high_churn_hotspot.hotspot_score > baseline_hotspot.hotspot_score);
@@ -113,7 +113,7 @@ fn test_max_values_calculation() {
     let max_churn_hotspot = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("max_churn.rs"))
+        .find(|h| h.path == Path::new("max_churn.rs"))
         .expect("max_churn.rs should be in results");
 
     // Churn score should be 1.0 since it has max churn
@@ -122,7 +122,7 @@ fn test_max_values_calculation() {
     let max_complexity_hotspot = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("max_complexity.rs"))
+        .find(|h| h.path == Path::new("max_complexity.rs"))
         .expect("max_complexity.rs should be in results");
 
     // Complexity score should be 1.0 since it has max complexity
@@ -131,7 +131,7 @@ fn test_max_values_calculation() {
     let max_size_hotspot = analysis
         .hotspots
         .iter()
-        .find(|h| h.path == PathBuf::from("max_size.rs"))
+        .find(|h| h.path == Path::new("max_size.rs"))
         .expect("max_size.rs should be in results");
 
     // Size score should be 1.0 since it has max size

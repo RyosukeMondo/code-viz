@@ -393,7 +393,7 @@ mod tests {
         let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = "function hello() { console.log('world'); }";
         let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
-        assert!(tree.root_node().has_error() == false);
+        assert!(!tree.root_node().has_error());
     }
 
     #[test]

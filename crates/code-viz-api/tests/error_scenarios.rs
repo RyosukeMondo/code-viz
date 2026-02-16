@@ -252,7 +252,7 @@ mod resource_errors {
     #[test]
     fn test_disk_full_maps_to_500() {
         let path = PathBuf::from("cache/analysis.bin");
-        let io_err = io::Error::new(io::ErrorKind::Other, "no space left on device");
+        let io_err = io::Error::other("no space left on device");
         let error = CodeVizError::file_write(&path, io_err);
 
         // Disk full should map to 500 Internal Server Error
@@ -263,7 +263,7 @@ mod resource_errors {
     #[test]
     fn test_too_many_open_files_error() {
         let path = PathBuf::from("src/file999.rs");
-        let io_err = io::Error::new(io::ErrorKind::Other, "too many open files");
+        let io_err = io::Error::other("too many open files");
         let error = CodeVizError::file_read(&path, io_err);
 
         match error {

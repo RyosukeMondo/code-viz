@@ -110,6 +110,106 @@ pub fn calculate_coupling(files: &mut [FileMetrics], fs: &impl FileSystem, base_
     }
 }
 
+/// A simple path normalization function to handle `.` and `..`.
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ std::path::Component::RootDir) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            std::path::Component::Normal(c) => {
+                ret.push(c);
+            }
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                ret.pop();
+            }
+            std::path::Component::RootDir => {
+                unreachable!();
+            }
+            std::path::Component::Prefix(..) => {
+                unreachable!();
+            }
+        }
+    }
+    ret
+}
+
+fn resolve_dependencies(
+    base_path: &Path,
+    current_file_path: &Path,
+    dependencies: &[String],
+    all_files: &[PathBuf],
+    language: &str,
+) -> Vec<PathBuf> {
+    let mut resolved_deps = Vec::new();
+    let current_dir = current_file_path.parent().unwrap_or_else(|| Path::new(""));
+
+    for dep in dependencies {
+        let cleaned_dep = dep.trim_matches(|c| c == '"' || c == '\'');
+        let mut found = false;
+
+        if language == "python" {
+            if let Some(relative_path) = cleaned_dep.strip_prefix('.') {
+                let path_from_dir = relative_path.replace('.', "/");
+                let mut potential_path = current_dir.join(path_from_dir);
+                if potential_path.extension().is_none() {
+                    potential_path.set_extension("py");
+                }
+                if all_files.contains(&potential_path) {
+                    resolved_deps.push(potential_path);
+                }
+                continue;
+            }
+        }
+
+        // Handle crate-relative paths for Rust
+        if let Some(crate_relative) = cleaned_dep.strip_prefix("crate::") {
+            let path_from_crate = crate_relative.replace("::", "/");
+            let mut potential_path = base_path.join(path_from_crate);
+            if potential_path.extension().is_none() {
+                potential_path.set_extension("rs");
+            }
+            if all_files.contains(&potential_path) {
+                resolved_deps.push(potential_path);
+            }
+            continue;
+        }
+
+        let dep_path = Path::new(cleaned_dep);
+        let resolved_path = current_dir.join(dep_path);
+
+        let mut potential_paths = Vec::new();
+        if resolved_path.extension().is_none() {
+            potential_paths.push(resolved_path.with_extension("ts"));
+            potential_paths.push(resolved_path.with_extension("js"));
+            potential_paths.push(resolved_path.join("mod.rs"));
+            potential_paths.push(resolved_path.with_extension("rs"));
+            potential_paths.push(resolved_path.with_extension("py"));
+        } else {
+            potential_paths.push(resolved_path);
+        }
+
+        for p in potential_paths {
+            let normalized_p = normalize_path(&p);
+            if all_files.contains(&normalized_p) {
+                resolved_deps.push(normalized_p);
+                found = true;
+                break;
+            }
+        }
+        if found {
+            continue;
+        }
+    }
+    resolved_deps
+}
+
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
@@ -410,104 +510,4 @@ mod tests {
         assert_eq!(b.afferent_coupling, 1);
         assert_eq!(b.instability, 0.5); // Balanced
     }
-}
-
-/// A simple path normalization function to handle `.` and `..`.
-fn normalize_path(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ std::path::Component::RootDir) = components.peek().cloned() {
-        components.next();
-        PathBuf::from(c.as_os_str())
-    } else {
-        PathBuf::new()
-    };
-
-    for component in components {
-        match component {
-            std::path::Component::Normal(c) => {
-                ret.push(c);
-            }
-            std::path::Component::CurDir => {}
-            std::path::Component::ParentDir => {
-                ret.pop();
-            }
-            std::path::Component::RootDir => {
-                unreachable!();
-            }
-            std::path::Component::Prefix(..) => {
-                unreachable!();
-            }
-        }
-    }
-    ret
-}
-
-fn resolve_dependencies(
-    base_path: &Path,
-    current_file_path: &Path,
-    dependencies: &[String],
-    all_files: &[PathBuf],
-    language: &str,
-) -> Vec<PathBuf> {
-    let mut resolved_deps = Vec::new();
-    let current_dir = current_file_path.parent().unwrap_or_else(|| Path::new(""));
-
-    for dep in dependencies {
-        let cleaned_dep = dep.trim_matches(|c| c == '"' || c == '\'');
-        let mut found = false;
-
-        if language == "python" {
-            if let Some(relative_path) = cleaned_dep.strip_prefix('.') {
-                let path_from_dir = relative_path.replace('.', "/");
-                let mut potential_path = current_dir.join(path_from_dir);
-                if potential_path.extension().is_none() {
-                    potential_path.set_extension("py");
-                }
-                if all_files.contains(&potential_path) {
-                    resolved_deps.push(potential_path);
-                }
-                continue;
-            }
-        }
-
-        // Handle crate-relative paths for Rust
-        if let Some(crate_relative) = cleaned_dep.strip_prefix("crate::") {
-            let path_from_crate = crate_relative.replace("::", "/");
-            let mut potential_path = base_path.join(path_from_crate);
-            if potential_path.extension().is_none() {
-                potential_path.set_extension("rs");
-            }
-            if all_files.contains(&potential_path) {
-                resolved_deps.push(potential_path);
-            }
-            continue;
-        }
-
-        let dep_path = Path::new(cleaned_dep);
-        let resolved_path = current_dir.join(dep_path);
-
-        let mut potential_paths = Vec::new();
-        if resolved_path.extension().is_none() {
-            potential_paths.push(resolved_path.with_extension("ts"));
-            potential_paths.push(resolved_path.with_extension("js"));
-            potential_paths.push(resolved_path.join("mod.rs"));
-            potential_paths.push(resolved_path.with_extension("rs"));
-            potential_paths.push(resolved_path.with_extension("py"));
-        } else {
-            potential_paths.push(resolved_path);
-        }
-
-        for p in potential_paths {
-            let normalized_p = normalize_path(&p);
-            if all_files.contains(&normalized_p) {
-                resolved_deps.push(normalized_p);
-                found = true;
-                break;
-            }
-        }
-        if found {
-            continue;
-        }
-    }
-    resolved_deps
 }

@@ -188,7 +188,7 @@ async fn test_full_analysis_pipeline() {
     let result = result.unwrap();
 
     // Verify basic results
-    assert!(result.files.len() > 0, "Should analyze files");
+    assert!(!result.files.is_empty(), "Should analyze files");
     assert!(result.summary.total_files > 0, "Should have file count");
     assert!(result.summary.total_loc > 0, "Should have LOC count");
 
@@ -232,7 +232,7 @@ async fn test_partial_analysis() {
     let result = result.unwrap();
 
     // Verify basic results
-    assert!(result.files.len() > 0, "Should analyze files");
+    assert!(!result.files.is_empty(), "Should analyze files");
     assert!(result.summary.total_files > 0, "Should have file count");
 
     // Verify optional analyses are absent
@@ -319,7 +319,7 @@ async fn test_large_repository() {
     // Verify progress reporting
     let progress_events = ctx.get_events_by_name("progress");
     assert!(
-        progress_events.len() > 0,
+        !progress_events.is_empty(),
         "Should emit progress events for large repo"
     );
 }

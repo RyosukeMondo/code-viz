@@ -90,7 +90,7 @@ mod specta_schema_tests {
 mod serialization_tests {
     use super::helpers::validation_utils;
     use code_viz_tauri::models::TreeNode;
-    use serde_json;
+
     use std::path::PathBuf;
 
     #[test]

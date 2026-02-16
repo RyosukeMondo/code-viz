@@ -96,7 +96,7 @@ mod tests {
         assert_eq!(config.output.unwrap().format.unwrap(), "json");
 
         assert!(config.cache.is_some());
-        assert_eq!(config.cache.unwrap().enabled.unwrap(), true);
+        assert!(config.cache.unwrap().enabled.unwrap());
     }
 
     #[test]

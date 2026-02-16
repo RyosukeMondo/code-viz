@@ -211,7 +211,7 @@ fn func_two() {
     let result = detector.run(&files, &parsers);
 
     // Should find duplicates
-    assert!(result.pairs.len() > 0);
+    assert!(!result.pairs.is_empty());
 
     // Total duplicated LOC should be > 0
     assert!(result.total_duplicated_loc > 0);
@@ -375,7 +375,7 @@ fn another_multi_line() {
     let detector = DuplicationDetector::new(5, 0.8);
     let result = detector.run(&files, &parsers);
 
-    assert!(result.pairs.len() > 0);
+    assert!(!result.pairs.is_empty());
 
     // Verify line count is reasonable (should be around 8-9 lines for the function)
     for pair in &result.pairs {
