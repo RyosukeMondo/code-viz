@@ -23,13 +23,21 @@ fn get_test_repo_path() -> PathBuf {
                 .current_dir(&temp)
                 .output()
                 .expect("git init failed");
-            assert!(output.status.success());
+            assert!(
+                output.status.success(),
+                "Command failed. stderr: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
             let output = Command::new("git")
                 .args(["add", "."])
                 .current_dir(&temp)
                 .output()
                 .expect("git add failed");
-            assert!(output.status.success());
+            assert!(
+                output.status.success(),
+                "Command failed. stderr: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
             let output = Command::new("git")
                 .args([
                     "-c",
@@ -43,7 +51,11 @@ fn get_test_repo_path() -> PathBuf {
                 .current_dir(&temp)
                 .output()
                 .expect("git commit failed");
-            assert!(output.status.success());
+            assert!(
+                output.status.success(),
+                "Command failed. stderr: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
             temp
         })
         .clone()
