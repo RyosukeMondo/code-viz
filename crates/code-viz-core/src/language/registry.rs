@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use super::provider::LanguageProvider;
+use std::collections::HashMap;
 
 /// Registry for managing language providers.
 ///
@@ -41,7 +41,9 @@ impl LanguageRegistry {
         registry.register(Box::new(super::plugins::rust::RustLanguageProvider));
 
         #[cfg(feature = "typescript")]
-        registry.register(Box::new(super::plugins::typescript::TypeScriptLanguageProvider));
+        registry.register(Box::new(
+            super::plugins::typescript::TypeScriptLanguageProvider,
+        ));
 
         #[cfg(feature = "python")]
         registry.register(Box::new(super::plugins::python::PythonLanguageProvider));

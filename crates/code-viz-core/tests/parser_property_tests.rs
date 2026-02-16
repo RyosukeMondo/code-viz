@@ -13,17 +13,23 @@ fn assert_valid_tree_structure(tree: &Tree) {
     // Recursively validate node structure
     fn validate_node(node: tree_sitter::Node) {
         // Node byte range must be valid
-        assert!(node.start_byte() <= node.end_byte(),
-            "Node start_byte must be <= end_byte");
+        assert!(
+            node.start_byte() <= node.end_byte(),
+            "Node start_byte must be <= end_byte"
+        );
 
         // Validate all children
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
                 // Child must be within parent bounds
-                assert!(child.start_byte() >= node.start_byte(),
-                    "Child start must be >= parent start");
-                assert!(child.end_byte() <= node.end_byte(),
-                    "Child end must be <= parent end");
+                assert!(
+                    child.start_byte() >= node.start_byte(),
+                    "Child start must be >= parent start"
+                );
+                assert!(
+                    child.end_byte() <= node.end_byte(),
+                    "Child end must be <= parent end"
+                );
 
                 // Recursively validate child
                 validate_node(child);
@@ -37,8 +43,7 @@ fn assert_valid_tree_structure(tree: &Tree) {
 // Generate arbitrary UTF-8 strings (potentially invalid code)
 fn arb_utf8_string() -> impl Strategy<Value = String> {
     // Use ASCII printable + some Unicode for broader testing
-    prop::string::string_regex("[\\x20-\\x7E\u{00A0}-\u{00FF}]{0,200}")
-        .expect("Valid regex")
+    prop::string::string_regex("[\\x20-\\x7E\u{00A0}-\u{00FF}]{0,200}").expect("Valid regex")
 }
 
 // Generate valid-ish code snippets for each language
@@ -104,7 +109,10 @@ fn parser_handles_empty_input() {
         assert!(result.is_ok(), "Parser should handle empty input");
 
         if let Ok(tree) = result {
-            assert!(!tree.root_node().has_error(), "Empty input should not have errors");
+            assert!(
+                !tree.root_node().has_error(),
+                "Empty input should not have errors"
+            );
             let count = parser.count_functions(&tree);
             assert_eq!(count, 0, "Empty input should have no functions");
         }
@@ -229,13 +237,22 @@ proptest! {
 #[test]
 fn all_supported_languages_create_parsers() {
     let languages = [
-        "typescript", "ts",
-        "javascript", "js", "jsx",
+        "typescript",
+        "ts",
+        "javascript",
+        "js",
+        "jsx",
         "tsx",
-        "rust", "rs",
-        "python", "py",
+        "rust",
+        "rs",
+        "python",
+        "py",
         "go",
-        "cpp", "cxx", "cc", "hpp", "h",
+        "cpp",
+        "cxx",
+        "cc",
+        "hpp",
+        "h",
     ];
 
     for lang in &languages {

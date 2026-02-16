@@ -1,22 +1,22 @@
 pub mod ai_commit_analyzer;
 
-use crate::models::{Summary, FileMetrics};
-use crate::scanner::ScanError;
-use crate::metrics::{self, MetricsError};
 use crate::cache::CacheError;
+use crate::metrics::{self, MetricsError};
+use crate::models::{FileMetrics, Summary};
 use crate::parser;
+use crate::scanner::ScanError;
+use crate::traits::FileSystem;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use crate::traits::FileSystem;
 
 /// Extract file extension and convert to string
 fn get_file_extension(path: &Path) -> Result<&str, AnalysisError> {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .ok_or_else(|| AnalysisError::IoError(std::io::Error::new(
+    path.extension().and_then(|e| e.to_str()).ok_or_else(|| {
+        AnalysisError::IoError(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
-            "No extension"
-        )))
+            "No extension",
+        ))
+    })
 }
 
 /// Map file extension to language key
@@ -37,7 +37,10 @@ fn extension_to_language(extension: &str) -> &str {
 /// Process a single file with FileSystem trait (NEW - trait-based)
 #[tracing::instrument(skip(fs), fields(path = %path.display()))]
 #[allow(clippy::cognitive_complexity)]
-pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMetrics, AnalysisError> {
+pub fn process_file_with_fs(
+    path: &Path,
+    fs: &impl FileSystem,
+) -> Result<FileMetrics, AnalysisError> {
     tracing::debug!("Processing file");
 
     let extension = get_file_extension(path)?;
@@ -45,17 +48,24 @@ pub fn process_file_with_fs(path: &Path, fs: &impl FileSystem) -> Result<FileMet
 
     tracing::debug!(extension = %extension, language = %language_key, "Language detected");
 
-    let parser = parser::get_parser(language_key)
-        .map_err(|e| AnalysisError::ParseFailed { path: path.to_path_buf(), source: e })?;
+    let parser = parser::get_parser(language_key).map_err(|e| AnalysisError::ParseFailed {
+        path: path.to_path_buf(),
+        source: e,
+    })?;
 
-    let source = fs.read_to_string(path)
+    let source = fs
+        .read_to_string(path)
         .map_err(|e| AnalysisError::IoError(std::io::Error::other(e)))?;
     tracing::debug!(source_size = source.len(), "File read successfully");
 
     let metrics = metrics::calculate_metrics(path, &source, parser.as_ref(), None)
         .map_err(AnalysisError::MetricsFailed)?;
 
-    tracing::debug!(loc = metrics.loc, functions = metrics.function_count, "Metrics calculated");
+    tracing::debug!(
+        loc = metrics.loc,
+        functions = metrics.function_count,
+        "Metrics calculated"
+    );
 
     Ok(metrics)
 }
@@ -89,7 +99,10 @@ pub fn calculate_summary(files: &[FileMetrics]) -> Summary {
     );
 
     let largest_files = get_largest_files(files, 10);
-    tracing::debug!(largest_files_count = largest_files.len(), "Identified largest files");
+    tracing::debug!(
+        largest_files_count = largest_files.len(),
+        "Identified largest files"
+    );
 
     Summary {
         total_files,
@@ -119,4 +132,3 @@ pub enum AnalysisError {
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
 }
-

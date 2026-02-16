@@ -1,6 +1,6 @@
 use code_viz_commands::compare::{compare_branches, CompareArgs};
 use code_viz_core::mocks::MockGit;
-use code_viz_core::traits::git_provider::{ChangedFile, ChangeType};
+use code_viz_core::traits::git_provider::{ChangeType, ChangedFile};
 use std::path::PathBuf;
 
 #[tokio::test]

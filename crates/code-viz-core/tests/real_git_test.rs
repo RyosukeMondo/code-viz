@@ -19,9 +19,7 @@ fn commit_file<'a>(
     fs::write(&full_path, content).unwrap();
 
     let mut index = repo.index().unwrap();
-    index
-        .add_path(std::path::Path::new(file_name))
-        .unwrap();
+    index.add_path(std::path::Path::new(file_name)).unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
     commit_tree(repo, &tree, message)
@@ -161,7 +159,12 @@ async fn test_get_diff_between_commits() {
     let repo = Repository::init(repo_path).unwrap();
 
     let (c1_oid, _) = commit_file(&repo, "test.txt", "line1\nline2\n", "Initial");
-    let (c2_oid, _) = commit_file(&repo, "test.txt", "line1\nline2_modified\nline3\n", "Modified");
+    let (c2_oid, _) = commit_file(
+        &repo,
+        "test.txt",
+        "line1\nline2_modified\nline3\n",
+        "Modified",
+    );
 
     let git_provider = RealGit::new();
     let result = git_provider
@@ -194,7 +197,11 @@ async fn test_get_diff_working_directory() {
         .get_diff(&repo_path, None, &c1_oid.to_string())
         .await;
 
-    assert!(result.is_ok(), "get_diff to workdir failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "get_diff to workdir failed: {:?}",
+        result.err()
+    );
     let diff = result.unwrap();
 
     // Should detect working directory changes
@@ -276,13 +283,20 @@ async fn test_get_changed_files() {
         .get_changed_files(&c1_oid.to_string(), &c3_oid.to_string())
         .await;
 
-    assert!(result.is_ok(), "get_changed_files failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "get_changed_files failed: {:?}",
+        result.err()
+    );
     let changed_files = result.unwrap();
 
     // Should have 2 files changed (file2 added, file1 modified)
     assert_eq!(changed_files.len(), 2);
 
-    let file_paths: Vec<_> = changed_files.iter().map(|f| f.path.to_str().unwrap()).collect();
+    let file_paths: Vec<_> = changed_files
+        .iter()
+        .map(|f| f.path.to_str().unwrap())
+        .collect();
     assert!(file_paths.contains(&"file1.txt"));
     assert!(file_paths.contains(&"file2.txt"));
 }

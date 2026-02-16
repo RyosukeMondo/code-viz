@@ -14,9 +14,16 @@ fn test_empty_file_parsing() {
     let parser = get_parser("rust").expect("Failed to get parser");
     let empty_code = "";
     let result = parser.parse(empty_code);
-    assert!(result.is_ok(), "Parser should handle empty files without panicking");
+    assert!(
+        result.is_ok(),
+        "Parser should handle empty files without panicking"
+    );
     let tree = result.unwrap();
-    assert_eq!(parser.count_functions(&tree), 0, "Empty file should have 0 functions");
+    assert_eq!(
+        parser.count_functions(&tree),
+        0,
+        "Empty file should have 0 functions"
+    );
 }
 
 #[test]
@@ -35,7 +42,11 @@ fn test_whitespace_only_file() {
     let result = parser.parse(whitespace_code);
     assert!(result.is_ok(), "Parser should handle whitespace-only files");
     let tree = result.unwrap();
-    assert_eq!(parser.count_functions(&tree), 0, "Whitespace-only file should have 0 functions");
+    assert_eq!(
+        parser.count_functions(&tree),
+        0,
+        "Whitespace-only file should have 0 functions"
+    );
 }
 
 #[test]
@@ -73,7 +84,10 @@ fn test_very_large_file() {
     let parser = get_parser("rust").expect("Failed to get parser");
     let content = fs::read_to_string(&large_file_path).expect("Failed to read file");
     let result = parser.parse(&content);
-    assert!(result.is_ok(), "Parser should handle large files without panicking");
+    assert!(
+        result.is_ok(),
+        "Parser should handle large files without panicking"
+    );
 }
 
 #[test]
@@ -104,8 +118,7 @@ fn test_many_small_files() {
     // Create 1000 small files
     for i in 0..1000 {
         let file_path = temp_dir.path().join(format!("file_{}.rs", i));
-        fs::write(&file_path, format!("fn func_{}() {{}}", i))
-            .expect("Failed to write file");
+        fs::write(&file_path, format!("fn func_{}() {{}}", i)).expect("Failed to write file");
     }
 
     let result = scan_directory(temp_dir.path(), &[]);
@@ -159,7 +172,10 @@ fn test_unicode_in_code() {
     let result = parser.parse(unicode_code);
     assert!(result.is_ok(), "Parser should handle Unicode characters");
     let tree = result.unwrap();
-    assert!(parser.count_functions(&tree) >= 1, "Should count functions with Unicode");
+    assert!(
+        parser.count_functions(&tree) >= 1,
+        "Should count functions with Unicode"
+    );
 }
 
 #[test]
@@ -176,7 +192,10 @@ fn test_special_characters_in_strings() {
     "#;
 
     let result = parser.parse(special_chars);
-    assert!(result.is_ok(), "Parser should handle special characters in strings");
+    assert!(
+        result.is_ok(),
+        "Parser should handle special characters in strings"
+    );
 }
 
 #[test]
@@ -200,7 +219,11 @@ fn test_unicode_filename_handling() {
     let result = scan_directory(temp_dir.path(), &[]);
     assert!(result.is_ok(), "Scanner should handle Unicode filenames");
     let files = result.unwrap();
-    assert_eq!(files.len(), unicode_filenames.len(), "Should find all Unicode-named files");
+    assert_eq!(
+        files.len(),
+        unicode_filenames.len(),
+        "Should find all Unicode-named files"
+    );
 }
 
 #[test]
@@ -231,7 +254,10 @@ fn test_regex_special_chars_in_code() {
     "#;
 
     let result = parser.parse(regex_code);
-    assert!(result.is_ok(), "Parser should handle regex special characters");
+    assert!(
+        result.is_ok(),
+        "Parser should handle regex special characters"
+    );
 }
 
 // ============================================================================
@@ -244,17 +270,25 @@ fn test_circular_import_structure() {
 
     // Create module A that imports B
     let module_a = temp_dir.path().join("module_a.ts");
-    fs::write(&module_a, r#"
+    fs::write(
+        &module_a,
+        r#"
         import { b } from './module_b';
         export const a = "A";
-    "#).expect("Failed to write module A");
+    "#,
+    )
+    .expect("Failed to write module A");
 
     // Create module B that imports A (circular)
     let module_b = temp_dir.path().join("module_b.ts");
-    fs::write(&module_b, r#"
+    fs::write(
+        &module_b,
+        r#"
         import { a } from './module_a';
         export const b = "B";
-    "#).expect("Failed to write module B");
+    "#,
+    )
+    .expect("Failed to write module B");
 
     let parser = get_parser("typescript").expect("Failed to get parser");
 
@@ -265,8 +299,14 @@ fn test_circular_import_structure() {
     let result_a = parser.parse(&content_a);
     let result_b = parser.parse(&content_b);
 
-    assert!(result_a.is_ok(), "Module A should parse despite circular dependency");
-    assert!(result_b.is_ok(), "Module B should parse despite circular dependency");
+    assert!(
+        result_a.is_ok(),
+        "Module A should parse despite circular dependency"
+    );
+    assert!(
+        result_b.is_ok(),
+        "Module B should parse despite circular dependency"
+    );
 }
 
 #[test]
@@ -274,16 +314,32 @@ fn test_transitive_circular_dependencies() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
     // Create A -> B -> C -> A circular chain
-    fs::write(temp_dir.path().join("a.py"), "from b import func_b\ndef func_a(): pass")
-        .expect("Failed to write a.py");
-    fs::write(temp_dir.path().join("b.py"), "from c import func_c\ndef func_b(): pass")
-        .expect("Failed to write b.py");
-    fs::write(temp_dir.path().join("c.py"), "from a import func_a\ndef func_c(): pass")
-        .expect("Failed to write c.py");
+    fs::write(
+        temp_dir.path().join("a.py"),
+        "from b import func_b\ndef func_a(): pass",
+    )
+    .expect("Failed to write a.py");
+    fs::write(
+        temp_dir.path().join("b.py"),
+        "from c import func_c\ndef func_b(): pass",
+    )
+    .expect("Failed to write b.py");
+    fs::write(
+        temp_dir.path().join("c.py"),
+        "from a import func_a\ndef func_c(): pass",
+    )
+    .expect("Failed to write c.py");
 
     let result = scan_directory(temp_dir.path(), &[]);
-    assert!(result.is_ok(), "Scanner should handle transitive circular dependencies");
-    assert_eq!(result.unwrap().len(), 3, "Should find all files in circular chain");
+    assert!(
+        result.is_ok(),
+        "Scanner should handle transitive circular dependencies"
+    );
+    assert_eq!(
+        result.unwrap().len(),
+        3,
+        "Should find all files in circular chain"
+    );
 }
 
 // ============================================================================
@@ -318,7 +374,10 @@ fn test_windows_path_separators() {
     "#;
 
     let result = parser.parse(code_with_windows_path);
-    assert!(result.is_ok(), "Parser should handle Windows path separators in strings");
+    assert!(
+        result.is_ok(),
+        "Parser should handle Windows path separators in strings"
+    );
 }
 
 #[test]
@@ -331,12 +390,19 @@ fn test_case_sensitivity_patterns() {
     fs::write(temp_dir.path().join("test.rs"), "fn test() {}").expect("Failed to write test.rs");
 
     let result = scan_directory(temp_dir.path(), &[]);
-    assert!(result.is_ok(), "Scanner should handle case-sensitive filenames");
+    assert!(
+        result.is_ok(),
+        "Scanner should handle case-sensitive filenames"
+    );
 
     #[cfg(unix)]
     {
         // On Unix, all three files should be found
-        assert_eq!(result.unwrap().len(), 3, "Unix should find all case-variant files");
+        assert_eq!(
+            result.unwrap().len(),
+            3,
+            "Unix should find all case-variant files"
+        );
     }
 }
 
@@ -350,7 +416,10 @@ fn test_dot_files_and_hidden_directories() {
     fs::write(hidden_dir.join("test.rs"), "fn test() {}").expect("Failed to write hidden file");
 
     let result = scan_directory(temp_dir.path(), &[]);
-    assert!(result.is_ok(), "Scanner should handle hidden files/directories");
+    assert!(
+        result.is_ok(),
+        "Scanner should handle hidden files/directories"
+    );
 }
 
 // ============================================================================
@@ -374,7 +443,11 @@ fn test_malformed_code_does_not_panic() {
 
     for code in malformed_cases {
         let result = parser.parse(code);
-        assert!(result.is_ok(), "Parser should not panic on malformed code: {}", code);
+        assert!(
+            result.is_ok(),
+            "Parser should not panic on malformed code: {}",
+            code
+        );
     }
 }
 
@@ -414,7 +487,10 @@ fn test_binary_file_handling() {
 
     if let Ok(text) = content {
         let result = parser.parse(&text);
-        assert!(result.is_ok(), "Parser should not panic on binary data interpreted as text");
+        assert!(
+            result.is_ok(),
+            "Parser should not panic on binary data interpreted as text"
+        );
     }
 }
 
@@ -443,7 +519,10 @@ fn test_unsupported_file_extensions_filtered() {
     fs::write(temp_dir.path().join("test.rs"), "fn test() {}").expect("Failed to write rs");
 
     let result = scan_directory(temp_dir.path(), &[]);
-    assert!(result.is_ok(), "Scanner should filter unsupported extensions");
+    assert!(
+        result.is_ok(),
+        "Scanner should filter unsupported extensions"
+    );
     let files = result.unwrap();
     assert_eq!(files.len(), 1, "Should only find the .rs file");
 }
@@ -556,7 +635,10 @@ fn invariant_tree_structure_always_valid() {
     assert!(!root.kind().is_empty(), "Root should have a kind");
 
     // Invariant: tree is properly formed (start <= end)
-    assert!(root.start_byte() <= root.end_byte(), "Start should be before or at end");
+    assert!(
+        root.start_byte() <= root.end_byte(),
+        "Start should be before or at end"
+    );
 }
 
 #[test]
@@ -575,7 +657,11 @@ fn invariant_function_count_consistent() {
     for (code, expected_count) in codes {
         let tree = parser.parse(code).expect("Parse should succeed");
         let count = parser.count_functions(&tree);
-        assert_eq!(count, expected_count, "Function count should match for: {}", code);
+        assert_eq!(
+            count, expected_count,
+            "Function count should match for: {}",
+            code
+        );
     }
 }
 
@@ -592,6 +678,9 @@ fn invariant_scanner_returns_sorted_paths() {
     // Verify deterministic ordering
     assert_eq!(files.len(), 3);
     for window in files.windows(2) {
-        assert!(window[0] <= window[1], "Files should be in deterministic order");
+        assert!(
+            window[0] <= window[1],
+            "Files should be in deterministic order"
+        );
     }
 }

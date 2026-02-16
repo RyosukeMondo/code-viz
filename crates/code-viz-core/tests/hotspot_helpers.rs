@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-use code_viz_core::models::{CodeChurn, FileMetrics};
 use code_viz_core::hotspot::HotspotDetector;
+use code_viz_core::models::{CodeChurn, FileMetrics};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
@@ -40,27 +40,25 @@ fn test_normalize_score_with_zero_max() {
     let detector = HotspotDetector::new(10);
 
     // Create a file with no churn to test zero max values
-    let files = vec![
-        FileMetrics {
-            path: PathBuf::from("test.rs"),
-            language: "rust".to_string(),
-            loc: 0,
-            size_bytes: 0,
-            function_count: 0,
-            last_modified: SystemTime::now(),
-            dead_function_count: None,
-            dead_code_loc: None,
-            dead_code_ratio: None,
-            code_churn: Some(CodeChurn {
-                added_lines: 0,
-                deleted_lines: 0,
-            }),
-            coupling: None,
-            ai_bloat_index: None,
-            cognitive_complexity: None,
-            test_coverage: None,
-        }
-    ];
+    let files = vec![FileMetrics {
+        path: PathBuf::from("test.rs"),
+        language: "rust".to_string(),
+        loc: 0,
+        size_bytes: 0,
+        function_count: 0,
+        last_modified: SystemTime::now(),
+        dead_function_count: None,
+        dead_code_loc: None,
+        dead_code_ratio: None,
+        code_churn: Some(CodeChurn {
+            added_lines: 0,
+            deleted_lines: 0,
+        }),
+        coupling: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
+    }];
 
     let analysis = detector.calculate(&files);
 
@@ -83,11 +81,15 @@ fn test_hotspot_score_calculation() {
     assert_eq!(analysis.hotspots.len(), 2);
 
     // high_churn.rs should have higher score than baseline.rs
-    let high_churn_hotspot = analysis.hotspots.iter()
+    let high_churn_hotspot = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("high_churn.rs"))
         .expect("high_churn.rs should be in results");
 
-    let baseline_hotspot = analysis.hotspots.iter()
+    let baseline_hotspot = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("baseline.rs"))
         .expect("baseline.rs should be in results");
 
@@ -99,30 +101,36 @@ fn test_hotspot_score_calculation() {
 fn test_max_values_calculation() {
     // Test that max values are correctly identified across files
     let files = vec![
-        create_test_file("max_churn.rs", 50, 5, 1000, 500),      // Max churn: 1500
-        create_test_file("max_complexity.rs", 50, 100, 10, 10),  // Max complexity: 100
-        create_test_file("max_size.rs", 1000, 10, 50, 30),       // Max size: 1000
+        create_test_file("max_churn.rs", 50, 5, 1000, 500), // Max churn: 1500
+        create_test_file("max_complexity.rs", 50, 100, 10, 10), // Max complexity: 100
+        create_test_file("max_size.rs", 1000, 10, 50, 30),  // Max size: 1000
     ];
 
     let detector = HotspotDetector::new(10);
     let analysis = detector.calculate(&files);
 
     // Verify normalization is working correctly
-    let max_churn_hotspot = analysis.hotspots.iter()
+    let max_churn_hotspot = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("max_churn.rs"))
         .expect("max_churn.rs should be in results");
 
     // Churn score should be 1.0 since it has max churn
     assert_eq!(max_churn_hotspot.churn_score, 1.0);
 
-    let max_complexity_hotspot = analysis.hotspots.iter()
+    let max_complexity_hotspot = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("max_complexity.rs"))
         .expect("max_complexity.rs should be in results");
 
     // Complexity score should be 1.0 since it has max complexity
     assert_eq!(max_complexity_hotspot.complexity_score, 1.0);
 
-    let max_size_hotspot = analysis.hotspots.iter()
+    let max_size_hotspot = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("max_size.rs"))
         .expect("max_size.rs should be in results");
 
@@ -205,27 +213,25 @@ fn test_weighted_score_components() {
     // Test that score components are weighted correctly
     // CHURN_WEIGHT = 0.4, COMPLEXITY_WEIGHT = 0.4, SIZE_WEIGHT = 0.2
 
-    let files = vec![
-        FileMetrics {
-            path: PathBuf::from("test.rs"),
-            language: "rust".to_string(),
-            loc: 100,       // This is max, so size_score = 1.0
-            size_bytes: 1024,
-            function_count: 50,  // This is max, so complexity_score = 1.0
-            last_modified: SystemTime::now(),
-            dead_function_count: None,
-            dead_code_loc: None,
-            dead_code_ratio: None,
-            code_churn: Some(CodeChurn {
-                added_lines: 100,
-                deleted_lines: 50,  // Total 150, this is max, so churn_score = 1.0
-            }),
-            coupling: None,
-            ai_bloat_index: None,
-            cognitive_complexity: None,
-            test_coverage: None,
-        }
-    ];
+    let files = vec![FileMetrics {
+        path: PathBuf::from("test.rs"),
+        language: "rust".to_string(),
+        loc: 100, // This is max, so size_score = 1.0
+        size_bytes: 1024,
+        function_count: 50, // This is max, so complexity_score = 1.0
+        last_modified: SystemTime::now(),
+        dead_function_count: None,
+        dead_code_loc: None,
+        dead_code_ratio: None,
+        code_churn: Some(CodeChurn {
+            added_lines: 100,
+            deleted_lines: 50, // Total 150, this is max, so churn_score = 1.0
+        }),
+        coupling: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
+    }];
 
     let detector = HotspotDetector::new(10);
     let analysis = detector.calculate(&files);

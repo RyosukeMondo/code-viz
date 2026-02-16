@@ -1,6 +1,6 @@
 use anyhow::Result;
-use code_viz_core::traits::{AppContext, FileSystem};
 use code_viz_core::models::AnalysisResult;
+use code_viz_core::traits::{AppContext, FileSystem};
 
 /// Export analysis results.
 pub async fn export_report(

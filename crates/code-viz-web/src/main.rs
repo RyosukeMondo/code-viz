@@ -43,8 +43,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(routes::health_check));
 
     // Serve frontend static files from dist/
-    let frontend_service = ServeDir::new("dist")
-        .not_found_service(ServeDir::new("dist/index.html"));
+    let frontend_service =
+        ServeDir::new("dist").not_found_service(ServeDir::new("dist/index.html"));
 
     // Build complete app
     let app = Router::new()

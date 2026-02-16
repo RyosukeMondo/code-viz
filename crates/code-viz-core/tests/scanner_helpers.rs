@@ -34,12 +34,20 @@ fn test_scan_directory_basic() {
     assert!(files.len() >= 3);
 
     // Verify supported extensions are included
-    assert!(files.iter().any(|f| f.extension().and_then(|e| e.to_str()) == Some("rs")));
-    assert!(files.iter().any(|f| f.extension().and_then(|e| e.to_str()) == Some("ts")));
-    assert!(files.iter().any(|f| f.extension().and_then(|e| e.to_str()) == Some("py")));
+    assert!(files
+        .iter()
+        .any(|f| f.extension().and_then(|e| e.to_str()) == Some("rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.extension().and_then(|e| e.to_str()) == Some("ts")));
+    assert!(files
+        .iter()
+        .any(|f| f.extension().and_then(|e| e.to_str()) == Some("py")));
 
     // Verify unsupported extensions are excluded
-    assert!(!files.iter().any(|f| f.extension().and_then(|e| e.to_str()) == Some("md")));
+    assert!(!files
+        .iter()
+        .any(|f| f.extension().and_then(|e| e.to_str()) == Some("md")));
 }
 
 #[test]
@@ -62,7 +70,10 @@ fn test_validate_path_not_directory() {
 
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(error.to_string().contains("not a directory") || error.to_string().contains("Not a directory"));
+    assert!(
+        error.to_string().contains("not a directory")
+            || error.to_string().contains("Not a directory")
+    );
 }
 
 #[test]
@@ -82,7 +93,9 @@ fn test_exclude_patterns() {
     let files = result.unwrap();
 
     // Should not include files in node_modules
-    assert!(!files.iter().any(|f| f.to_str().unwrap().contains("node_modules")));
+    assert!(!files
+        .iter()
+        .any(|f| f.to_str().unwrap().contains("node_modules")));
 }
 
 #[test]
@@ -104,9 +117,9 @@ fn test_supported_extensions() {
         ("test.cxx", true),
         ("test.hpp", true),
         ("test.h", true),
-        ("test.txt", false),   // Not supported
-        ("test.md", false),    // Not supported
-        ("test.json", false),  // Not supported
+        ("test.txt", false),  // Not supported
+        ("test.md", false),   // Not supported
+        ("test.json", false), // Not supported
     ];
 
     for (filename, _) in &extensions {
@@ -119,7 +132,9 @@ fn test_supported_extensions() {
 
     // Verify supported extensions are included
     for (filename, should_include) in extensions {
-        let found = files.iter().any(|f| f.file_name().and_then(|n| n.to_str()) == Some(filename));
+        let found = files
+            .iter()
+            .any(|f| f.file_name().and_then(|n| n.to_str()) == Some(filename));
         if should_include {
             assert!(found, "Expected {} to be included", filename);
         } else {
@@ -175,10 +190,14 @@ fn test_gitignore_respected() {
     let files = result.unwrap();
 
     // Should include included.rs
-    assert!(files.iter().any(|f| f.file_name().and_then(|n| n.to_str()) == Some("included.rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.file_name().and_then(|n| n.to_str()) == Some("included.rs")));
 
     // Should respect .gitignore and exclude ignored.rs
-    assert!(!files.iter().any(|f| f.file_name().and_then(|n| n.to_str()) == Some("ignored.rs")));
+    assert!(!files
+        .iter()
+        .any(|f| f.file_name().and_then(|n| n.to_str()) == Some("ignored.rs")));
 }
 
 #[test]
@@ -190,16 +209,26 @@ fn test_nested_directories() {
     fs::create_dir_all(base_path.join("level1/level2/level3")).unwrap();
     fs::write(base_path.join("level1/file1.rs"), "fn level1() {}").unwrap();
     fs::write(base_path.join("level1/level2/file2.rs"), "fn level2() {}").unwrap();
-    fs::write(base_path.join("level1/level2/level3/file3.rs"), "fn level3() {}").unwrap();
+    fs::write(
+        base_path.join("level1/level2/level3/file3.rs"),
+        "fn level3() {}",
+    )
+    .unwrap();
 
     let result = scan_directory(base_path, &[]);
     assert!(result.is_ok());
     let files = result.unwrap();
 
     // Should find files at all nesting levels
-    assert!(files.iter().any(|f| f.to_str().unwrap().contains("file1.rs")));
-    assert!(files.iter().any(|f| f.to_str().unwrap().contains("file2.rs")));
-    assert!(files.iter().any(|f| f.to_str().unwrap().contains("file3.rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.to_str().unwrap().contains("file1.rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.to_str().unwrap().contains("file2.rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.to_str().unwrap().contains("file3.rs")));
 }
 
 #[test]
@@ -216,7 +245,9 @@ fn test_large_file_skipping() {
     assert!(result.is_ok());
     let files = result.unwrap();
 
-    assert!(files.iter().any(|f| f.file_name().and_then(|n| n.to_str()) == Some("small.rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.file_name().and_then(|n| n.to_str()) == Some("small.rs")));
 }
 
 #[test]
@@ -245,7 +276,9 @@ fn test_hidden_files() {
     let files = result.unwrap();
 
     // Should include visible file
-    assert!(files.iter().any(|f| f.file_name().and_then(|n| n.to_str()) == Some("visible.rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.file_name().and_then(|n| n.to_str()) == Some("visible.rs")));
 
     // Hidden files handling depends on configuration
     // The scanner uses hidden(true) which means it processes hidden files,
@@ -267,17 +300,16 @@ fn test_multiple_exclude_patterns() {
     fs::write(base_path.join("src/main.rs"), "fn main() {}").unwrap();
 
     // Exclude build and dist directories
-    let exclude_patterns = vec![
-        "**/build/**".to_string(),
-        "**/dist/**".to_string(),
-    ];
+    let exclude_patterns = vec!["**/build/**".to_string(), "**/dist/**".to_string()];
 
     let result = scan_directory(base_path, &exclude_patterns);
     assert!(result.is_ok());
     let files = result.unwrap();
 
     // Should include src/main.rs
-    assert!(files.iter().any(|f| f.to_str().unwrap().contains("src/main.rs")));
+    assert!(files
+        .iter()
+        .any(|f| f.to_str().unwrap().contains("src/main.rs")));
 
     // Should exclude build and dist
     assert!(!files.iter().any(|f| f.to_str().unwrap().contains("build")));

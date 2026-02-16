@@ -34,9 +34,9 @@
 //!
 //! Zero changes to core analysis code are required.
 
+pub mod plugins;
 pub mod provider;
 pub mod registry;
-pub mod plugins;
 
 pub use provider::LanguageProvider;
 pub use registry::LanguageRegistry;

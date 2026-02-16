@@ -6,8 +6,8 @@
 use code_viz_core::models::FileMetrics;
 use code_viz_core::transform::flat_to_hierarchy as core_flat_to_hierarchy;
 
-use crate::models::TreeNode;
 use crate::error::ApiError;
+use crate::models::TreeNode;
 
 /// Converts a flat list of file metrics into a hierarchical tree structure
 ///
@@ -55,8 +55,8 @@ use crate::error::ApiError;
 /// ```
 pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, ApiError> {
     // Delegate to core transform module
-    let core_tree = core_flat_to_hierarchy(files)
-        .map_err(|e| ApiError::TransformError(e.to_string()))?;
+    let core_tree =
+        core_flat_to_hierarchy(files).map_err(|e| ApiError::TransformError(e.to_string()))?;
 
     // Convert core TreeNode to API TreeNode
     // Since the types are identical, we can use Into trait
@@ -76,7 +76,11 @@ fn convert_tree_node(core_node: code_viz_core::models::TreeNode) -> TreeNode {
         loc: core_node.loc,
         complexity: core_node.complexity,
         node_type: core_node.node_type,
-        children: core_node.children.into_iter().map(convert_tree_node).collect(),
+        children: core_node
+            .children
+            .into_iter()
+            .map(convert_tree_node)
+            .collect(),
         last_modified: core_node.last_modified,
         dead_code_ratio: core_node.dead_code_ratio,
         language: core_node.language,

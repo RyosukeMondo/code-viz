@@ -4,8 +4,8 @@
 //! These tests verify that the shared code-viz-api handlers work correctly
 //! when called from Tauri commands.
 
-use code_viz_tauri::context::RealFileSystem;
 use code_viz_core::mocks::MockContext;
+use code_viz_tauri::context::RealFileSystem;
 use std::env;
 
 /// Unit test for analyze_repository using shared API handler with MockContext.
@@ -32,8 +32,9 @@ async fn test_analyze_repository_with_mock_context() {
         git,
         current_dir,
         options,
-        Some("test-request-id".to_string())
-    ).await;
+        Some("test-request-id".to_string()),
+    )
+    .await;
 
     // 4. Verify results
     assert!(result.is_ok(), "Command failed: {:?}", result.err());
@@ -44,24 +45,35 @@ async fn test_analyze_repository_with_mock_context() {
     let events = ctx.get_events();
 
     // Check for progress events
-    let progress_events: Vec<_> = events.iter()
+    let progress_events: Vec<_> = events
+        .iter()
         .filter(|(name, _)| name == "progress")
         .collect();
 
     // We expect at least 5 progress reports based on the implementation
-    assert!(progress_events.len() >= 5, "Expected at least 5 progress events, got {}", progress_events.len());
+    assert!(
+        progress_events.len() >= 5,
+        "Expected at least 5 progress events, got {}",
+        progress_events.len()
+    );
 
     // Verify the first progress report
     let first_progress = progress_events.first().unwrap().1.as_object().unwrap();
     let first_percentage = first_progress["percentage"].as_f64().unwrap();
     assert!((first_percentage - 0.1).abs() < 1e-6);
-    assert_eq!(first_progress["message"].as_str().unwrap(), "Scanning directory...");
+    assert_eq!(
+        first_progress["message"].as_str().unwrap(),
+        "Scanning directory..."
+    );
 
     // Verify the final progress report
     let last_progress = progress_events.last().unwrap().1.as_object().unwrap();
     let last_percentage = last_progress["percentage"].as_f64().unwrap();
     assert!((last_percentage - 1.0).abs() < 1e-6);
-    assert_eq!(last_progress["message"].as_str().unwrap(), "Analysis complete");
+    assert_eq!(
+        last_progress["message"].as_str().unwrap(),
+        "Analysis complete"
+    );
 
     // Use the utility method for a simple assertion
     ctx.assert_event_emitted("progress");
@@ -80,8 +92,8 @@ async fn test_mock_context_app_dir() {
 /// SSOT Verification Test: Ensures Tauri and API layers produce identical results
 #[tokio::test]
 async fn test_ssot_contract_consistency() {
-    use code_viz_tauri::models::TreeNode as TauriTreeNode;
     use code_viz_api::TreeNode as ApiTreeNode;
+    use code_viz_tauri::models::TreeNode as TauriTreeNode;
     use std::path::PathBuf;
     use std::time::UNIX_EPOCH;
 

@@ -1,10 +1,8 @@
 use anyhow::{Context, Result};
-use code_viz_core::models::{
-    BranchComparison, FileMetricComparison, FileMetrics,
-};
-use code_viz_core::{metrics, parser};
+use code_viz_core::models::{BranchComparison, FileMetricComparison, FileMetrics};
+use code_viz_core::traits::git_provider::{ChangeType, ChangedFile};
 use code_viz_core::traits::GitProvider;
-use code_viz_core::traits::git_provider::{ChangedFile, ChangeType};
+use code_viz_core::{metrics, parser};
 use futures::future::try_join_all;
 use std::path::Path;
 
@@ -78,11 +76,7 @@ async fn process_changed_file(
     })
 }
 
-
-async fn calculate_metrics_for_content(
-    path: &Path,
-    source: &str,
-) -> Result<FileMetrics> {
+async fn calculate_metrics_for_content(path: &Path, source: &str) -> Result<FileMetrics> {
     let extension = path
         .extension()
         .and_then(|e| e.to_str())

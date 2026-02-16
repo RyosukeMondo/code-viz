@@ -1,5 +1,5 @@
-pub mod cli;
 pub mod assertions;
+pub mod cli;
 
-pub use cli::CliTest;
 pub use assertions::*;
+pub use cli::CliTest;

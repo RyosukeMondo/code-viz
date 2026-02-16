@@ -8,11 +8,13 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use code_viz_api::{analyze_repository_handler, analyze_dead_code_handler, TreeNode, AnalysisOptions};
+use code_viz_api::{
+    analyze_dead_code_handler, analyze_repository_handler, AnalysisOptions, TreeNode,
+};
 use code_viz_dead_code::DeadCodeResult;
 use serde::{Deserialize, Serialize};
 
-use crate::context::{WebContext, RealFileSystem, RealGit};
+use crate::context::{RealFileSystem, RealGit, WebContext};
 
 /// Request body for repository analysis
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,12 +56,24 @@ impl From<code_viz_api::ApiError> for WebError {
 impl IntoResponse for WebError {
     fn into_response(self) -> Response {
         let (status, error_message) = match &self.0 {
-            code_viz_api::ApiError::InvalidPath(_) => (StatusCode::BAD_REQUEST, self.0.to_user_message()),
-            code_viz_api::ApiError::AnalysisFailed(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
-            code_viz_api::ApiError::DeadCodeFailed(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
-            code_viz_api::ApiError::TransformError(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
-            code_viz_api::ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
-            code_viz_api::ApiError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message()),
+            code_viz_api::ApiError::InvalidPath(_) => {
+                (StatusCode::BAD_REQUEST, self.0.to_user_message())
+            }
+            code_viz_api::ApiError::AnalysisFailed(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message())
+            }
+            code_viz_api::ApiError::DeadCodeFailed(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message())
+            }
+            code_viz_api::ApiError::TransformError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message())
+            }
+            code_viz_api::ApiError::Io(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message())
+            }
+            code_viz_api::ApiError::Internal(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_user_message())
+            }
         };
 
         let body = Json(ErrorResponse {
@@ -74,9 +88,7 @@ impl IntoResponse for WebError {
 ///
 /// This route is the HTTP equivalent of the Tauri `analyze_repository` command.
 /// It uses the EXACT SAME handler from code-viz-api (SSOT).
-pub async fn post_analyze(
-    Json(req): Json<AnalyzeRequest>,
-) -> Result<Json<TreeNode>, WebError> {
+pub async fn post_analyze(Json(req): Json<AnalyzeRequest>) -> Result<Json<TreeNode>, WebError> {
     tracing::info!(path = %req.path, request_id = ?req.request_id, options = ?req.options, "POST /api/analyze");
 
     let ctx = WebContext::new();
@@ -84,7 +96,8 @@ pub async fn post_analyze(
 
     // Call the shared SSOT handler (same as Tauri uses)
     let git = code_viz_core::context::RealGit::new();
-    let tree = analyze_repository_handler(ctx, fs, git, req.path, req.options, req.request_id).await?;
+    let tree =
+        analyze_repository_handler(ctx, fs, git, req.path, req.options, req.request_id).await?;
 
     Ok(Json(tree))
 }
@@ -108,7 +121,9 @@ pub async fn post_dead_code(
     let git = RealGit::new();
 
     // Call the shared SSOT handler (same as Tauri uses)
-    let result = analyze_dead_code_handler(ctx, fs, git, req.path, req.min_confidence, req.request_id).await?;
+    let result =
+        analyze_dead_code_handler(ctx, fs, git, req.path, req.min_confidence, req.request_id)
+            .await?;
 
     Ok(Json(result))
 }

@@ -1,5 +1,5 @@
-use code_viz_core::AnalysisResult;
 use code_viz_core::traits::FileSystem;
+use code_viz_core::AnalysisResult;
 use colored::Colorize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -15,16 +15,26 @@ pub enum DiffError {
 }
 
 pub fn run(old_path: PathBuf, new_path: PathBuf, fs: impl FileSystem) -> Result<(), DiffError> {
-    let old_json = fs.read_to_string(&old_path)
+    let old_json = fs
+        .read_to_string(&old_path)
         .map_err(|e| DiffError::IoError(std::io::Error::other(e)))?;
-    let new_json = fs.read_to_string(&new_path)
+    let new_json = fs
+        .read_to_string(&new_path)
         .map_err(|e| DiffError::IoError(std::io::Error::other(e)))?;
 
     let old_result: AnalysisResult = serde_json::from_str(&old_json)?;
     let new_result: AnalysisResult = serde_json::from_str(&new_json)?;
 
-    let old_files: HashMap<_, _> = old_result.files.iter().map(|f| (f.path.clone(), f)).collect();
-    let new_files: HashMap<_, _> = new_result.files.iter().map(|f| (f.path.clone(), f)).collect();
+    let old_files: HashMap<_, _> = old_result
+        .files
+        .iter()
+        .map(|f| (f.path.clone(), f))
+        .collect();
+    let new_files: HashMap<_, _> = new_result
+        .files
+        .iter()
+        .map(|f| (f.path.clone(), f))
+        .collect();
 
     let mut files_added = 0;
     let mut files_deleted = 0;
@@ -40,7 +50,7 @@ pub fn run(old_path: PathBuf, new_path: PathBuf, fs: impl FileSystem) -> Result<
             let new_metric = new_files[path];
             if old_metric.loc != new_metric.loc {
                 files_modified += 1;
-                
+
                 if new_metric.loc > old_metric.loc {
                     let delta = new_metric.loc - old_metric.loc;
                     if delta > largest_growth_delta {
@@ -65,8 +75,11 @@ pub fn run(old_path: PathBuf, new_path: PathBuf, fs: impl FileSystem) -> Result<
 
     println!("{} files added", files_added.to_string().green());
     println!("{} files deleted", files_deleted.to_string().red());
-    println!("{} files modified (LOC changed)", files_modified.to_string().yellow());
-    
+    println!(
+        "{} files modified (LOC changed)",
+        files_modified.to_string().yellow()
+    );
+
     print!("Total LOC: {} -> {} (", old_loc, new_loc);
     if delta_loc > 0 {
         print!("{}", format!("{}{}", delta_sign, delta_loc).green());

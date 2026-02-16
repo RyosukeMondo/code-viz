@@ -14,10 +14,9 @@ fn create_rust_parser_map() -> HashMap<String, Box<dyn code_viz_core::parser::La
 #[test]
 fn test_extract_blocks_from_single_file() {
     // Test that blocks are correctly extracted from a single file
-    let files = vec![
-        (
-            PathBuf::from("test.rs"),
-            r#"
+    let files = vec![(
+        PathBuf::from("test.rs"),
+        r#"
 fn function_one() {
     if true {
         let a = 1;
@@ -34,9 +33,9 @@ fn function_two() {
     let y = 20;
     let z = 30;
 }
-"#.to_string(),
-        ),
-    ];
+"#
+        .to_string(),
+    )];
 
     let parsers = create_rust_parser_map();
     let detector = DuplicationDetector::new(5, 0.8);
@@ -49,10 +48,9 @@ fn function_two() {
 #[test]
 fn test_min_lines_threshold() {
     // Test that functions below min_lines threshold are ignored
-    let files = vec![
-        (
-            PathBuf::from("test.rs"),
-            r#"
+    let files = vec![(
+        PathBuf::from("test.rs"),
+        r#"
 fn tiny_func() {
     let a = 1;
 }
@@ -60,9 +58,9 @@ fn tiny_func() {
 fn another_tiny() {
     let b = 2;
 }
-"#.to_string(),
-        ),
-    ];
+"#
+        .to_string(),
+    )];
 
     let parsers = create_rust_parser_map();
     let detector = DuplicationDetector::new(10, 0.8); // min_lines = 10
@@ -86,7 +84,8 @@ fn my_func() {
     let c = 3;
     let d = 4;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
         (
             PathBuf::from("file2.rs"),
@@ -98,7 +97,8 @@ fn similar_func() {
     let z = 3;
     let w = 999;  // Different value
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
     ];
 
@@ -130,7 +130,8 @@ fn duplicate_one() {
     let c = 3;
     let d = 4;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
         (
             PathBuf::from("file2.rs"),
@@ -142,7 +143,8 @@ fn duplicate_two() {
     let c = 3;
     let d = 4;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
         (
             PathBuf::from("file3.rs"),
@@ -154,7 +156,8 @@ fn duplicate_three() {
     let c = 3;
     let d = 4;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
     ];
 
@@ -185,7 +188,8 @@ fn func_one() {
     let d = 4;
     let e = 5;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
         (
             PathBuf::from("file2.rs"),
@@ -197,7 +201,8 @@ fn func_two() {
     let d = 4;
     let e = 5;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
     ];
 
@@ -226,7 +231,8 @@ fn calculate_sum() {
     println!("{}", result);
     return result;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
         (
             PathBuf::from("file2.rs"),
@@ -238,7 +244,8 @@ fn compute_total() {
     println!("{}", answer);
     return answer;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
     ];
 
@@ -265,14 +272,16 @@ fn valid_function() {
     let d = 4;
     let e = 5;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
         (
             PathBuf::from("invalid.rs"),
             r#"
 fn incomplete_function(
     // Missing closing brace and body
-"#.to_string(),
+"#
+            .to_string(),
         ),
     ];
 
@@ -289,10 +298,9 @@ fn incomplete_function(
 #[test]
 fn test_multiple_languages_unsupported() {
     // Test that files with unsupported extensions are skipped
-    let files = vec![
-        (
-            PathBuf::from("file.unknown"),
-            r#"
+    let files = vec![(
+        PathBuf::from("file.unknown"),
+        r#"
 fn some_function() {
     let a = 1;
     let b = 2;
@@ -300,9 +308,9 @@ fn some_function() {
     let d = 4;
     let e = 5;
 }
-"#.to_string(),
-        ),
-    ];
+"#
+        .to_string(),
+    )];
 
     let parsers = create_rust_parser_map();
     let detector = DuplicationDetector::new(5, 0.8);
@@ -344,7 +352,8 @@ fn multi_line() {
     let e = 5;
     let f = 6;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
         (
             PathBuf::from("file2.rs"),
@@ -357,7 +366,8 @@ fn another_multi_line() {
     let e = 5;
     let f = 6;
 }
-"#.to_string(),
+"#
+            .to_string(),
         ),
     ];
 

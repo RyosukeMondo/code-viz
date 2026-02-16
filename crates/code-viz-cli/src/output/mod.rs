@@ -27,7 +27,7 @@ mod tests {
     //! behavior in test contexts.
 
     use super::*;
-    use code_viz_core::models::{Summary, FileMetrics};
+    use code_viz_core::models::{FileMetrics, Summary};
     use std::path::PathBuf;
     use std::time::SystemTime;
 
@@ -90,7 +90,7 @@ mod tests {
         let result = create_sample_result();
         let formatter = json::JsonFormatter;
         let output = formatter.format(&result).unwrap();
-        
+
         // Verify it parses back
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         assert_eq!(parsed["summary"]["total_files"], 2);
@@ -103,7 +103,7 @@ mod tests {
         let result = create_sample_result();
         let formatter = csv::CsvFormatter;
         let output = formatter.format(&result).unwrap();
-        
+
         let lines: Vec<&str> = output.lines().collect();
         assert!(lines.len() >= 3); // Header + 2 rows
         assert_eq!(lines[0], "path,language,loc,functions,size_bytes");
@@ -116,7 +116,7 @@ mod tests {
         let result = create_sample_result();
         let formatter = text::TextFormatter;
         let output = formatter.format(&result).unwrap();
-        
+
         assert!(output.contains("Total Files: 2"));
         assert!(output.contains("Total LOC:   150"));
         assert!(output.contains("Largest Files:"));
@@ -128,7 +128,7 @@ mod tests {
         let result = create_sample_result();
         let formatter = markdown::MarkdownFormatter;
         let output = formatter.format(&result).unwrap();
-        
+
         assert!(output.contains("# Code Analysis Report"));
         assert!(output.contains("## Summary"));
         assert!(output.contains("| Total Files     | 2      |"));

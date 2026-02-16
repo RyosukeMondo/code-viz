@@ -75,9 +75,7 @@ fn commit_file<'a>(
     fs::write(&full_path, content).unwrap();
 
     let mut index = repo.index().unwrap();
-    index
-        .add_path(std::path::Path::new(file_name))
-        .unwrap();
+    index.add_path(std::path::Path::new(file_name)).unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
     commit_tree(repo, &tree, message)

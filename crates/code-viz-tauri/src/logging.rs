@@ -19,8 +19,12 @@ pub fn init_logging() {
         "info"
     };
 
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(format!("code_viz_core={},code_viz_tauri={}", log_level, log_level)));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new(format!(
+            "code_viz_core={},code_viz_tauri={}",
+            log_level, log_level
+        ))
+    });
 
     let json_layer = fmt::layer()
         .json()

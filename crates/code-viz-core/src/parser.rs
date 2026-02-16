@@ -25,16 +25,14 @@ fn parse_with_language(language: Language, source: &str) -> Result<Tree, ParseEr
 
     PARSER.with(|p| {
         let mut p = p.borrow_mut();
-        p.set_language(language)
-            .map_err(|e| {
-                tracing::error!(error = %e, "Failed to set language");
-                ParseError::TreeSitterError(e.to_string())
-            })?;
-        let tree = p.parse(source, None)
-            .ok_or_else(|| {
-                tracing::error!("Failed to parse source");
-                ParseError::TreeSitterError("Failed to parse source".to_string())
-            })?;
+        p.set_language(language).map_err(|e| {
+            tracing::error!(error = %e, "Failed to set language");
+            ParseError::TreeSitterError(e.to_string())
+        })?;
+        let tree = p.parse(source, None).ok_or_else(|| {
+            tracing::error!("Failed to parse source");
+            ParseError::TreeSitterError("Failed to parse source".to_string())
+        })?;
 
         tracing::debug!(has_error = tree.root_node().has_error(), "Parse completed");
         Ok(tree)
@@ -58,12 +56,17 @@ impl LanguageParser for TypeScriptParser {
             // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_typescript::language_typescript(),
-                "(function_declaration) @f (arrow_function) @f (method_definition) @f"
-            ).expect("BUG: Invalid TypeScript query - this is a programming error, not a runtime error")
+                "(function_declaration) @f (arrow_function) @f (method_definition) @f",
+            )
+            .expect(
+                "BUG: Invalid TypeScript query - this is a programming error, not a runtime error",
+            )
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
+            .count()
     }
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -74,9 +77,10 @@ impl LanguageParser for TypeScriptParser {
                 "(comment) @c"
             ).expect("BUG: Invalid TypeScript comment query - this is a programming error, not a runtime error")
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8])
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
             .map(|m| m.captures[0].node.range())
             .collect()
     }
@@ -99,25 +103,28 @@ impl LanguageParser for TsxParser {
             // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_typescript::language_tsx(),
-                "(function_declaration) @f (arrow_function) @f (method_definition) @f"
-            ).expect("BUG: Invalid TSX query - this is a programming error, not a runtime error")
+                "(function_declaration) @f (arrow_function) @f (method_definition) @f",
+            )
+            .expect("BUG: Invalid TSX query - this is a programming error, not a runtime error")
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
+            .count()
     }
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
             // Programming error: hardcoded query string must be valid
-            Query::new(
-                tree_sitter_typescript::language_tsx(),
-                "(comment) @c"
-            ).expect("BUG: Invalid TSX comment query - this is a programming error, not a runtime error")
+            Query::new(tree_sitter_typescript::language_tsx(), "(comment) @c").expect(
+                "BUG: Invalid TSX comment query - this is a programming error, not a runtime error",
+            )
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8])
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
             .map(|m| m.captures[0].node.range())
             .collect()
     }
@@ -140,12 +147,17 @@ impl LanguageParser for JavaScriptParser {
             // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_javascript::language(),
-                "(function_declaration) @f (arrow_function) @f (method_definition) @f"
-            ).expect("BUG: Invalid JavaScript query - this is a programming error, not a runtime error")
+                "(function_declaration) @f (arrow_function) @f (method_definition) @f",
+            )
+            .expect(
+                "BUG: Invalid JavaScript query - this is a programming error, not a runtime error",
+            )
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
+            .count()
     }
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -156,9 +168,10 @@ impl LanguageParser for JavaScriptParser {
                 "(comment) @c"
             ).expect("BUG: Invalid JavaScript comment query - this is a programming error, not a runtime error")
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8])
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
             .map(|m| m.captures[0].node.range())
             .collect()
     }
@@ -179,14 +192,15 @@ impl LanguageParser for RustParser {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
             // Programming error: hardcoded query string must be valid
-            Query::new(
-                tree_sitter_rust::language(),
-                "(function_item) @f"
-            ).expect("BUG: Invalid Rust query - this is a programming error, not a runtime error")
+            Query::new(tree_sitter_rust::language(), "(function_item) @f").expect(
+                "BUG: Invalid Rust query - this is a programming error, not a runtime error",
+            )
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
+            .count()
     }
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -197,9 +211,10 @@ impl LanguageParser for RustParser {
                 "(line_comment) @c (block_comment) @c"
             ).expect("BUG: Invalid Rust comment query - this is a programming error, not a runtime error")
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8])
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
             .map(|m| m.captures[0].node.range())
             .collect()
     }
@@ -220,14 +235,15 @@ impl LanguageParser for PythonParser {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
             // Programming error: hardcoded query string must be valid
-            Query::new(
-                tree_sitter_python::language(),
-                "(function_definition) @f"
-            ).expect("BUG: Invalid Python query - this is a programming error, not a runtime error")
+            Query::new(tree_sitter_python::language(), "(function_definition) @f").expect(
+                "BUG: Invalid Python query - this is a programming error, not a runtime error",
+            )
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
+            .count()
     }
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
@@ -238,9 +254,10 @@ impl LanguageParser for PythonParser {
                 "(comment) @c"
             ).expect("BUG: Invalid Python comment query - this is a programming error, not a runtime error")
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8])
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
             .map(|m| m.captures[0].node.range())
             .collect()
     }
@@ -263,25 +280,28 @@ impl LanguageParser for GoParser {
             // Programming error: hardcoded query string must be valid
             Query::new(
                 tree_sitter_go::language(),
-                "(function_declaration) @f (method_declaration) @f (func_literal) @f"
-            ).expect("BUG: Invalid Go query - this is a programming error, not a runtime error")
+                "(function_declaration) @f (method_declaration) @f (func_literal) @f",
+            )
+            .expect("BUG: Invalid Go query - this is a programming error, not a runtime error")
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
+            .count()
     }
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
             // Programming error: hardcoded query string must be valid
-            Query::new(
-                tree_sitter_go::language(),
-                "(comment) @c"
-            ).expect("BUG: Invalid Go comment query - this is a programming error, not a runtime error")
+            Query::new(tree_sitter_go::language(), "(comment) @c").expect(
+                "BUG: Invalid Go comment query - this is a programming error, not a runtime error",
+            )
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8])
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
             .map(|m| m.captures[0].node.range())
             .collect()
     }
@@ -302,27 +322,27 @@ impl LanguageParser for CppParser {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
             // Programming error: hardcoded query string must be valid
-            Query::new(
-                tree_sitter_cpp::language(),
-                "(function_definition) @f"
-            ).expect("BUG: Invalid C++ query - this is a programming error, not a runtime error")
+            Query::new(tree_sitter_cpp::language(), "(function_definition) @f")
+                .expect("BUG: Invalid C++ query - this is a programming error, not a runtime error")
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8]).count()
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
+            .count()
     }
     fn find_comment_ranges(&self, tree: &Tree) -> Vec<tree_sitter::Range> {
         static QUERY: OnceLock<Query> = OnceLock::new();
         let query = QUERY.get_or_init(|| {
             // Programming error: hardcoded query string must be valid
-            Query::new(
-                tree_sitter_cpp::language(),
-                "(comment) @c"
-            ).expect("BUG: Invalid C++ comment query - this is a programming error, not a runtime error")
+            Query::new(tree_sitter_cpp::language(), "(comment) @c").expect(
+                "BUG: Invalid C++ comment query - this is a programming error, not a runtime error",
+            )
         });
-        
+
         let mut cursor = QueryCursor::new();
-        cursor.matches(query, tree.root_node(), &[] as &[u8])
+        cursor
+            .matches(query, tree.root_node(), &[] as &[u8])
             .map(|m| m.captures[0].node.range())
             .collect()
     }
@@ -347,7 +367,10 @@ pub fn get_parser(language: &str) -> Result<Box<dyn LanguageParser>, ParseError>
         }
     };
 
-    tracing::debug!(parser_language = parser.language_key(), "Parser created successfully");
+    tracing::debug!(
+        parser_language = parser.language_key(),
+        "Parser created successfully"
+    );
     Ok(parser)
 }
 
@@ -378,7 +401,7 @@ mod tests {
         let parser = get_parser("typescript").unwrap(); // Test-only unwrap: test data is known to be valid
         let source = "function hello() { return "; // Missing brace
         let tree = parser.parse(source).unwrap(); // Test-only unwrap: test data is known to be valid
-        // tree-sitter usually produces a tree even with errors, but has_error() should be true
+                                                  // tree-sitter usually produces a tree even with errors, but has_error() should be true
         assert!(tree.root_node().has_error());
     }
 
@@ -411,7 +434,7 @@ mod tests {
         let count = parser.count_functions(&tree);
         assert_eq!(count, 3);
     }
-    
+
     #[test]
     fn test_count_functions_tsx() {
         let parser = get_parser("tsx").unwrap(); // Test-only unwrap: test data is known to be valid

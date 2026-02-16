@@ -2,9 +2,9 @@
 // not a runtime error. If a mutex is poisoned in tests, the test should panic.
 #![allow(clippy::unwrap_used)]
 
+use crate::traits::AppContext;
 use anyhow::Result;
 use async_trait::async_trait;
-use crate::traits::AppContext;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -39,7 +39,10 @@ impl MockContext {
 
     /// Get events by name.
     pub fn get_events_by_name(&self, event_name: &str) -> Vec<Value> {
-        self.events.lock().unwrap().iter()
+        self.events
+            .lock()
+            .unwrap()
+            .iter()
             .filter(|(name, _)| name == event_name)
             .map(|(_, payload)| payload.clone())
             .collect()
@@ -66,7 +69,10 @@ impl MockContext {
 #[async_trait]
 impl AppContext for MockContext {
     async fn emit_event(&self, event: &str, payload: Value) -> Result<()> {
-        self.events.lock().unwrap().push((event.to_string(), payload));
+        self.events
+            .lock()
+            .unwrap()
+            .push((event.to_string(), payload));
         Ok(())
     }
 

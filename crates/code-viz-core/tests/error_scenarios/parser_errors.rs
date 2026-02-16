@@ -140,7 +140,7 @@ fn test_parser_timeout_on_complex_file() {
         PathBuf::from("src/generated.rs"),
         "rust",
         None,
-        "parsing timeout: file too complex"
+        "parsing timeout: file too complex",
     );
 
     match error {

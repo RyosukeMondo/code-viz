@@ -32,7 +32,7 @@ fn test_e2e_watch_mode() {
     // Verify initial analysis output
     let start = std::time::Instant::now();
     let mut saw_initial = false;
-    
+
     while start.elapsed() < Duration::from_secs(5) {
         line.clear();
         if reader.read_line(&mut line).unwrap() > 0 {
@@ -44,10 +44,10 @@ fn test_e2e_watch_mode() {
             break;
         }
     }
-    
+
     child.kill().unwrap();
     child.wait().unwrap();
-    
+
     assert!(saw_initial, "Did not see initial analysis output");
 }
 
@@ -110,13 +110,15 @@ fn test_e2e_threshold_violation() {
 #[ignore = "Config file loading not yet implemented in analyze command"]
 fn test_e2e_config_file_integration() {
     let temp = assert_fs::TempDir::new().unwrap();
-    
+
     // Config to exclude tests/
     temp.child(".code-viz.toml")
-        .write_str(r#"
+        .write_str(
+            r#"
             [analysis]
             exclude = ["tests/**"]
-        "#)
+        "#,
+        )
         .unwrap();
 
     temp.child("src/main.ts").write_str("x").unwrap();
@@ -134,12 +136,12 @@ fn test_e2e_config_file_integration() {
     // So I will implement the test, assume it fails, then fix `analyze.rs`.
     // Or I'll skip this test for now? No, I should fix `analyze.rs`.
     // I'll add the test.
-    
+
     // Note: The CLI arg `path` is the target to analyze.
     // `load_config` takes `project_root`.
     // If I run `code-viz analyze .` in `temp`, it should load `.code-viz.toml` from `.`.
     // `analyze.rs` needs to call `config_loader::load_config`.
-    
+
     cmd.current_dir(temp.path())
         .arg("analyze")
         .arg(".")
@@ -152,7 +154,7 @@ fn test_e2e_config_file_integration() {
 #[test]
 fn test_e2e_config_init() {
     let temp = assert_fs::TempDir::new().unwrap();
-    
+
     let mut cmd = cargo_bin_cmd!("code-viz-cli");
     cmd.current_dir(temp.path())
         .arg("config")
@@ -160,6 +162,6 @@ fn test_e2e_config_init() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Created .code-viz.toml"));
-        
+
     assert!(temp.child(".code-viz.toml").exists());
 }

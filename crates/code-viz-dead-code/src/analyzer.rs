@@ -27,7 +27,10 @@ impl ReachabilityAnalyzer {
             return Err(AnalysisError::NoEntryPoints);
         }
 
-        tracing::info!(entry_point_count = entry_points.len(), "Entry points detected");
+        tracing::info!(
+            entry_point_count = entry_points.len(),
+            "Entry points detected"
+        );
         Ok(entry_points)
     }
 
@@ -49,9 +52,15 @@ impl ReachabilityAnalyzer {
     }
 
     /// Identify dead code by finding symbols not in the reachable set
-    pub fn identify_dead_code(&self, reachable: &AHashSet<models::SymbolId>) -> Vec<models::Symbol> {
+    pub fn identify_dead_code(
+        &self,
+        reachable: &AHashSet<models::SymbolId>,
+    ) -> Vec<models::Symbol> {
         let dead_symbols = reachability::identify_dead_code(&self.graph, reachable);
-        tracing::info!(dead_symbol_count = dead_symbols.len(), "Dead code identified");
+        tracing::info!(
+            dead_symbol_count = dead_symbols.len(),
+            "Dead code identified"
+        );
         dead_symbols
     }
 

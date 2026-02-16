@@ -1,9 +1,9 @@
 use crate::config_loader;
 use crate::output::{self, MetricsFormatter};
 use code_viz_commands::analyze_repository;
+use code_viz_core::analyzer::{calculate_summary, process_file_with_fs};
 use code_viz_core::models::{AnalysisConfig, AnalysisResult};
 use code_viz_core::traits::{AppContext, FileSystem};
-use code_viz_core::analyzer::{process_file_with_fs, calculate_summary};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -30,7 +30,13 @@ pub enum WatchError {
     FormattingFailed(#[from] crate::output::FormatterError),
 }
 
-pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppContext + Clone, fs: impl FileSystem + Clone) -> Result<(), WatchError> {
+pub async fn run(
+    path: PathBuf,
+    format: String,
+    verbose: bool,
+    ctx: impl AppContext + Clone,
+    fs: impl FileSystem + Clone,
+) -> Result<(), WatchError> {
     // Setup logging
     let mut builder = env_logger::Builder::from_default_env();
     if verbose {
@@ -55,7 +61,8 @@ pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppCont
         println!("Performing initial analysis...");
     }
     let git = code_viz_core::context::RealGit::new();
-    let mut current_result = analyze_repository(&path, ctx.clone(), fs.clone(), &git, None, None, None).await?;
+    let mut current_result =
+        analyze_repository(&path, ctx.clone(), fs.clone(), &git, None, None, None).await?;
     print_output(&current_result, &format)?;
 
     // Setup channel
@@ -80,15 +87,19 @@ pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppCont
         }
         // We can't break the loop easily from here unless we send a signal or checking flag
         // The main loop checks flag
-    }).map_err(|e| WatchError::IoError(std::io::Error::other(format!("Failed to set Ctrl-C handler: {}", e))))?;
+    })
+    .map_err(|e| {
+        WatchError::IoError(std::io::Error::other(format!(
+            "Failed to set Ctrl-C handler: {}",
+            e
+        )))
+    })?;
 
     // Loop
     loop {
         // Check running flag
         // Safety: Mutex lock should never fail as we control all access and don't panic while holding lock
-        let should_stop = running.lock()
-            .map(|guard| !*guard)
-            .unwrap_or(true); // If mutex is poisoned, stop watching
+        let should_stop = running.lock().map(|guard| !*guard).unwrap_or(true); // If mutex is poisoned, stop watching
 
         if should_stop {
             if format != "json" {
@@ -97,7 +108,7 @@ pub async fn run(path: PathBuf, format: String, verbose: bool, ctx: impl AppCont
             break;
         }
 
-        // Wait for event (with timeout to check running flag periodically if needed, 
+        // Wait for event (with timeout to check running flag periodically if needed,
         // but recv() blocks. Ctrl+C handler can exit process or we use timeout loop)
         // Ideally we use a select or timeout.
         // Let's use recv_timeout loop to check running flag.
@@ -170,7 +181,8 @@ fn handle_changes(
                     let metrics_function_count = metrics.function_count;
 
                     // Update result.files
-                    if let Some(existing) = result.files.iter_mut().find(|f| f.path == metrics.path) {
+                    if let Some(existing) = result.files.iter_mut().find(|f| f.path == metrics.path)
+                    {
                         *existing = metrics;
                     } else {
                         result.files.push(metrics);
@@ -197,7 +209,11 @@ fn handle_changes(
             if let Some(idx) = result.files.iter().position(|f| f.path == path) {
                 result.files.remove(idx);
                 if format != "json" {
-                    println!("[{}] Deleted: {}", chrono::Local::now().format("%H:%M:%S"), path.display());
+                    println!(
+                        "[{}] Deleted: {}",
+                        chrono::Local::now().format("%H:%M:%S"),
+                        path.display()
+                    );
                 }
                 updated = true;
             }
@@ -220,7 +236,8 @@ fn handle_changes(
 fn print_output(result: &AnalysisResult, format: &str) -> Result<(), WatchError> {
     if format == "json" {
         // Compact JSON on one line
-        let json = serde_json::to_string(result).map_err(|_| crate::output::FormatterError::FormattingFailed)?;
+        let json = serde_json::to_string(result)
+            .map_err(|_| crate::output::FormatterError::FormattingFailed)?;
         println!("{}", json);
     } else {
         // For text, we printed incremental updates.
@@ -228,24 +245,25 @@ fn print_output(result: &AnalysisResult, format: &str) -> Result<(), WatchError>
         // "print updated metrics ... if --format json ... else print '[timestamp] path: X LOC'"
         // So for text mode, we don't print full summary every time, just the update line.
         // Initial analysis prints full summary.
-        if !result.files.is_empty() { // Check if initial call
-             // Actually `run` calls `print_output` for initial result.
-             // If format is text, we want full summary.
-             // But inside loop, we handle incremental prints manually.
-             // So `print_output` is mainly for JSON or initial Text.
-             
-             // How to distinguish?
-             // `run` calls `print_output` initially.
-             // `handle_changes` calls `print_output` ONLY if JSON.
-             // Text updates are handled in `handle_changes` loop.
-             // So we are good.
-             
-             if format != "json" {
-                 // Use TextFormatter
-                 let formatter = output::text::TextFormatter;
-                 let output = formatter.format(result)?;
-                 println!("{}", output);
-             }
+        if !result.files.is_empty() {
+            // Check if initial call
+            // Actually `run` calls `print_output` for initial result.
+            // If format is text, we want full summary.
+            // But inside loop, we handle incremental prints manually.
+            // So `print_output` is mainly for JSON or initial Text.
+
+            // How to distinguish?
+            // `run` calls `print_output` initially.
+            // `handle_changes` calls `print_output` ONLY if JSON.
+            // Text updates are handled in `handle_changes` loop.
+            // So we are good.
+
+            if format != "json" {
+                // Use TextFormatter
+                let formatter = output::text::TextFormatter;
+                let output = formatter.format(result)?;
+                println!("{}", output);
+            }
         }
     }
     Ok(())

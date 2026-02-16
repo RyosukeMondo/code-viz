@@ -46,7 +46,7 @@ fn contains_code(row: usize, line: &str, comment_ranges: &[Range]) -> bool {
     // Iterate through content
     while let Some((col, _c)) = chars.next() {
         match check_comment_at_position(row, col, comment_ranges) {
-            None => return true, // Not in comment - found code!
+            None => return true,        // Not in comment - found code!
             Some(None) => return false, // Comment extends to end of line
             Some(Some(end_col)) => skip_to_comment_end(&mut chars, end_col),
         }
@@ -78,10 +78,7 @@ fn check_comment_at_position(
 }
 
 /// Skip characters until end of comment on current line
-fn skip_to_comment_end(
-    chars: &mut std::iter::Peekable<std::str::CharIndices>,
-    end_col: usize,
-) {
+fn skip_to_comment_end(chars: &mut std::iter::Peekable<std::str::CharIndices>, end_col: usize) {
     while let Some((c_col, _)) = chars.peek() {
         if *c_col < end_col {
             chars.next();
@@ -97,12 +94,20 @@ fn is_in_range(row: usize, col: usize, range: &Range) -> bool {
     let end = range.end_point;
 
     // Check start
-    if row < start.row { return false; }
-    if row == start.row && col < start.column { return false; }
+    if row < start.row {
+        return false;
+    }
+    if row == start.row && col < start.column {
+        return false;
+    }
 
     // Check end
-    if row > end.row { return false; }
-    if row == end.row && col >= end.column { return false; }
+    if row > end.row {
+        return false;
+    }
+    if row == end.row && col >= end.column {
+        return false;
+    }
 
     true
 }

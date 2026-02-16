@@ -148,9 +148,9 @@ fn test_zero_churn_file() {
 #[test]
 fn test_churn_score_calculation() {
     let files = vec![
-        create_file_with_churn("a.rs", 100, 10, 100, 0),   // 100 total changes
-        create_file_with_churn("b.rs", 100, 10, 50, 50),   // 100 total changes
-        create_file_with_churn("c.rs", 100, 10, 0, 100),   // 100 total changes
+        create_file_with_churn("a.rs", 100, 10, 100, 0), // 100 total changes
+        create_file_with_churn("b.rs", 100, 10, 50, 50), // 100 total changes
+        create_file_with_churn("c.rs", 100, 10, 0, 100), // 100 total changes
     ];
 
     let detector = HotspotDetector::new(10);
@@ -168,8 +168,8 @@ fn test_churn_score_calculation() {
 #[test]
 fn test_complexity_score_calculation() {
     let files = vec![
-        create_file_with_churn("simple.rs", 50, 5, 10, 10),    // Low complexity
-        create_file_with_churn("complex.rs", 50, 50, 10, 10),  // High complexity
+        create_file_with_churn("simple.rs", 50, 5, 10, 10), // Low complexity
+        create_file_with_churn("complex.rs", 50, 50, 10, 10), // High complexity
     ];
 
     let detector = HotspotDetector::new(10);
@@ -178,11 +178,15 @@ fn test_complexity_score_calculation() {
     assert_eq!(analysis.hotspots.len(), 2);
 
     // Find hotspots by path
-    let complex = analysis.hotspots.iter()
+    let complex = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("complex.rs"))
         .unwrap(); // Test-only: known fixture
 
-    let simple = analysis.hotspots.iter()
+    let simple = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("simple.rs"))
         .unwrap(); // Test-only: known fixture
 
@@ -192,8 +196,8 @@ fn test_complexity_score_calculation() {
 #[test]
 fn test_size_score_calculation() {
     let files = vec![
-        create_file_with_churn("small.rs", 50, 10, 10, 10),    // Small file
-        create_file_with_churn("large.rs", 500, 10, 10, 10),   // Large file
+        create_file_with_churn("small.rs", 50, 10, 10, 10), // Small file
+        create_file_with_churn("large.rs", 500, 10, 10, 10), // Large file
     ];
 
     let detector = HotspotDetector::new(10);
@@ -201,11 +205,15 @@ fn test_size_score_calculation() {
 
     assert_eq!(analysis.hotspots.len(), 2);
 
-    let large = analysis.hotspots.iter()
+    let large = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("large.rs"))
         .unwrap(); // Test-only: known fixture
 
-    let small = analysis.hotspots.iter()
+    let small = analysis
+        .hotspots
+        .iter()
         .find(|h| h.path == PathBuf::from("small.rs"))
         .unwrap(); // Test-only: known fixture
 
@@ -218,7 +226,7 @@ fn test_combined_score_weighting() {
     let files = vec![
         create_file_with_churn("high_churn.rs", 100, 10, 1000, 1000), // High churn
         create_file_with_churn("high_complexity.rs", 100, 200, 10, 10), // High complexity
-        create_file_with_churn("large_file.rs", 5000, 10, 10, 10), // Large size
+        create_file_with_churn("large_file.rs", 5000, 10, 10, 10),    // Large size
     ];
 
     let detector = HotspotDetector::new(10);

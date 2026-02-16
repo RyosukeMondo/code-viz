@@ -2,8 +2,8 @@
 // not a runtime error. If a mutex is poisoned in tests, the test should panic.
 #![allow(clippy::unwrap_used)]
 
-use anyhow::{anyhow, Result};
 use crate::traits::FileSystem;
+use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -27,7 +27,10 @@ impl MockFileSystem {
 
     /// Add a file to the mock filesystem.
     pub fn with_file(self, path: impl Into<PathBuf>, content: impl Into<String>) -> Self {
-        self.files.lock().unwrap().insert(path.into(), content.into());
+        self.files
+            .lock()
+            .unwrap()
+            .insert(path.into(), content.into());
         self
     }
 
@@ -57,7 +60,10 @@ impl MockFileSystem {
 impl FileSystem for MockFileSystem {
     fn read_to_string(&self, path: &Path) -> Result<String> {
         self.reads.lock().unwrap().push(path.to_path_buf());
-        self.files.lock().unwrap().get(path)
+        self.files
+            .lock()
+            .unwrap()
+            .get(path)
             .cloned()
             .ok_or_else(|| anyhow!("File not found in mock filesystem: {}", path.display()))
     }
@@ -74,7 +80,10 @@ impl FileSystem for MockFileSystem {
     }
 
     fn write(&self, path: &Path, content: &str) -> Result<()> {
-        self.files.lock().unwrap().insert(path.to_path_buf(), content.to_string());
+        self.files
+            .lock()
+            .unwrap()
+            .insert(path.to_path_buf(), content.to_string());
         Ok(())
     }
 

@@ -185,7 +185,12 @@ impl CodeVizError {
     /// * `language` - Programming language
     /// * `line` - Optional line number
     /// * `message` - Error description
-    pub fn parse(path: PathBuf, language: impl Into<String>, line: Option<usize>, message: impl Into<String>) -> Self {
+    pub fn parse(
+        path: PathBuf,
+        language: impl Into<String>,
+        line: Option<usize>,
+        message: impl Into<String>,
+    ) -> Self {
         Self::ParseError {
             path,
             language: language.into(),

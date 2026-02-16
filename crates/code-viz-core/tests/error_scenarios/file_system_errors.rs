@@ -9,8 +9,8 @@ use std::path::PathBuf;
 fn test_file_not_found_returns_error() {
     let nonexistent = PathBuf::from("/tmp/definitely-does-not-exist-12345.txt");
 
-    let result: Result<String> = fs::read_to_string(&nonexistent)
-        .map_err(|e| CodeVizError::file_read(&nonexistent, e));
+    let result: Result<String> =
+        fs::read_to_string(&nonexistent).map_err(|e| CodeVizError::file_read(&nonexistent, e));
 
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -57,7 +57,9 @@ fn test_disk_full_error() {
     let error = CodeVizError::file_write(&path, io_err);
 
     match error {
-        CodeVizError::FileSystem { message, source, .. } => {
+        CodeVizError::FileSystem {
+            message, source, ..
+        } => {
             assert!(message.contains("Failed to write file"));
             assert!(source.to_string().contains("no space left"));
         }
@@ -67,10 +69,7 @@ fn test_disk_full_error() {
 
 #[test]
 fn test_too_many_open_files_error() {
-    let io_err = io::Error::new(
-        io::ErrorKind::Other,
-        "too many open files"
-    );
+    let io_err = io::Error::new(io::ErrorKind::Other, "too many open files");
     let path = PathBuf::from("src/large_project/file_999.rs");
     let error = CodeVizError::file_read(&path, io_err);
 

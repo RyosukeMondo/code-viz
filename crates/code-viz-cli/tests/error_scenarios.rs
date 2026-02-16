@@ -42,10 +42,7 @@ mod cli_error_handling {
     fn test_analysis_failure_error() {
         use code_viz_core::error::CodeVizError;
 
-        let error = CodeVizError::analysis(
-            "coupling",
-            "timeout after 30 seconds"
-        );
+        let error = CodeVizError::analysis("coupling", "timeout after 30 seconds");
 
         let msg = error.to_string();
         assert!(msg.contains("Analysis failed"));
@@ -58,8 +55,8 @@ mod cli_error_handling {
 #[cfg(test)]
 mod file_access_errors {
     use super::*;
-    use std::io;
     use code_viz_core::error::CodeVizError;
+    use std::io;
 
     #[test]
     fn test_permission_denied_error() {
@@ -81,7 +78,11 @@ mod file_access_errors {
         let error = CodeVizError::file_read(&path, io_err);
 
         match error {
-            CodeVizError::FileSystem { path: err_path, source, .. } => {
+            CodeVizError::FileSystem {
+                path: err_path,
+                source,
+                ..
+            } => {
                 assert_eq!(err_path, path);
                 assert_eq!(source.kind(), io::ErrorKind::IsADirectory);
             }
@@ -109,7 +110,8 @@ mod argument_validation {
 
     #[test]
     fn test_invalid_argument_error() {
-        let error = CodeVizError::config("invalid output format: 'xlsx' (supported: json, text, csv)");
+        let error =
+            CodeVizError::config("invalid output format: 'xlsx' (supported: json, text, csv)");
 
         match error {
             CodeVizError::Config { message } => {
@@ -148,13 +150,13 @@ mod git_errors {
     #[test]
     fn test_not_a_git_repository() {
         let path = PathBuf::from("/tmp/not-a-repo");
-        let error = CodeVizError::git(
-            Some(path.clone()),
-            "not a git repository"
-        );
+        let error = CodeVizError::git(Some(path.clone()), "not a git repository");
 
         match error {
-            CodeVizError::Git { repository, message } => {
+            CodeVizError::Git {
+                repository,
+                message,
+            } => {
                 assert_eq!(repository, Some(path));
                 assert_eq!(message, "not a git repository");
             }
@@ -164,10 +166,7 @@ mod git_errors {
 
     #[test]
     fn test_git_command_not_found() {
-        let error = CodeVizError::git(
-            None,
-            "git command not found in PATH"
-        );
+        let error = CodeVizError::git(None, "git command not found in PATH");
 
         let msg = error.to_string();
         assert!(msg.contains("git"));
@@ -177,10 +176,7 @@ mod git_errors {
     #[test]
     fn test_invalid_commit_reference() {
         let repo = PathBuf::from(".");
-        let error = CodeVizError::git(
-            Some(repo),
-            "invalid commit reference: 'invalid-hash'"
-        );
+        let error = CodeVizError::git(Some(repo), "invalid commit reference: 'invalid-hash'");
 
         let msg = error.to_string();
         assert!(msg.contains("invalid commit reference"));
@@ -194,10 +190,7 @@ mod analysis_timeout {
 
     #[test]
     fn test_analysis_timeout_error() {
-        let error = CodeVizError::analysis(
-            "duplication",
-            "analysis timeout after 60 seconds"
-        );
+        let error = CodeVizError::analysis("duplication", "analysis timeout after 60 seconds");
 
         let msg = error.to_string();
         assert!(msg.contains("duplication"));
@@ -209,11 +202,7 @@ mod analysis_timeout {
         use std::path::PathBuf;
 
         let path = PathBuf::from("src/large_file.rs");
-        let error = CodeVizError::analysis_with_path(
-            "metrics",
-            path.clone(),
-            "processing timeout"
-        );
+        let error = CodeVizError::analysis_with_path("metrics", path.clone(), "processing timeout");
 
         match error {
             CodeVizError::Analysis { path: err_path, .. } => {
@@ -228,8 +217,8 @@ mod analysis_timeout {
 #[cfg(test)]
 mod resource_constraints {
     use super::*;
-    use std::io;
     use code_viz_core::error::CodeVizError;
+    use std::io;
 
     #[test]
     fn test_disk_full_error_on_output() {
@@ -245,10 +234,8 @@ mod resource_constraints {
 
     #[test]
     fn test_out_of_memory_during_large_analysis() {
-        let error = CodeVizError::analysis(
-            "metrics",
-            "out of memory while processing large codebase"
-        );
+        let error =
+            CodeVizError::analysis("metrics", "out of memory while processing large codebase");
 
         let msg = error.to_string();
         assert!(msg.contains("out of memory"));
@@ -259,7 +246,7 @@ mod resource_constraints {
     fn test_too_many_files_to_analyze() {
         let error = CodeVizError::analysis(
             "scanner",
-            "too many files (>50000), consider using --exclude"
+            "too many files (>50000), consider using --exclude",
         );
 
         let msg = error.to_string();
@@ -280,7 +267,7 @@ mod malformed_input {
             PathBuf::from("assets/image.png"),
             "unknown",
             None,
-            "binary file detected, skipping"
+            "binary file detected, skipping",
         );
 
         let msg = error.to_string();
@@ -292,7 +279,7 @@ mod malformed_input {
     fn test_empty_repository_error() {
         let error = CodeVizError::git(
             Some(PathBuf::from("/empty/repo")),
-            "repository has no commits"
+            "repository has no commits",
         );
 
         let msg = error.to_string();
@@ -305,7 +292,7 @@ mod malformed_input {
             PathBuf::from("README.md"),
             "markdown",
             None,
-            "unsupported language: markdown"
+            "unsupported language: markdown",
         );
 
         let msg = error.to_string();
@@ -322,10 +309,8 @@ mod error_recovery {
     #[test]
     fn test_partial_analysis_on_errors() {
         // When some files fail, analysis should continue with others
-        let error = CodeVizError::analysis(
-            "scanner",
-            "partial analysis: 5 files failed, 95 succeeded"
-        );
+        let error =
+            CodeVizError::analysis("scanner", "partial analysis: 5 files failed, 95 succeeded");
 
         let msg = error.to_string();
         assert!(msg.contains("partial analysis"));
@@ -336,7 +321,7 @@ mod error_recovery {
     #[test]
     fn test_graceful_degradation_message() {
         let error = CodeVizError::coverage_missing(
-            "coverage data unavailable, continuing without coverage metrics"
+            "coverage data unavailable, continuing without coverage metrics",
         );
 
         let msg = error.to_string();

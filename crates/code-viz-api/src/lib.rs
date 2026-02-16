@@ -22,12 +22,12 @@
 //!   └───────────────┘       └────────────────┘
 //! ```
 
+pub mod contracts;
+pub mod error;
+pub mod handlers;
 pub mod models;
 pub mod transform;
-pub mod handlers;
-pub mod error;
-pub mod contracts;
 
-pub use models::*;
-pub use handlers::*;
 pub use error::*;
+pub use handlers::*;
+pub use models::*;

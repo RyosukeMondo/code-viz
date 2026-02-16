@@ -143,13 +143,19 @@ pub mod test_utils {
             return Err(format!("loc must be number, got: {:?}", json["loc"]));
         }
         if !json["complexity"].is_number() {
-            return Err(format!("complexity must be number, got: {:?}", json["complexity"]));
+            return Err(format!(
+                "complexity must be number, got: {:?}",
+                json["complexity"]
+            ));
         }
         if !json["type"].is_string() {
             return Err(format!("type must be string, got: {:?}", json["type"]));
         }
         if !json["children"].is_array() {
-            return Err(format!("children must be array, got: {:?}", json["children"]));
+            return Err(format!(
+                "children must be array, got: {:?}",
+                json["children"]
+            ));
         }
 
         // CRITICAL: lastModified must be ISO 8601 string, NOT object

@@ -3,7 +3,10 @@
 //! Processes dead symbols into structured results with confidence scores
 //! and generates summary statistics.
 
-use crate::{confidence::ConfidenceCalculator, models, symbol_graph::SymbolGraph, DeadCodeResult, DeadCodeSummary, DeadSymbol, FileDeadCode};
+use crate::{
+    confidence::ConfidenceCalculator, models, symbol_graph::SymbolGraph, DeadCodeResult,
+    DeadCodeSummary, DeadSymbol, FileDeadCode,
+};
 use ahash::AHashMap as HashMap;
 use std::path::PathBuf;
 
@@ -71,7 +74,10 @@ impl ResultAggregator {
                 last_modified: None,
             };
 
-            files_map.entry(symbol.path.clone()).or_default().push(dead_symbol);
+            files_map
+                .entry(symbol.path.clone())
+                .or_default()
+                .push(dead_symbol);
         }
 
         let mut files: Vec<FileDeadCode> = files_map

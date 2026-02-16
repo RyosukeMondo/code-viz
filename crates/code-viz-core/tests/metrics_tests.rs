@@ -316,8 +316,7 @@ function simple() {
     let complexity = metrics.cognitive_complexity.unwrap(); // Test-only: complexity calculated
 
     // Find the "simple" function
-    let simple = complexity.functions.iter()
-        .find(|f| f.name == "simple");
+    let simple = complexity.functions.iter().find(|f| f.name == "simple");
     assert!(simple.is_some());
     assert_eq!(simple.unwrap().complexity, 0); // Test-only: found simple function
 }
@@ -363,7 +362,7 @@ function nested(x, y) {
     let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap(); // Test-only: valid source
 
     let complexity = metrics.cognitive_complexity.unwrap(); // Test-only: complexity calculated
-    // Nested if should have higher complexity due to nesting
+                                                            // Nested if should have higher complexity due to nesting
     assert!(complexity.functions[0].complexity > 2);
 }
 
@@ -388,7 +387,7 @@ function b() {
     let metrics = calculate_metrics(&path, source, parser.as_ref(), None).unwrap(); // Test-only: valid source
 
     let complexity = metrics.cognitive_complexity.unwrap(); // Test-only: complexity calculated
-    // Should have at least our 2 functions
+                                                            // Should have at least our 2 functions
     assert!(complexity.functions.len() >= 2);
     assert!(complexity.total_complexity > 0);
     assert!(complexity.average_complexity > 0.0);
@@ -410,8 +409,8 @@ fn test_cognitive_complexity_no_functions() {
 #[test]
 fn test_malformed_source_returns_error() {
     let parser = get_parser("typescript").unwrap(); // Test-only: language is valid
-    // Note: tree-sitter is very permissive, so truly failing to parse is rare
-    // This tests the error handling path
+                                                    // Note: tree-sitter is very permissive, so truly failing to parse is rare
+                                                    // This tests the error handling path
     let source = "function incomplete(";
 
     let temp_dir = TempDir::new().unwrap(); // Test-only: temp dir creation

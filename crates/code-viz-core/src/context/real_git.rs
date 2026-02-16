@@ -1,7 +1,7 @@
+use crate::traits::git_provider::{ChangeType, ChangedFile};
+use crate::traits::{BlameInfo, Commit, Diff, GitProvider};
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use crate::traits::{BlameInfo, Commit, Diff, GitProvider};
-use crate::traits::git_provider::{ChangedFile, ChangeType};
 use git2::{DiffOptions, Repository};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -52,7 +52,8 @@ fn get_or_cache_commit_info<'a>(
     use std::collections::hash_map::Entry;
 
     if let Entry::Vacant(e) = cache.entry(commit_id) {
-        let commit = repo.find_commit(commit_id)
+        let commit = repo
+            .find_commit(commit_id)
             .with_context(|| format!("Failed to find commit '{}' for blame hunk", commit_id))?;
         let author = commit.author();
         let info = (
@@ -62,7 +63,9 @@ fn get_or_cache_commit_info<'a>(
         );
         e.insert(info);
     }
-    cache.get(&commit_id).ok_or_else(|| anyhow!("Commit info not in cache after insertion"))
+    cache
+        .get(&commit_id)
+        .ok_or_else(|| anyhow!("Commit info not in cache after insertion"))
 }
 
 #[async_trait]
@@ -74,11 +77,14 @@ impl GitProvider for RealGit {
                 .with_context(|| format!("Failed to discover repository at {}", path.display()))?;
 
             let workdir = repo.workdir().context("Repository is bare")?;
-            let relative_path = path.strip_prefix(workdir)
+            let relative_path = path
+                .strip_prefix(workdir)
                 .with_context(|| "File path is not inside the repository workdir")?;
 
             let mut revwalk = repo.revwalk().context("Failed to create revwalk")?;
-            revwalk.push_head().context("Failed to push HEAD to revwalk")?;
+            revwalk
+                .push_head()
+                .context("Failed to push HEAD to revwalk")?;
             revwalk.set_sorting(git2::Sort::TIME)?;
 
             let mut commits = Vec::new();
@@ -91,7 +97,8 @@ impl GitProvider for RealGit {
                 let mut path_changed = false;
                 if let Some(parent) = commit.parents().next() {
                     let parent_tree = parent.tree().context("Failed to get parent tree")?;
-                    let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)
+                    let diff = repo
+                        .diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)
                         .context("Failed to create diff")?;
 
                     for delta in diff.deltas() {
@@ -130,27 +137,31 @@ impl GitProvider for RealGit {
         let to_str = to.to_string();
 
         task::spawn_blocking(move || {
-            let repo = Repository::discover(&path_buf)
-                .with_context(|| format!("Failed to discover repository at {}", path_buf.display()))?;
+            let repo = Repository::discover(&path_buf).with_context(|| {
+                format!("Failed to discover repository at {}", path_buf.display())
+            })?;
 
-            let to_obj = repo.revparse_single(&to_str)
+            let to_obj = repo
+                .revparse_single(&to_str)
                 .with_context(|| format!("Failed to find 'to' revision: {}", to_str))?;
-            let to_tree = to_obj.peel_to_tree()
+            let to_tree = to_obj
+                .peel_to_tree()
                 .with_context(|| format!("Failed to peel 'to' revision to tree: {}", to_str))?;
 
             let mut diff_opts = git2::DiffOptions::new();
             let diff = if let Some(from_str) = from_str {
-                let from_obj = repo.revparse_single(&from_str)
+                let from_obj = repo
+                    .revparse_single(&from_str)
                     .with_context(|| format!("Failed to find 'from' revision: {}", from_str))?;
-                let from_tree = from_obj.peel_to_tree()
-                    .with_context(|| format!("Failed to peel 'from' revision to tree: {}", from_str))?;
+                let from_tree = from_obj.peel_to_tree().with_context(|| {
+                    format!("Failed to peel 'from' revision to tree: {}", from_str)
+                })?;
                 repo.diff_tree_to_tree(Some(&from_tree), Some(&to_tree), Some(&mut diff_opts))
             } else {
                 repo.diff_tree_to_workdir_with_index(Some(&to_tree), Some(&mut diff_opts))
             }
             .context("Failed to create diff")?;
 
-            
             let added_lines = RefCell::new(Vec::<String>::new());
             let deleted_lines = RefCell::new(Vec::<String>::new());
             let modified_lines = RefCell::new(Vec::new());
@@ -160,14 +171,17 @@ impl GitProvider for RealGit {
             diff.foreach(
                 &mut |_, _| true, // file_cb
                 None,             // binary_cb
-                Some(&mut |_, _| { // hunk_cb
+                Some(&mut |_, _| {
+                    // hunk_cb
                     let deleted = hunk_deleted.borrow();
                     let added = hunk_added.borrow();
                     let mut del_iter = deleted.iter().peekable();
                     let mut add_iter = added.iter().peekable();
 
                     while let (Some(del), Some(add)) = (del_iter.peek(), add_iter.peek()) {
-                        modified_lines.borrow_mut().push(((*del).clone(), (*add).clone()));
+                        modified_lines
+                            .borrow_mut()
+                            .push(((*del).clone(), (*add).clone()));
                         del_iter.next();
                         add_iter.next();
                     }
@@ -179,7 +193,8 @@ impl GitProvider for RealGit {
                     hunk_deleted.borrow_mut().clear();
                     true
                 }),
-                Some(&mut |_, _, line| { // line_cb
+                Some(&mut |_, _, line| {
+                    // line_cb
                     let content = String::from_utf8_lossy(line.content()).to_string();
                     match line.origin() {
                         '+' => hunk_added.borrow_mut().push(content),
@@ -217,20 +232,18 @@ impl GitProvider for RealGit {
                 repo.path().to_path_buf()
             } else {
                 // For a non-bare repo, the workdir is the root.
-                repo.workdir().map(|p| p.to_path_buf()).ok_or_else(|| {
-                    anyhow!("Could not find repository workdir for non-bare repo")
-                })?
+                repo.workdir()
+                    .map(|p| p.to_path_buf())
+                    .ok_or_else(|| anyhow!("Could not find repository workdir for non-bare repo"))?
             };
 
-            let relative_path = file_path_buf
-                .strip_prefix(&repo_root)
-                .with_context(|| {
-                    format!(
-                        "File '{}' is not inside the git repository root '{}'",
-                        file_path_buf.display(),
-                        repo_root.display()
-                    )
-                })?;
+            let relative_path = file_path_buf.strip_prefix(&repo_root).with_context(|| {
+                format!(
+                    "File '{}' is not inside the git repository root '{}'",
+                    file_path_buf.display(),
+                    repo_root.display()
+                )
+            })?;
 
             let mut blame_opts = git2::BlameOptions::new();
             blame_opts.track_copies_same_file(true);
@@ -271,11 +284,13 @@ impl GitProvider for RealGit {
         let sha = sha.to_string();
 
         task::spawn_blocking(move || {
-            let repo = Repository::discover(&file_path)
-                .with_context(|| format!("Failed to discover repository at {}", file_path.display()))?;
+            let repo = Repository::discover(&file_path).with_context(|| {
+                format!("Failed to discover repository at {}", file_path.display())
+            })?;
 
             let workdir = repo.workdir().context("Repository is bare")?;
-            let relative_path = file_path.strip_prefix(workdir)
+            let relative_path = file_path
+                .strip_prefix(workdir)
                 .with_context(|| "File path is not inside the repository workdir")?;
 
             let oid = git2::Oid::from_str(&sha)?;
@@ -285,7 +300,9 @@ impl GitProvider for RealGit {
             let entry = tree.get_path(relative_path)?;
 
             let object = entry.to_object(&repo)?;
-            let blob = object.as_blob().ok_or_else(|| anyhow!("Object is not a blob"))?;
+            let blob = object
+                .as_blob()
+                .ok_or_else(|| anyhow!("Object is not a blob"))?;
 
             Ok(String::from_utf8_lossy(blob.content()).to_string())
         })
@@ -309,7 +326,8 @@ impl GitProvider for RealGit {
             let head_tree = head_commit.tree()?;
 
             let mut diff_opts = DiffOptions::new();
-            let diff = repo.diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut diff_opts))?;
+            let diff =
+                repo.diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut diff_opts))?;
 
             let mut changed_files = Vec::new();
             diff.foreach(

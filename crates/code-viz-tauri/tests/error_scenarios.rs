@@ -28,7 +28,7 @@ mod ipc_error_propagation {
             PathBuf::from("src/components/App.tsx"),
             "tsx",
             Some(24),
-            "unexpected token"
+            "unexpected token",
         );
 
         let msg = error.to_string();
@@ -43,7 +43,7 @@ mod ipc_error_propagation {
         let error = CodeVizError::analysis_with_path(
             "metrics",
             PathBuf::from("src/large.rs"),
-            "file too large to analyze"
+            "file too large to analyze",
         );
 
         let msg = error.to_string();
@@ -78,7 +78,7 @@ mod tauri_command_errors {
     fn test_git_error_for_frontend() {
         let error = CodeVizError::git(
             Some(PathBuf::from("/workspace/project")),
-            "not a git repository"
+            "not a git repository",
         );
 
         let msg = error.to_string();
@@ -106,13 +106,12 @@ mod transform_errors {
 
     #[test]
     fn test_transform_error_on_invalid_data() {
-        let error = CodeVizError::analysis(
-            "transform",
-            "cannot build hierarchy: missing root"
-        );
+        let error = CodeVizError::analysis("transform", "cannot build hierarchy: missing root");
 
         match error {
-            CodeVizError::Analysis { operation, message, .. } => {
+            CodeVizError::Analysis {
+                operation, message, ..
+            } => {
                 assert_eq!(operation, "transform");
                 assert!(message.contains("missing root"));
             }
@@ -122,10 +121,7 @@ mod transform_errors {
 
     #[test]
     fn test_empty_file_list_error() {
-        let error = CodeVizError::analysis(
-            "flat_to_hierarchy",
-            "empty file list provided"
-        );
+        let error = CodeVizError::analysis("flat_to_hierarchy", "empty file list provided");
 
         let msg = error.to_string();
         assert!(msg.contains("flat_to_hierarchy"));
@@ -157,7 +153,10 @@ mod coverage_errors {
         let mut error = CodeVizError::coverage_missing("invalid format");
 
         // Manually set path for testing
-        if let CodeVizError::CoverageDataMissing { path: ref mut p, .. } = error {
+        if let CodeVizError::CoverageDataMissing {
+            path: ref mut p, ..
+        } = error
+        {
             *p = Some(path.clone());
         }
 
@@ -221,12 +220,8 @@ mod error_context {
 
     #[test]
     fn test_error_chain_for_debugging() {
-        let error = CodeVizError::parse(
-            PathBuf::from("debug.rs"),
-            "rust",
-            Some(10),
-            "syntax error"
-        );
+        let error =
+            CodeVizError::parse(PathBuf::from("debug.rs"), "rust", Some(10), "syntax error");
 
         let contextualized = error.context("during hot reload");
 
@@ -277,10 +272,7 @@ mod resource_constraint_errors {
     #[test]
     fn test_out_of_memory_frontend_message() {
         let io_err = io::Error::new(io::ErrorKind::OutOfMemory, "out of memory");
-        let error = CodeVizError::cache_with_source(
-            "analysis too large to fit in memory",
-            io_err
-        );
+        let error = CodeVizError::cache_with_source("analysis too large to fit in memory", io_err);
 
         let msg = error.to_string();
         // Frontend should show user-friendly message
@@ -302,7 +294,7 @@ mod resource_constraint_errors {
     fn test_too_many_files_warning() {
         let error = CodeVizError::analysis(
             "scanner",
-            "project too large (>50000 files), analysis may be slow"
+            "project too large (>50000 files), analysis may be slow",
         );
 
         let msg = error.to_string();
@@ -320,7 +312,7 @@ mod timeout_scenarios {
     fn test_analysis_timeout_with_progress() {
         let error = CodeVizError::analysis(
             "coupling",
-            "analysis timeout after processing 1000/5000 files"
+            "analysis timeout after processing 1000/5000 files",
         );
 
         let msg = error.to_string();
@@ -332,7 +324,7 @@ mod timeout_scenarios {
     fn test_git_log_timeout() {
         let error = CodeVizError::git(
             Some(PathBuf::from("/large/repo")),
-            "git log timeout: repository history too large"
+            "git log timeout: repository history too large",
         );
 
         let msg = error.to_string();
@@ -357,9 +349,7 @@ mod path_validation_errors {
 
     #[test]
     fn test_path_outside_workspace() {
-        let error = CodeVizError::config(
-            "path is outside workspace: /etc/passwd"
-        );
+        let error = CodeVizError::config("path is outside workspace: /etc/passwd");
 
         let msg = error.to_string();
         assert!(msg.contains("outside workspace"));
@@ -385,9 +375,7 @@ mod concurrent_analysis_errors {
 
     #[test]
     fn test_concurrent_analysis_conflict() {
-        let error = CodeVizError::cache(
-            "analysis already in progress for this project"
-        );
+        let error = CodeVizError::cache("analysis already in progress for this project");
 
         let msg = error.to_string();
         assert!(msg.contains("already in progress"));
@@ -398,10 +386,8 @@ mod concurrent_analysis_errors {
         use std::io;
 
         let io_err = io::Error::new(io::ErrorKind::Other, "cache corrupted");
-        let error = CodeVizError::cache_with_source(
-            "concurrent write detected, cache invalidated",
-            io_err
-        );
+        let error =
+            CodeVizError::cache_with_source("concurrent write detected, cache invalidated", io_err);
 
         match error {
             CodeVizError::Cache { message, source } => {
@@ -422,7 +408,7 @@ mod progressive_error_handling {
     fn test_partial_results_with_errors() {
         let error = CodeVizError::analysis(
             "metrics",
-            "completed with warnings: 10 files skipped due to parse errors"
+            "completed with warnings: 10 files skipped due to parse errors",
         );
 
         let msg = error.to_string();
@@ -433,7 +419,7 @@ mod progressive_error_handling {
     #[test]
     fn test_recoverable_error_message() {
         let error = CodeVizError::coverage_missing(
-            "coverage data unavailable, showing uncovered metrics only"
+            "coverage data unavailable, showing uncovered metrics only",
         );
 
         let msg = error.to_string();
@@ -449,10 +435,7 @@ mod user_cancellation {
 
     #[test]
     fn test_analysis_cancelled_by_user() {
-        let error = CodeVizError::analysis(
-            "cancelled",
-            "analysis cancelled by user"
-        );
+        let error = CodeVizError::analysis("cancelled", "analysis cancelled by user");
 
         let msg = error.to_string();
         assert!(msg.contains("cancelled by user"));
@@ -460,9 +443,7 @@ mod user_cancellation {
 
     #[test]
     fn test_cancellation_cleanup() {
-        let error = CodeVizError::cache(
-            "cleaning up after cancellation"
-        );
+        let error = CodeVizError::cache("cleaning up after cancellation");
 
         let msg = error.to_string();
         assert!(msg.contains("cleaning up"));

@@ -6,8 +6,8 @@
 use super::builder::SymbolGraphBuilder;
 use super::extractors::is_test_file;
 use super::resolver::resolve_import_path;
-use ahash::AHashMap as HashMap;
 use crate::models::SymbolKind;
+use ahash::AHashMap as HashMap;
 use code_viz_core::parser::TypeScriptParser;
 use std::path::{Path, PathBuf};
 

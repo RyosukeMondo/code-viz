@@ -13,7 +13,16 @@ impl MetricsFormatter for CsvFormatter {
 
         // Write header
         let header = if has_dead_code {
-            vec!["path", "language", "loc", "functions", "size_bytes", "dead_functions", "dead_loc", "dead_code_ratio"]
+            vec![
+                "path",
+                "language",
+                "loc",
+                "functions",
+                "size_bytes",
+                "dead_functions",
+                "dead_loc",
+                "dead_code_ratio",
+            ]
         } else {
             vec!["path", "language", "loc", "functions", "size_bytes"]
         };
@@ -30,16 +39,27 @@ impl MetricsFormatter for CsvFormatter {
             ];
 
             if has_dead_code {
-                record.push(file.dead_function_count.map_or_else(|| "0".to_string(), |v| v.to_string()));
-                record.push(file.dead_code_loc.map_or_else(|| "0".to_string(), |v| v.to_string()));
-                record.push(file.dead_code_ratio.map_or_else(|| "0.0".to_string(), |v| format!("{:.4}", v)));
+                record.push(
+                    file.dead_function_count
+                        .map_or_else(|| "0".to_string(), |v| v.to_string()),
+                );
+                record.push(
+                    file.dead_code_loc
+                        .map_or_else(|| "0".to_string(), |v| v.to_string()),
+                );
+                record.push(
+                    file.dead_code_ratio
+                        .map_or_else(|| "0.0".to_string(), |v| format!("{:.4}", v)),
+                );
             }
 
             wtr.write_record(&record)
                 .map_err(|_| FormatterError::FormattingFailed)?;
         }
 
-        let data = wtr.into_inner().map_err(|_| FormatterError::FormattingFailed)?;
+        let data = wtr
+            .into_inner()
+            .map_err(|_| FormatterError::FormattingFailed)?;
         String::from_utf8(data).map_err(|_| FormatterError::FormattingFailed)
     }
 }

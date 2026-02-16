@@ -1,4 +1,3 @@
-
 use code_viz_commands::calculate_code_churn;
 use code_viz_core::mocks::{MockContext, MockFileSystem, MockGit};
 use code_viz_core::models::CodeChurn;
@@ -14,7 +13,7 @@ async fn test_calculate_code_churn_success() {
 
     let mut churn_data = std::collections::HashMap::new();
     churn_data.insert(PathBuf::from("src/main.rs"), (1, 1)); // 1 added, 1 deleted
-    churn_data.insert(PathBuf::from("src/lib.rs"), (0, 0));  // no changes
+    churn_data.insert(PathBuf::from("src/lib.rs"), (0, 0)); // no changes
 
     let git = MockGit::new().with_churn_summary(churn_data);
 

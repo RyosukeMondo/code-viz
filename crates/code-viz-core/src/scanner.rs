@@ -74,10 +74,7 @@ fn should_include_file(path: &Path, stats: &mut ScanStats) -> bool {
 
 #[tracing::instrument(skip(exclude_patterns), fields(path = %path.display(), pattern_count = exclude_patterns.len()))]
 #[allow(clippy::cognitive_complexity)]
-pub fn scan_directory(
-    path: &Path,
-    exclude_patterns: &[String],
-) -> Result<Vec<PathBuf>, ScanError> {
+pub fn scan_directory(path: &Path, exclude_patterns: &[String]) -> Result<Vec<PathBuf>, ScanError> {
     tracing::info!("Starting directory scan");
 
     validate_path(path)?;
@@ -99,7 +96,10 @@ pub fn scan_directory(
             if entry.depth() == 0 {
                 return true;
             }
-            let relative_path = entry.path().strip_prefix(&root_path).unwrap_or(entry.path());
+            let relative_path = entry
+                .path()
+                .strip_prefix(&root_path)
+                .unwrap_or(entry.path());
             !glob_set.is_match(relative_path)
         });
 
@@ -167,15 +167,16 @@ mod tests {
     fn test_scan_with_files() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         File::create(root.join("test.rs")).unwrap();
         File::create(root.join("test.ts")).unwrap();
         File::create(root.join("ignore.txt")).unwrap(); // Should be ignored by extension
 
         let result = scan_directory(root, &[]).unwrap();
         assert_eq!(result.len(), 2);
-        
-        let file_names: Vec<_> = result.iter()
+
+        let file_names: Vec<_> = result
+            .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap())
             .collect();
         assert!(file_names.contains(&"test.rs"));
@@ -222,7 +223,8 @@ mod tests {
 
         let result = scan_directory(root, &[]).unwrap();
         assert_eq!(result.len(), 2);
-        let file_names: Vec<_> = result.iter()
+        let file_names: Vec<_> = result
+            .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap())
             .collect();
         assert!(file_names.contains(&"script.js"));
@@ -245,7 +247,10 @@ mod tests {
 
         let result = scan_directory(root, &[]).unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].file_name().unwrap().to_str().unwrap(), "visible.rs");
+        assert_eq!(
+            result[0].file_name().unwrap().to_str().unwrap(),
+            "visible.rs"
+        );
     }
 
     #[test]
@@ -313,23 +318,43 @@ mod tests {
         let result = scan_directory(root, &[]).unwrap();
 
         // Verify only non-ignored files are included
-        let file_names: Vec<_> = result.iter()
+        let file_names: Vec<_> = result
+            .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap())
             .collect();
 
         println!("Found files: {:?}", file_names);
 
         // Should find main.ts and app.js
-        assert!(file_names.contains(&"main.ts"), "main.ts should be included");
+        assert!(
+            file_names.contains(&"main.ts"),
+            "main.ts should be included"
+        );
         assert!(file_names.contains(&"app.js"), "app.js should be included");
 
         // Should NOT find files in node_modules, build, or .log files
-        assert!(!file_names.contains(&"package.js"), "node_modules/package.js should be ignored");
-        assert!(!file_names.contains(&"output.js"), "build/output.js should be ignored");
-        assert!(!file_names.contains(&"debug.log"), "debug.log should be ignored");
-        assert!(!file_names.contains(&"error.log"), "error.log should be ignored");
+        assert!(
+            !file_names.contains(&"package.js"),
+            "node_modules/package.js should be ignored"
+        );
+        assert!(
+            !file_names.contains(&"output.js"),
+            "build/output.js should be ignored"
+        );
+        assert!(
+            !file_names.contains(&"debug.log"),
+            "debug.log should be ignored"
+        );
+        assert!(
+            !file_names.contains(&"error.log"),
+            "error.log should be ignored"
+        );
 
-        assert_eq!(result.len(), 2, "Should only find 2 files (main.ts, app.js)");
+        assert_eq!(
+            result.len(),
+            2,
+            "Should only find 2 files (main.ts, app.js)"
+        );
     }
 
     #[test]
@@ -362,7 +387,8 @@ mod tests {
         File::create(src.join("app.ts")).unwrap();
 
         let result = scan_directory(root, &[]).unwrap();
-        let file_names: Vec<_> = result.iter()
+        let file_names: Vec<_> = result
+            .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap())
             .collect();
 
@@ -373,8 +399,14 @@ mod tests {
         assert!(file_names.contains(&"app.ts"));
 
         // Should NOT find temp.tmp (ignored by root) or test.ts (ignored by src/.gitignore)
-        assert!(!file_names.contains(&"temp.tmp"), "temp.tmp should be ignored by root .gitignore");
-        assert!(!file_names.contains(&"test.ts"), "test/ dir should be ignored by src/.gitignore");
+        assert!(
+            !file_names.contains(&"temp.tmp"),
+            "temp.tmp should be ignored by root .gitignore"
+        );
+        assert!(
+            !file_names.contains(&"test.ts"),
+            "test/ dir should be ignored by src/.gitignore"
+        );
 
         assert_eq!(result.len(), 2, "Should only find 2 files");
     }
@@ -383,7 +415,11 @@ mod tests {
     #[ignore] // Run with: cargo test -- --ignored
     fn test_real_repo_gitignore() {
         // Test on the actual code-viz repository
-        let repo_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
+        let repo_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
 
         println!("Testing on real repo: {}", repo_path.display());
 
@@ -392,7 +428,8 @@ mod tests {
         println!("Total files found: {}", result.len());
 
         // Check for node_modules files - should be ZERO
-        let node_modules_files: Vec<_> = result.iter()
+        let node_modules_files: Vec<_> = result
+            .iter()
             .filter(|p| p.to_string_lossy().contains("node_modules"))
             .collect();
 
@@ -405,16 +442,29 @@ mod tests {
         }
 
         // Check for target/ files - should be ZERO
-        let target_files: Vec<_> = result.iter()
+        let target_files: Vec<_> = result
+            .iter()
             .filter(|p| p.to_string_lossy().contains("/target/"))
             .collect();
 
         println!("Files in target/: {}", target_files.len());
 
-        assert_eq!(node_modules_files.len(), 0, "node_modules should be excluded by .gitignore");
-        assert_eq!(target_files.len(), 0, "target/ should be excluded by .gitignore");
+        assert_eq!(
+            node_modules_files.len(),
+            0,
+            "node_modules should be excluded by .gitignore"
+        );
+        assert_eq!(
+            target_files.len(),
+            0,
+            "target/ should be excluded by .gitignore"
+        );
 
         // Reasonable file count for this repo (should be < 500 without node_modules/target)
-        assert!(result.len() < 500, "File count too high: {} (node_modules likely included)", result.len());
+        assert!(
+            result.len() < 500,
+            "File count too high: {} (node_modules likely included)",
+            result.len()
+        );
     }
 }

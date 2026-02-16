@@ -3,8 +3,8 @@
 //! This module contains Tauri IPC commands that wrap the shared code-viz-api handlers.
 //! All business logic lives in code-viz-api (SSOT), these are just transport adapters.
 
-use crate::models::{TreeNode, AnalysisOptions};
-use crate::context::{TauriContext, RealFileSystem, RealGit};
+use crate::context::{RealFileSystem, RealGit, TauriContext};
+use crate::models::{AnalysisOptions, TreeNode};
 use code_viz_dead_code::DeadCodeResult;
 
 /// Analyze a repository - Tauri IPC wrapper
@@ -27,9 +27,10 @@ pub async fn analyze_repository(
     let api_options: code_viz_api::AnalysisOptions = options.into();
 
     // Call the shared SSOT handler
-    let api_tree = code_viz_api::analyze_repository_handler(ctx, fs, git, path, api_options, request_id)
-        .await
-        .map_err(|e| e.to_user_message())?;
+    let api_tree =
+        code_viz_api::analyze_repository_handler(ctx, fs, git, path, api_options, request_id)
+            .await
+            .map_err(|e| e.to_user_message())?;
 
     // Convert API TreeNode to Tauri TreeNode (adds specta Type for TS generation)
     Ok(api_tree.into())
@@ -65,8 +66,8 @@ mod integration_tests {
     /// Verify Tauri TreeNode serialization matches code-viz-api contract
     #[test]
     fn test_tree_node_contract_consistency() {
-        use std::time::UNIX_EPOCH;
         use std::path::PathBuf;
+        use std::time::UNIX_EPOCH;
 
         // Create both API and Tauri tree nodes with same data
         let api_node = code_viz_api::TreeNode {

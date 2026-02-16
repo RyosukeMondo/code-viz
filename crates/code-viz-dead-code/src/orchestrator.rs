@@ -5,10 +5,8 @@
 //! reachability analysis, and result aggregation.
 
 use crate::{
-    analyzer::ReachabilityAnalyzer,
-    graph_manager::GraphManager,
-    result_aggregator::ResultAggregator,
-    AnalysisConfig, AnalysisError, DeadCodeResult,
+    analyzer::ReachabilityAnalyzer, graph_manager::GraphManager,
+    result_aggregator::ResultAggregator, AnalysisConfig, AnalysisError, DeadCodeResult,
 };
 use std::path::{Path, PathBuf};
 

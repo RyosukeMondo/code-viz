@@ -1,7 +1,7 @@
 pub mod analyze;
-pub mod watch;
-pub mod diff;
+pub mod compare;
 pub mod config;
 pub mod dead_code;
+pub mod diff;
 pub mod timeline;
-pub mod compare;
+pub mod watch;

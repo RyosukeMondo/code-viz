@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use anyhow::{Context, Result};
 
 /// CLI test harness for running code-viz commands
 pub struct CliTest {
@@ -59,7 +59,9 @@ impl CliCommand {
 
     pub fn duplicates_min_lines(&mut self, min_lines: usize) -> &mut Self {
         self.command.arg("--duplicates");
-        self.command.arg("--min-duplicate-lines").arg(min_lines.to_string());
+        self.command
+            .arg("--min-duplicate-lines")
+            .arg(min_lines.to_string());
         self
     }
 
@@ -86,9 +88,7 @@ impl CliCommand {
 
     /// Execute the command and return the output
     pub fn run(&mut self) -> Result<Output> {
-        self.command
-            .output()
-            .context("Failed to execute command")
+        self.command.output().context("Failed to execute command")
     }
 
     /// Execute and expect success

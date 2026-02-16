@@ -45,10 +45,7 @@ pub fn find_common_root(files: &[FileMetrics]) -> PathBuf {
     for parent in parents.iter().skip(1) {
         // Walk up the tree until we find a common ancestor
         while !parent.starts_with(&common) && common != Path::new("/") {
-            common = common
-                .parent()
-                .unwrap_or(Path::new("/"))
-                .to_path_buf();
+            common = common.parent().unwrap_or(Path::new("/")).to_path_buf();
         }
     }
 
@@ -58,10 +55,7 @@ pub fn find_common_root(files: &[FileMetrics]) -> PathBuf {
     let all_same_parent = parents.iter().all(|p| p == &common);
     if all_same_parent && parents.len() > 1 {
         // Multiple files in the same directory suggests it's a subdirectory
-        common = common
-            .parent()
-            .unwrap_or(&common)
-            .to_path_buf();
+        common = common.parent().unwrap_or(&common).to_path_buf();
     }
 
     common
@@ -78,9 +72,7 @@ pub fn find_common_root(files: &[FileMetrics]) -> PathBuf {
 /// # Returns
 /// A relative path with the prefix removed
 pub fn strip_prefix(path: &Path, prefix: &Path) -> PathBuf {
-    path.strip_prefix(prefix)
-        .unwrap_or(path)
-        .to_path_buf()
+    path.strip_prefix(prefix).unwrap_or(path).to_path_buf()
 }
 
 /// Gets the parent path of a given path, defaulting to root if no parent

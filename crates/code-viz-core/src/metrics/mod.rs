@@ -239,7 +239,9 @@ mod tests {
         assert_eq!(metrics.size_bytes, source.len() as u64);
 
         // last_modified should be close to now (within 1 second)
-        let duration = SystemTime::now().duration_since(metrics.last_modified).unwrap();
+        let duration = SystemTime::now()
+            .duration_since(metrics.last_modified)
+            .unwrap();
         assert!(duration.as_secs() < 1);
     }
 
@@ -252,7 +254,8 @@ mod tests {
 
         // When last_modified is provided, it should use that value
         let provided_time = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1000000);
-        let metrics = calculate_metrics(&path, source, parser.as_ref(), Some(provided_time)).unwrap();
+        let metrics =
+            calculate_metrics(&path, source, parser.as_ref(), Some(provided_time)).unwrap();
 
         assert_eq!(metrics.last_modified, provided_time);
     }

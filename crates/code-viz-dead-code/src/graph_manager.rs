@@ -20,7 +20,10 @@ impl GraphManager {
     }
 
     /// Get a symbol graph, either from cache or by building from files
-    pub fn load_or_build(&self, files: &[PathBuf]) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
+    pub fn load_or_build(
+        &self,
+        files: &[PathBuf],
+    ) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
         if self.config.enable_cache {
             self.load_or_build_cached(files)
         } else {
@@ -31,7 +34,10 @@ impl GraphManager {
     /// Load graph from cache or build it from files
     #[tracing::instrument(skip(self, files))]
     #[allow(clippy::cognitive_complexity)]
-    fn load_or_build_cached(&self, files: &[PathBuf]) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
+    fn load_or_build_cached(
+        &self,
+        files: &[PathBuf],
+    ) -> Result<symbol_graph::SymbolGraph, AnalysisError> {
         let cache_dir = self
             .config
             .cache_dir
@@ -85,12 +91,18 @@ impl GraphManager {
         let mut builder = symbol_graph::SymbolGraphBuilder::new();
         let graph = builder.build_graph(file_contents)?;
 
-        tracing::info!(symbol_count = graph.symbols.len(), "Symbol graph constructed");
+        tracing::info!(
+            symbol_count = graph.symbols.len(),
+            "Symbol graph constructed"
+        );
         Ok(graph)
     }
 
     /// Scan directory for source files
-    pub fn scan_source_files(path: &Path, config: &AnalysisConfig) -> Result<Vec<PathBuf>, AnalysisError> {
+    pub fn scan_source_files(
+        path: &Path,
+        config: &AnalysisConfig,
+    ) -> Result<Vec<PathBuf>, AnalysisError> {
         tracing::info!("Scanning directory for source files");
         let files = code_viz_core::scanner::scan_directory(path, &config.exclude_patterns)?;
         tracing::info!(file_count = files.len(), "Found source files");

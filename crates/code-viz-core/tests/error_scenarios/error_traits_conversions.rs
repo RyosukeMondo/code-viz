@@ -18,12 +18,7 @@ fn test_error_implements_std_error() {
 
 #[test]
 fn test_error_implements_debug() {
-    let error = CodeVizError::parse(
-        PathBuf::from("test.rs"),
-        "rust",
-        Some(10),
-        "test error"
-    );
+    let error = CodeVizError::parse(PathBuf::from("test.rs"), "rust", Some(10), "test error");
 
     let debug_str = format!("{:?}", error);
     assert!(debug_str.contains("ParseError"));
@@ -76,16 +71,9 @@ fn test_context_method_preserves_error() {
 
 #[test]
 fn test_context_can_be_chained() {
-    let error = CodeVizError::parse(
-        PathBuf::from("test.rs"),
-        "rust",
-        None,
-        "parse failed"
-    );
+    let error = CodeVizError::parse(PathBuf::from("test.rs"), "rust", None, "parse failed");
 
-    let contextualized = error
-        .context("step 1")
-        .context("step 2");
+    let contextualized = error.context("step 1").context("step 2");
 
     // Should still be valid error
     assert!(contextualized.to_string().contains("parse failed"));

@@ -1,8 +1,8 @@
-use clap::{Parser, Subcommand};
-use std::path::PathBuf;
-use crate::context::CliContext;
 use crate::commands::compare::CompareCommand;
+use crate::context::CliContext;
+use clap::{Parser, Subcommand};
 use code_viz_core::context::{RealFileSystem, RealGit};
+use std::path::PathBuf;
 
 mod commands;
 mod config_loader;
@@ -176,22 +176,28 @@ async fn main() -> anyhow::Result<()> {
             let fs = RealFileSystem::new();
             let git = RealGit::new();
 
-            commands::analyze::run(commands::analyze::AnalyzeConfig {
-                path,
-                format,
-                exclude,
-                verbose,
-                threshold,
-                output,
-                baseline,
-                dead_code,
-                duplicates,
-                min_duplicate_lines,
-                ai_commits,
-                hotspots,
-                max_hotspots,
-                coverage_report,
-            }, ctx, fs, git).await?;
+            commands::analyze::run(
+                commands::analyze::AnalyzeConfig {
+                    path,
+                    format,
+                    exclude,
+                    verbose,
+                    threshold,
+                    output,
+                    baseline,
+                    dead_code,
+                    duplicates,
+                    min_duplicate_lines,
+                    ai_commits,
+                    hotspots,
+                    max_hotspots,
+                    coverage_report,
+                },
+                ctx,
+                fs,
+                git,
+            )
+            .await?;
         }
         Commands::Watch {
             path,

@@ -443,7 +443,8 @@ fn test_analysis_result_snapshot() {
     let sample_repo = get_sample_repo_path();
 
     let (config, _cache_dir) = create_test_config();
-    let mut result = analyze_dead_code(&sample_repo, Some(config)).expect("Analysis should succeed");
+    let mut result =
+        analyze_dead_code(&sample_repo, Some(config)).expect("Analysis should succeed");
 
     // Sort files by path for deterministic output
     result.files.sort_by(|a, b| a.path.cmp(&b.path));

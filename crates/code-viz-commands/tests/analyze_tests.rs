@@ -27,10 +27,13 @@ async fn test_analyze_repository_success() {
 
     // Verify MockContext events
     ctx.assert_event_emitted("analysis_complete");
-    
+
     let progress_events = ctx.get_events_by_name("progress");
-    assert!(!progress_events.is_empty(), "Should have emitted progress events");
-    
+    assert!(
+        !progress_events.is_empty(),
+        "Should have emitted progress events"
+    );
+
     // Check final progress
     let last_progress = progress_events.last().unwrap();
     assert_eq!(last_progress["percentage"], 1.0);

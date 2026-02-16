@@ -13,13 +13,12 @@ mod symbol_graph_errors {
 
     #[test]
     fn test_graph_build_failure_error() {
-        let error = CodeVizError::analysis(
-            "symbol_graph",
-            "failed to build symbol graph"
-        );
+        let error = CodeVizError::analysis("symbol_graph", "failed to build symbol graph");
 
         match error {
-            CodeVizError::Analysis { operation, message, .. } => {
+            CodeVizError::Analysis {
+                operation, message, ..
+            } => {
                 assert_eq!(operation, "symbol_graph");
                 assert!(message.contains("failed to build"));
             }
@@ -30,12 +29,7 @@ mod symbol_graph_errors {
     #[test]
     fn test_parser_failure_in_graph_building() {
         let path = PathBuf::from("src/malformed.rs");
-        let error = CodeVizError::parse(
-            path.clone(),
-            "rust",
-            Some(15),
-            "expected identifier"
-        );
+        let error = CodeVizError::parse(path.clone(), "rust", Some(15), "expected identifier");
 
         // Parser failures during graph building should not crash
         match error {
@@ -48,10 +42,7 @@ mod symbol_graph_errors {
 
     #[test]
     fn test_missing_exports_handled_gracefully() {
-        let error = CodeVizError::analysis(
-            "exports",
-            "no exports found in module"
-        );
+        let error = CodeVizError::analysis("exports", "no exports found in module");
 
         // Missing exports should be a non-critical error
         let msg = error.to_string();
@@ -70,11 +61,15 @@ mod symbol_resolution_errors {
         let error = CodeVizError::analysis_with_path(
             "symbol_resolution",
             PathBuf::from("src/main.rs"),
-            "symbol 'MyType' not found"
+            "symbol 'MyType' not found",
         );
 
         match error {
-            CodeVizError::Analysis { operation, message, path } => {
+            CodeVizError::Analysis {
+                operation,
+                message,
+                path,
+            } => {
                 assert_eq!(operation, "symbol_resolution");
                 assert!(message.contains("not found"));
                 assert_eq!(path, Some(PathBuf::from("src/main.rs")));
@@ -85,10 +80,7 @@ mod symbol_resolution_errors {
 
     #[test]
     fn test_type_resolution_failure() {
-        let error = CodeVizError::analysis(
-            "type_resolution",
-            "cannot resolve type for symbol"
-        );
+        let error = CodeVizError::analysis("type_resolution", "cannot resolve type for symbol");
 
         let msg = error.to_string();
         assert!(msg.contains("type_resolution"));
@@ -99,7 +91,7 @@ mod symbol_resolution_errors {
     fn test_circular_dependency_detection() {
         let error = CodeVizError::analysis(
             "dependency_check",
-            "circular dependency detected: A -> B -> A"
+            "circular dependency detected: A -> B -> A",
         );
 
         let msg = error.to_string();
@@ -114,13 +106,12 @@ mod entry_point_errors {
 
     #[test]
     fn test_missing_entry_point_error() {
-        let error = CodeVizError::analysis(
-            "entry_point",
-            "no entry points specified"
-        );
+        let error = CodeVizError::analysis("entry_point", "no entry points specified");
 
         match error {
-            CodeVizError::Analysis { operation, message, .. } => {
+            CodeVizError::Analysis {
+                operation, message, ..
+            } => {
                 assert_eq!(operation, "entry_point");
                 assert!(message.contains("no entry points"));
             }
@@ -132,7 +123,7 @@ mod entry_point_errors {
     fn test_invalid_entry_point() {
         let error = CodeVizError::analysis(
             "entry_point",
-            "entry point 'main' not found in symbol graph"
+            "entry point 'main' not found in symbol graph",
         );
 
         let msg = error.to_string();
@@ -148,10 +139,7 @@ mod reachability_analysis_errors {
 
     #[test]
     fn test_reachability_timeout() {
-        let error = CodeVizError::analysis(
-            "reachability",
-            "timeout during reachability analysis"
-        );
+        let error = CodeVizError::analysis("reachability", "timeout during reachability analysis");
 
         let msg = error.to_string();
         assert!(msg.contains("reachability"));
@@ -162,7 +150,7 @@ mod reachability_analysis_errors {
     fn test_large_graph_warning() {
         let error = CodeVizError::analysis(
             "reachability",
-            "graph too large (>10000 nodes), analysis may be slow"
+            "graph too large (>10000 nodes), analysis may be slow",
         );
 
         let msg = error.to_string();
@@ -180,12 +168,8 @@ mod partial_results {
     fn test_partial_analysis_on_file_error() {
         // When a single file fails to parse, the analysis should continue
         // with other files and provide partial results
-        let error = CodeVizError::parse(
-            PathBuf::from("src/broken.rs"),
-            "rust",
-            None,
-            "syntax error"
-        );
+        let error =
+            CodeVizError::parse(PathBuf::from("src/broken.rs"), "rust", None, "syntax error");
 
         // This error should be logged but not stop the entire analysis
         match error {
@@ -200,10 +184,8 @@ mod partial_results {
     fn test_missing_symbol_uses_unknown_type() {
         // When type resolution fails, the symbol should be marked as UnknownType
         // rather than failing the entire analysis
-        let error = CodeVizError::analysis(
-            "type_resolution",
-            "unknown type, marking as UnknownType"
-        );
+        let error =
+            CodeVizError::analysis("type_resolution", "unknown type, marking as UnknownType");
 
         let msg = error.to_string();
         assert!(msg.contains("unknown type"));
@@ -259,7 +241,11 @@ mod file_access_errors {
         let error = CodeVizError::file_read(&path, io_err);
 
         match error {
-            CodeVizError::FileSystem { path: err_path, source, .. } => {
+            CodeVizError::FileSystem {
+                path: err_path,
+                source,
+                ..
+            } => {
                 assert_eq!(err_path, path);
                 assert_eq!(source.kind(), io::ErrorKind::NotFound);
             }
@@ -304,7 +290,7 @@ mod graceful_degradation {
     fn test_partial_symbol_graph_acceptable() {
         let error = CodeVizError::analysis(
             "symbol_graph",
-            "partial graph built: 10 files failed to parse"
+            "partial graph built: 10 files failed to parse",
         );
 
         // Partial results are acceptable if some analysis succeeded
@@ -323,10 +309,8 @@ mod resource_errors {
     #[test]
     fn test_out_of_memory_during_graph_building() {
         let io_err = io::Error::new(io::ErrorKind::OutOfMemory, "out of memory");
-        let error = CodeVizError::cache_with_source(
-            "symbol graph too large to fit in memory",
-            io_err
-        );
+        let error =
+            CodeVizError::cache_with_source("symbol graph too large to fit in memory", io_err);
 
         match error {
             CodeVizError::Cache { message, source } => {
@@ -342,7 +326,7 @@ mod resource_errors {
     fn test_too_many_symbols_warning() {
         let error = CodeVizError::analysis(
             "symbol_graph",
-            "graph contains >100000 symbols, analysis may be slow"
+            "graph contains >100000 symbols, analysis may be slow",
         );
 
         let msg = error.to_string();
@@ -354,7 +338,7 @@ mod resource_errors {
     fn test_graph_too_complex_for_analysis() {
         let error = CodeVizError::analysis(
             "reachability",
-            "graph complexity exceeds limits (depth >1000)"
+            "graph complexity exceeds limits (depth >1000)",
         );
 
         let msg = error.to_string();
@@ -372,7 +356,7 @@ mod entry_point_validation {
     fn test_multiple_main_functions_error() {
         let error = CodeVizError::analysis(
             "entry_point",
-            "multiple main functions found: src/main.rs, src/bin/alt_main.rs"
+            "multiple main functions found: src/main.rs, src/bin/alt_main.rs",
         );
 
         let msg = error.to_string();
@@ -385,7 +369,7 @@ mod entry_point_validation {
             PathBuf::from("src/main.rs"),
             "rust",
             Some(1),
-            "entry point file has syntax errors"
+            "entry point file has syntax errors",
         );
 
         let msg = error.to_string();
@@ -397,7 +381,7 @@ mod entry_point_validation {
     fn test_exported_symbol_not_found() {
         let error = CodeVizError::analysis(
             "exports",
-            "exported symbol 'public_api' not found in module"
+            "exported symbol 'public_api' not found in module",
         );
 
         let msg = error.to_string();
@@ -417,7 +401,7 @@ mod parser_timeout_errors {
             PathBuf::from("src/generated_code.rs"),
             "rust",
             None,
-            "symbol extraction timeout: file too large"
+            "symbol extraction timeout: file too large",
         );
 
         let msg = error.to_string();
@@ -429,7 +413,7 @@ mod parser_timeout_errors {
     fn test_graph_traversal_timeout() {
         let error = CodeVizError::analysis(
             "reachability",
-            "graph traversal timeout: cycle detected in dependencies"
+            "graph traversal timeout: cycle detected in dependencies",
         );
 
         let msg = error.to_string();
@@ -447,7 +431,7 @@ mod false_positive_handling {
     fn test_reflection_usage_cannot_detect() {
         let error = CodeVizError::analysis(
             "dead_code",
-            "warning: reflection usage detected, false positives possible"
+            "warning: reflection usage detected, false positives possible",
         );
 
         let msg = error.to_string();
@@ -459,7 +443,7 @@ mod false_positive_handling {
     fn test_macro_generated_code_limitation() {
         let error = CodeVizError::analysis(
             "dead_code",
-            "warning: macro-generated code may not be fully analyzed"
+            "warning: macro-generated code may not be fully analyzed",
         );
 
         let msg = error.to_string();
@@ -469,10 +453,7 @@ mod false_positive_handling {
 
     #[test]
     fn test_foreign_function_interface_symbols() {
-        let error = CodeVizError::analysis(
-            "exports",
-            "FFI exports cannot be verified for usage"
-        );
+        let error = CodeVizError::analysis("exports", "FFI exports cannot be verified for usage");
 
         let msg = error.to_string();
         assert!(msg.contains("FFI exports"));
@@ -487,9 +468,8 @@ mod incremental_analysis_errors {
 
     #[test]
     fn test_cache_invalidation_on_file_change() {
-        let error = CodeVizError::cache(
-            "cache invalidated: source files modified since last analysis"
-        );
+        let error =
+            CodeVizError::cache("cache invalidated: source files modified since last analysis");
 
         let msg = error.to_string();
         assert!(msg.contains("invalidated"));
@@ -503,7 +483,7 @@ mod incremental_analysis_errors {
         let io_err = io::Error::new(io::ErrorKind::InvalidData, "corrupted data");
         let error = CodeVizError::cache_with_source(
             "cache partially corrupted, rebuilding affected sections",
-            io_err
+            io_err,
         );
 
         match error {
@@ -527,7 +507,7 @@ mod multi_language_errors {
             PathBuf::from("lib.cpp"),
             "cpp",
             None,
-            "unsupported language: C++ not supported in dead code analysis"
+            "unsupported language: C++ not supported in dead code analysis",
         );
 
         let msg = error.to_string();
@@ -539,7 +519,7 @@ mod multi_language_errors {
     fn test_mixed_language_project_limitation() {
         let error = CodeVizError::analysis(
             "symbol_graph",
-            "cross-language references not supported (Rust <-> TypeScript)"
+            "cross-language references not supported (Rust <-> TypeScript)",
         );
 
         let msg = error.to_string();

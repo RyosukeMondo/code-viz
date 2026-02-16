@@ -19,7 +19,9 @@ impl HotspotDetector {
         let max_churn = files
             .iter()
             .filter_map(|f| {
-                f.code_churn.as_ref().map(|churn| churn.added_lines + churn.deleted_lines)
+                f.code_churn
+                    .as_ref()
+                    .map(|churn| churn.added_lines + churn.deleted_lines)
             })
             .max()
             .unwrap_or(1) as f64;
@@ -68,10 +70,8 @@ impl HotspotDetector {
     /// Calculate hotspot analysis from file metrics
     /// Requires files to have code_churn data populated
     pub fn calculate(&self, files: &[FileMetrics]) -> HotspotAnalysis {
-        let files_with_churn: Vec<&FileMetrics> = files
-            .iter()
-            .filter(|f| f.code_churn.is_some())
-            .collect();
+        let files_with_churn: Vec<&FileMetrics> =
+            files.iter().filter(|f| f.code_churn.is_some()).collect();
 
         if files_with_churn.is_empty() {
             return HotspotAnalysis {

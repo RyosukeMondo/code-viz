@@ -16,7 +16,13 @@ fn main() {
 }
 
 fn validate_required_files_exist(src_dir: &Path) {
-    let required_files = ["models.rs", "handlers.rs", "transform.rs", "error.rs", "contracts.rs"];
+    let required_files = [
+        "models.rs",
+        "handlers.rs",
+        "transform.rs",
+        "error.rs",
+        "contracts.rs",
+    ];
     for file in &required_files {
         let file_path = src_dir.join(file);
         if !file_path.exists() {

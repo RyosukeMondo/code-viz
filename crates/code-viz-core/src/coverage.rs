@@ -66,8 +66,8 @@ struct TarpaulinFile {
 
 impl CoverageParser for LlvmCovParser {
     fn parse(&self, json: &str) -> Result<HashMap<PathBuf, TestCoverage>> {
-        let report: LlvmCovReport = serde_json::from_str(json)
-            .context("Failed to parse llvm-cov JSON report")?;
+        let report: LlvmCovReport =
+            serde_json::from_str(json).context("Failed to parse llvm-cov JSON report")?;
 
         let mut coverage_map = HashMap::new();
 
@@ -90,8 +90,8 @@ impl CoverageParser for LlvmCovParser {
 
 impl CoverageParser for TarpaulinParser {
     fn parse(&self, json: &str) -> Result<HashMap<PathBuf, TestCoverage>> {
-        let report: TarpaulinReport = serde_json::from_str(json)
-            .context("Failed to parse Tarpaulin JSON report")?;
+        let report: TarpaulinReport =
+            serde_json::from_str(json).context("Failed to parse Tarpaulin JSON report")?;
 
         let mut coverage_map = HashMap::new();
 
@@ -165,10 +165,8 @@ pub fn apply_coverage_to_metrics(
 
 /// Calculate aggregated coverage analysis
 pub fn calculate_coverage_analysis(files: &[FileMetrics]) -> Option<CoverageAnalysis> {
-    let files_with_coverage: Vec<&FileMetrics> = files
-        .iter()
-        .filter(|f| f.test_coverage.is_some())
-        .collect();
+    let files_with_coverage: Vec<&FileMetrics> =
+        files.iter().filter(|f| f.test_coverage.is_some()).collect();
 
     if files_with_coverage.is_empty() {
         return None;
@@ -275,8 +273,14 @@ mod tests {
 
     #[test]
     fn test_normalize_path() {
-        assert_eq!(normalize_path("/home/user/project/src/main.rs"), PathBuf::from("home/user/project/src/main.rs"));
+        assert_eq!(
+            normalize_path("/home/user/project/src/main.rs"),
+            PathBuf::from("home/user/project/src/main.rs")
+        );
         assert_eq!(normalize_path("./src/lib.rs"), PathBuf::from("src/lib.rs"));
-        assert_eq!(normalize_path("src/utils.rs"), PathBuf::from("src/utils.rs"));
+        assert_eq!(
+            normalize_path("src/utils.rs"),
+            PathBuf::from("src/utils.rs")
+        );
     }
 }

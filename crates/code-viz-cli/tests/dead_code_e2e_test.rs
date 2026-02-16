@@ -294,7 +294,10 @@ fn test_e2e_exclude_patterns() {
 
     // Should have analyzed some files but not the tests directory
     assert!(files_analyzed > 0, "Should analyze at least some files");
-    assert!(files_analyzed <= 2, "Should only analyze src/ files, not tests/");
+    assert!(
+        files_analyzed <= 2,
+        "Should only analyze src/ files, not tests/"
+    );
 }
 
 #[test]
@@ -492,6 +495,8 @@ fn test_e2e_analyze_threshold_dead_code_ratio() {
             .assert()
             .failure()
             .code(3)
-            .stderr(predicate::str::contains("exceed the dead code ratio threshold"));
+            .stderr(predicate::str::contains(
+                "exceed the dead code ratio threshold",
+            ));
     }
 }

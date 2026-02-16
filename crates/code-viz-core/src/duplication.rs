@@ -1,9 +1,9 @@
+use crate::error::{CodeVizError, Result};
+use crate::models::{CodeLocation, DuplicatePair, DuplicationAnalysis};
+use crate::parser::LanguageParser;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser, Tree};
-use crate::models::{CodeLocation, DuplicatePair, DuplicationAnalysis};
-use crate::parser::LanguageParser;
-use crate::error::{CodeVizError, Result};
 
 pub struct DuplicationDetector {
     min_lines: usize,
@@ -52,10 +52,14 @@ impl DuplicationDetector {
                 let language = path.extension().and_then(|s| s.to_str()).unwrap_or("");
                 if let Some(parser) = parsers.get(language) {
                     // Skip files that fail to parse rather than crashing the entire analysis
-                    self.parse_file(path, content, parser.as_ref()).unwrap_or_else(|e| {
-                        eprintln!("Warning: Failed to parse {:?} for duplication analysis: {}", path, e);
-                        vec![]
-                    })
+                    self.parse_file(path, content, parser.as_ref())
+                        .unwrap_or_else(|e| {
+                            eprintln!(
+                                "Warning: Failed to parse {:?} for duplication analysis: {}",
+                                path, e
+                            );
+                            vec![]
+                        })
                 } else {
                     vec![]
                 }
@@ -63,24 +67,32 @@ impl DuplicationDetector {
             .collect()
     }
 
-    fn parse_file(&self, path: &Path, content: &str, parser: &dyn LanguageParser) -> Result<Vec<CodeBlock>> {
+    fn parse_file(
+        &self,
+        path: &Path,
+        content: &str,
+        parser: &dyn LanguageParser,
+    ) -> Result<Vec<CodeBlock>> {
         let mut tree_sitter_parser = Parser::new();
         tree_sitter_parser
             .set_language(parser.get_language())
-            .map_err(|e| CodeVizError::parse(
-                path.to_path_buf(),
-                "unknown",
-                None,
-                format!("Failed to set tree-sitter language: {:?}", e)
-            ))?;
+            .map_err(|e| {
+                CodeVizError::parse(
+                    path.to_path_buf(),
+                    "unknown",
+                    None,
+                    format!("Failed to set tree-sitter language: {:?}", e),
+                )
+            })?;
 
-        let tree = tree_sitter_parser.parse(content, None)
-            .ok_or_else(|| CodeVizError::parse(
+        let tree = tree_sitter_parser.parse(content, None).ok_or_else(|| {
+            CodeVizError::parse(
                 path.to_path_buf(),
                 "unknown",
                 None,
-                "Failed to parse file - tree-sitter returned None"
-            ))?;
+                "Failed to parse file - tree-sitter returned None",
+            )
+        })?;
 
         Ok(self.extract_blocks_from_tree(path, content, &tree))
     }
@@ -246,8 +258,7 @@ impl DuplicationDetector {
             return None;
         }
 
-        let distance =
-            levenshtein::levenshtein(&block_a.canonical_text, &block_b.canonical_text);
+        let distance = levenshtein::levenshtein(&block_a.canonical_text, &block_b.canonical_text);
         let max_len = std::cmp::max(len_a, len_b) as f64;
         let similarity = 1.0 - (distance as f64 / max_len);
 
@@ -263,9 +274,10 @@ impl DuplicationDetector {
     ) -> Vec<DuplicatePair> {
         let mut pairs = Vec::new();
 
-        if let (Some(blocks_a), Some(blocks_b)) =
-            (blocks_by_hash.get(&block_a.hash), blocks_by_hash.get(&block_b.hash))
-        {
+        if let (Some(blocks_a), Some(blocks_b)) = (
+            blocks_by_hash.get(&block_a.hash),
+            blocks_by_hash.get(&block_b.hash),
+        ) {
             for ba in blocks_a {
                 for bb in blocks_b {
                     pairs.push(DuplicatePair {

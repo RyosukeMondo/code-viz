@@ -4,7 +4,7 @@
 //! visualization of code metrics in the frontend, and AnalysisOptions
 //! for configuring which analysis features to enable.
 
-use serde::{Deserialize, Serialize, Serializer, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
@@ -94,7 +94,10 @@ pub struct TreeNode {
     pub children: Vec<TreeNode>,
 
     /// Last modified timestamp (for cache invalidation and sorting)
-    #[serde(serialize_with = "serialize_systemtime", deserialize_with = "deserialize_systemtime")]
+    #[serde(
+        serialize_with = "serialize_systemtime",
+        deserialize_with = "deserialize_systemtime"
+    )]
     pub last_modified: SystemTime,
 
     /// Dead code ratio (0.0 to 1.0), only present when dead code analysis is enabled
@@ -102,7 +105,6 @@ pub struct TreeNode {
     pub dead_code_ratio: Option<f64>,
 
     // Additional metrics from FileMetrics (only present for files, not directories)
-
     /// Programming language ("rust", "typescript", "python", etc.) - only for files
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,

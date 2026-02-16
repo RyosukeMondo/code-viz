@@ -1,4 +1,3 @@
-
 use crate::shared::scan_and_filter_files;
 use anyhow::Result;
 use code_viz_core::metrics;
@@ -28,14 +27,18 @@ pub async fn calculate_code_churn(
     .await?;
 
     // 3. Calculate churn for entire repository
-    ctx.report_progress(0.3, "Calculating code churn...").await?;
+    ctx.report_progress(0.3, "Calculating code churn...")
+        .await?;
 
     let churn_map = metrics::calculate_churn_summary(git, path)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to calculate churn: {}", e))?;
 
-    ctx.report_progress(0.9, &format!("Churn calculated for {} files", churn_map.len()))
-        .await?;
+    ctx.report_progress(
+        0.9,
+        &format!("Churn calculated for {} files", churn_map.len()),
+    )
+    .await?;
 
     Ok(churn_map)
 }

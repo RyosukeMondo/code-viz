@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 // Re-export the serialization functions from code-viz-api
-pub use code_viz_api::models::{serialize_systemtime, deserialize_systemtime};
+pub use code_viz_api::models::{deserialize_systemtime, serialize_systemtime};
 
 /// AnalysisOptions with specta Type derive for TypeScript generation
 ///
@@ -60,7 +60,10 @@ pub struct TreeNode {
     pub node_type: String,
     #[serde(default)]
     pub children: Vec<TreeNode>,
-    #[serde(serialize_with = "serialize_systemtime", deserialize_with = "deserialize_systemtime")]
+    #[serde(
+        serialize_with = "serialize_systemtime",
+        deserialize_with = "deserialize_systemtime"
+    )]
     #[specta(type = String)]
     pub last_modified: SystemTime,
     #[serde(skip_serializing_if = "Option::is_none")]

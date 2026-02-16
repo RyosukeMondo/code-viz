@@ -25,18 +25,43 @@ mod specta_schema_tests {
         // Extract schema for TreeNode by converting to TypeScript string
         // We allow BigInt as numbers for this test to match frontend expectations
         let ts_binding = ts::export::<TreeNode>(
-            &ts::Typescript::default().bigint(ts::BigIntExportBehavior::Number)
-        ).expect("Failed to export TreeNode to TS");
+            &ts::Typescript::default().bigint(ts::BigIntExportBehavior::Number),
+        )
+        .expect("Failed to export TreeNode to TS");
 
-        assert!(ts_binding.contains("id: string"), "Missing 'id' field in TS schema");
-        assert!(ts_binding.contains("name: string"), "Missing 'name' field in TS schema");
-        assert!(ts_binding.contains("path: string"), "Missing 'path' field in TS schema");
-        assert!(ts_binding.contains("loc: number"), "Missing 'loc' field in TS schema");
-        assert!(ts_binding.contains("complexity: number"), "Missing 'complexity' field in TS schema");
-        assert!(ts_binding.contains("type: string"), "Missing 'type' field in TS schema");
+        assert!(
+            ts_binding.contains("id: string"),
+            "Missing 'id' field in TS schema"
+        );
+        assert!(
+            ts_binding.contains("name: string"),
+            "Missing 'name' field in TS schema"
+        );
+        assert!(
+            ts_binding.contains("path: string"),
+            "Missing 'path' field in TS schema"
+        );
+        assert!(
+            ts_binding.contains("loc: number"),
+            "Missing 'loc' field in TS schema"
+        );
+        assert!(
+            ts_binding.contains("complexity: number"),
+            "Missing 'complexity' field in TS schema"
+        );
+        assert!(
+            ts_binding.contains("type: string"),
+            "Missing 'type' field in TS schema"
+        );
         // children is optional because of #[serde(default)] and Vec
-        assert!(ts_binding.contains("children?: TreeNode[]"), "Missing 'children' field in TS schema");
-        assert!(ts_binding.contains("lastModified: string"), "Missing 'lastModified' field in TS schema");
+        assert!(
+            ts_binding.contains("children?: TreeNode[]"),
+            "Missing 'children' field in TS schema"
+        );
+        assert!(
+            ts_binding.contains("lastModified: string"),
+            "Missing 'lastModified' field in TS schema"
+        );
     }
 
     #[test]
@@ -49,8 +74,8 @@ mod specta_schema_tests {
         ts::export::<TreeNode>(&config).expect("TreeNode export failed");
 
         // Types from code-viz-dead-code (used in commands)
-        use code_viz_dead_code::{DeadCodeResult, DeadCodeSummary, FileDeadCode, DeadSymbol};
         use code_viz_dead_code::models::SymbolKind;
+        use code_viz_dead_code::{DeadCodeResult, DeadCodeSummary, DeadSymbol, FileDeadCode};
 
         ts::export::<DeadCodeResult>(&config).expect("DeadCodeResult export failed");
         ts::export::<DeadCodeSummary>(&config).expect("DeadCodeSummary export failed");
@@ -77,7 +102,8 @@ mod serialization_tests {
         let json_value = serde_json::to_value(&original).expect("Failed to serialize TreeNode");
 
         // Deserialize back to Rust
-        let deserialized: TreeNode = serde_json::from_value(json_value).expect("Failed to deserialize TreeNode");
+        let deserialized: TreeNode =
+            serde_json::from_value(json_value).expect("Failed to deserialize TreeNode");
 
         // Verify equality
         assert_eq!(original.id, deserialized.id);
@@ -95,22 +121,25 @@ mod serialization_tests {
         // Create valid tree
         let valid_tree = validation_utils::create_test_tree();
         let json_valid = serde_json::to_value(&valid_tree).unwrap();
-        
+
         // This should not panic
         validation_utils::assert_required_fields(&json_valid);
 
         // Create invalid tree with empty path
         let mut invalid_node = validation_utils::create_test_tree();
         invalid_node.path = PathBuf::from(""); // INVALID
-        
+
         let json_invalid = serde_json::to_value(&invalid_node).unwrap();
-        
+
         // This should fail (using catch_unwind because assert_required_fields panics)
         let result = std::panic::catch_unwind(|| {
             validation_utils::assert_required_fields(&json_invalid);
         });
-        
-        assert!(result.is_err(), "Validation should have failed for empty path");
+
+        assert!(
+            result.is_err(),
+            "Validation should have failed for empty path"
+        );
     }
 
     #[test]
@@ -120,7 +149,7 @@ mod serialization_tests {
 
         // Use helper to recursively validate all fields
         validation_utils::assert_required_fields(&json);
-        
+
         // Verify root node from helper data
         assert_eq!(json["name"], "root");
         assert_eq!(json["children"][0]["name"], "src");
@@ -130,30 +159,36 @@ mod serialization_tests {
     #[test]
     fn test_wrapper_node_bug_regression() {
         // REGRESSION TEST for Wrapper Node Bug
-        // 
+        //
         // Historical Context:
         // ECharts with leafDepth: 1 created a wrapper container with undefined properties
         // when passed a single-item array where the item had an empty path.
         // This test ensures that our TreeNode serialization never produces empty paths
         // for nodes, even the root (which should be "." or similar).
-        // 
+        //
         // Reference: WRAPPER_NODE_FIX.md
-        
+
         let mut node = validation_utils::create_test_tree();
-        
+
         // Root node in create_test_tree() has path "." - this is valid
         let json_valid = serde_json::to_value(&node).unwrap();
-        assert_ne!(json_valid["path"], "", "Valid root should not have empty path string");
-        
+        assert_ne!(
+            json_valid["path"], "",
+            "Valid root should not have empty path string"
+        );
+
         // Forcing an empty path should be caught by our validation helper
         node.path = std::path::PathBuf::from("");
         let json_invalid = serde_json::to_value(&node).unwrap();
-        
+
         let result = std::panic::catch_unwind(|| {
             validation_utils::assert_required_fields(&json_invalid);
         });
-        
-        assert!(result.is_err(), "Regression: Path must not be empty string to avoid ECharts wrapper node bug");
+
+        assert!(
+            result.is_err(),
+            "Regression: Path must not be empty string to avoid ECharts wrapper node bug"
+        );
     }
 }
 
@@ -170,10 +205,19 @@ mod echarts_compatibility_tests {
 
         // ECharts treemap core requirements (mapped by frontend)
         // Root node validation
-        assert!(json["name"].is_string(), "ECharts requires 'name' as string");
-        assert!(json["loc"].is_number(), "ECharts requires a value (we use 'loc')");
-        assert!(json["children"].is_array(), "Treemap root must have 'children' array");
-        
+        assert!(
+            json["name"].is_string(),
+            "ECharts requires 'name' as string"
+        );
+        assert!(
+            json["loc"].is_number(),
+            "ECharts requires a value (we use 'loc')"
+        );
+        assert!(
+            json["children"].is_array(),
+            "Treemap root must have 'children' array"
+        );
+
         // Verify that at least one child exists and has required ECharts properties
         let first_child = &json["children"][0];
         assert!(first_child["name"].is_string());
@@ -191,32 +235,76 @@ mod echarts_compatibility_tests {
 
     fn validate_echarts_properties_recursive(node: &Value, depth: u32) {
         let node_name = node["name"].as_str().unwrap_or("unknown");
-        
+
         // 1. Validate core ECharts treemap properties
-        assert!(node.get("name").is_some(), "Node '{}' missing 'name' at depth {}", node_name, depth);
-        assert!(node["name"].is_string(), "Node '{}' 'name' must be string", node_name);
-        
-        assert!(node.get("loc").is_some(), "Node '{}' missing 'loc' (ECharts value) at depth {}", node_name, depth);
-        assert!(node["loc"].is_number(), "Node '{}' 'loc' must be number", node_name);
+        assert!(
+            node.get("name").is_some(),
+            "Node '{}' missing 'name' at depth {}",
+            node_name,
+            depth
+        );
+        assert!(
+            node["name"].is_string(),
+            "Node '{}' 'name' must be string",
+            node_name
+        );
+
+        assert!(
+            node.get("loc").is_some(),
+            "Node '{}' missing 'loc' (ECharts value) at depth {}",
+            node_name,
+            depth
+        );
+        assert!(
+            node["loc"].is_number(),
+            "Node '{}' 'loc' must be number",
+            node_name
+        );
 
         // 2. Validate our Treemap component's required metadata
-        assert!(node.get("path").is_some(), "Node '{}' missing 'path' at depth {}", node_name, depth);
-        assert!(node["path"].is_string(), "Node '{}' 'path' must be string", node_name);
-        
-        assert!(node.get("type").is_some(), "Node '{}' missing 'type' at depth {}", node_name, depth);
-        assert!(node["type"].is_string(), "Node '{}' 'type' must be string", node_name);
+        assert!(
+            node.get("path").is_some(),
+            "Node '{}' missing 'path' at depth {}",
+            node_name,
+            depth
+        );
+        assert!(
+            node["path"].is_string(),
+            "Node '{}' 'path' must be string",
+            node_name
+        );
+
+        assert!(
+            node.get("type").is_some(),
+            "Node '{}' missing 'type' at depth {}",
+            node_name,
+            depth
+        );
+        assert!(
+            node["type"].is_string(),
+            "Node '{}' 'type' must be string",
+            node_name
+        );
 
         // 3. Validate children structure if present
         if let Some(children) = node.get("children") {
-            assert!(children.is_array(), "Node '{}' 'children' must be an array", node_name);
+            assert!(
+                children.is_array(),
+                "Node '{}' 'children' must be an array",
+                node_name
+            );
             for child in children.as_array().unwrap() {
                 validate_echarts_properties_recursive(child, depth + 1);
             }
         }
-        
+
         // Ensure directories have children (even if empty) to satisfy ECharts hierarchy
         if node["type"] == "directory" {
-            assert!(node.get("children").is_some(), "Directory node '{}' must have 'children' field", node_name);
+            assert!(
+                node.get("children").is_some(),
+                "Directory node '{}' must have 'children' field",
+                node_name
+            );
         }
     }
 }

@@ -56,9 +56,10 @@ mod path_handling_tests {
 
     #[test]
     fn test_root_node_name_matches_project() {
-        let files = vec![
-            create_file_with_abs_path("/home/user/my-project/README.md", 50),
-        ];
+        let files = vec![create_file_with_abs_path(
+            "/home/user/my-project/README.md",
+            50,
+        )];
 
         // Test-only unwrap: Test fixtures are valid by construction
         let tree = flat_to_hierarchy(files).unwrap();

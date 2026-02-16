@@ -8,7 +8,9 @@ fn test_analysis_error_contains_operation() {
     let error = CodeVizError::analysis("coupling", "failed to build dependency graph");
 
     match error {
-        CodeVizError::Analysis { operation, message, .. } => {
+        CodeVizError::Analysis {
+            operation, message, ..
+        } => {
             assert_eq!(operation, "coupling");
             assert_eq!(message, "failed to build dependency graph");
         }
@@ -19,14 +21,14 @@ fn test_analysis_error_contains_operation() {
 #[test]
 fn test_analysis_error_with_path() {
     let path = PathBuf::from("src/main.rs");
-    let error = CodeVizError::analysis_with_path(
-        "metrics",
-        path.clone(),
-        "complexity too high"
-    );
+    let error = CodeVizError::analysis_with_path("metrics", path.clone(), "complexity too high");
 
     match error {
-        CodeVizError::Analysis { operation, message, path: error_path } => {
+        CodeVizError::Analysis {
+            operation,
+            message,
+            path: error_path,
+        } => {
             assert_eq!(operation, "metrics");
             assert_eq!(message, "complexity too high");
             assert_eq!(error_path, Some(path));
@@ -47,13 +49,12 @@ fn test_analysis_error_message_formatting() {
 
 #[test]
 fn test_resource_exhaustion_during_analysis() {
-    let error = CodeVizError::analysis(
-        "metrics",
-        "resource exhaustion: too many files to process"
-    );
+    let error = CodeVizError::analysis("metrics", "resource exhaustion: too many files to process");
 
     match error {
-        CodeVizError::Analysis { operation, message, .. } => {
+        CodeVizError::Analysis {
+            operation, message, ..
+        } => {
             assert_eq!(operation, "metrics");
             assert!(message.contains("resource exhaustion"));
             assert!(message.contains("too many files"));
@@ -66,7 +67,7 @@ fn test_resource_exhaustion_during_analysis() {
 fn test_analysis_timeout_with_large_codebase() {
     let error = CodeVizError::analysis(
         "coupling",
-        "analysis timeout after 300 seconds (codebase too large)"
+        "analysis timeout after 300 seconds (codebase too large)",
     );
 
     let msg = error.to_string();

@@ -2,9 +2,9 @@
 //!
 //! Implements the trait-based dependency injection for the web server.
 
+use anyhow::Result;
 use async_trait::async_trait;
 use code_viz_core::traits::AppContext;
-use anyhow::Result;
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -53,7 +53,9 @@ mod tests {
     #[tokio::test]
     async fn test_web_context() {
         let ctx = WebContext::new();
-        let result = ctx.emit_event("test", serde_json::json!({"key": "value"})).await;
+        let result = ctx
+            .emit_event("test", serde_json::json!({"key": "value"}))
+            .await;
         assert!(result.is_ok());
     }
 

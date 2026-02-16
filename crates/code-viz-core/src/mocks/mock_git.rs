@@ -2,10 +2,10 @@
 // not a runtime error. If a mutex is poisoned in tests, the test should panic.
 #![allow(clippy::unwrap_used)]
 
+use crate::traits::git_provider::ChangedFile;
+use crate::traits::{BlameInfo, Commit, Diff, GitProvider};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use crate::traits::{BlameInfo, Commit, Diff, GitProvider};
-use crate::traits::git_provider::ChangedFile;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -158,7 +158,7 @@ impl GitProvider for MockGit {
     async fn get_file_content_at_revision(&self, file_path: &Path, sha: &str) -> Result<String> {
         let key = (file_path.to_path_buf(), sha.to_string());
         let contents = self.file_contents.lock().unwrap();
-        
+
         contents
             .get(&key)
             .cloned()

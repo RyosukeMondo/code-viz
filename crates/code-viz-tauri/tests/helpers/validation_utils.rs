@@ -104,35 +104,54 @@ fn assert_node_required_fields(node: &Value) {
     // Check presence and type of required fields (camelCase as defined in #[serde(rename_all = "camelCase")])
     assert!(node.get("id").is_some(), "Missing 'id' field");
     assert!(node["id"].is_string(), "'id' must be a string");
-    
+
     assert!(node.get("name").is_some(), "Missing 'name' field");
     assert!(node["name"].is_string(), "'name' must be a string");
-    
+
     assert!(node.get("path").is_some(), "Missing 'path' field");
     // PathBuf serializes to string by default in most cases, but verify it
     assert!(node["path"].is_string(), "'path' must be a string");
-    
+
     // Path must not be empty (regression test requirement)
     let path_str = node["path"].as_str().expect("path should be a string");
-    assert!(!path_str.is_empty(), "Path must not be empty string. Node: {}", node["name"]);
+    assert!(
+        !path_str.is_empty(),
+        "Path must not be empty string. Node: {}",
+        node["name"]
+    );
 
     assert!(node.get("loc").is_some(), "Missing 'loc' field");
     assert!(node["loc"].is_number(), "'loc' must be a number");
-    
-    assert!(node.get("complexity").is_some(), "Missing 'complexity' field");
-    assert!(node["complexity"].is_number(), "'complexity' must be a number");
-    
+
+    assert!(
+        node.get("complexity").is_some(),
+        "Missing 'complexity' field"
+    );
+    assert!(
+        node["complexity"].is_number(),
+        "'complexity' must be a number"
+    );
+
     assert!(node.get("type").is_some(), "Missing 'type' field");
     assert!(node["type"].is_string(), "'type' must be a string");
-    
+
     assert!(node.get("children").is_some(), "Missing 'children' field");
     assert!(node["children"].is_array(), "'children' must be an array");
-    
-    assert!(node.get("lastModified").is_some(), "Missing 'lastModified' field");
-    assert!(node["lastModified"].is_string(), "'lastModified' must be a string");
+
+    assert!(
+        node.get("lastModified").is_some(),
+        "Missing 'lastModified' field"
+    );
+    assert!(
+        node["lastModified"].is_string(),
+        "'lastModified' must be a string"
+    );
 
     // deadCodeRatio is optional, but if present it must be a number
     if let Some(ratio) = node.get("deadCodeRatio") {
-        assert!(ratio.is_number(), "'deadCodeRatio' must be a number if present");
+        assert!(
+            ratio.is_number(),
+            "'deadCodeRatio' must be a number if present"
+        );
     }
 }

@@ -17,10 +17,12 @@ fn test_malformed_coverage_json_error() {
         Err(e) => {
             // Should provide useful error
             let msg = e.to_string();
-            assert!(msg.contains("coverage") ||
-                    msg.contains("parse") ||
-                    msg.contains("JSON") ||
-                    msg.contains("invalid"));
+            assert!(
+                msg.contains("coverage")
+                    || msg.contains("parse")
+                    || msg.contains("JSON")
+                    || msg.contains("invalid")
+            );
         }
     }
 }

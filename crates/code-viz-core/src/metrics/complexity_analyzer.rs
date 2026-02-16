@@ -34,7 +34,8 @@ pub fn analyze_complexity(
 
         // Check if this is a function node
         if is_function_node(&node) {
-            let name = extract_function_name(&node, source).unwrap_or_else(|| "anonymous".to_string());
+            let name =
+                extract_function_name(&node, source).unwrap_or_else(|| "anonymous".to_string());
             let start_line = node.start_position().row + 1;
             let end_line = node.end_position().row + 1;
             let complexity = calculate_function_complexity(&node, source, 0);
@@ -77,8 +78,13 @@ pub fn analyze_complexity(
 fn is_function_node(node: &Node) -> bool {
     matches!(
         node.kind(),
-        "function_declaration" | "function" | "function_item" | "method_declaration" |
-        "arrow_function" | "function_definition" | "method_definition"
+        "function_declaration"
+            | "function"
+            | "function_item"
+            | "method_declaration"
+            | "arrow_function"
+            | "function_definition"
+            | "method_definition"
     )
 }
 
@@ -87,7 +93,10 @@ fn extract_function_name(node: &Node, source: &str) -> Option<String> {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "identifier" || child.kind() == "property_identifier" {
-            return child.utf8_text(source.as_bytes()).ok().map(|s| s.to_string());
+            return child
+                .utf8_text(source.as_bytes())
+                .ok()
+                .map(|s| s.to_string());
         }
     }
     None
@@ -114,9 +123,17 @@ fn calculate_function_complexity(node: &Node, source: &str, nesting_level: usize
         // Control flow structures (+1 + nesting level)
         if matches!(
             kind,
-            "if_statement" | "else_clause" | "for_statement" | "while_statement" |
-            "do_statement" | "switch_statement" | "case_clause" | "catch_clause" |
-            "for_in_statement" | "for_of_statement" | "conditional_expression"
+            "if_statement"
+                | "else_clause"
+                | "for_statement"
+                | "while_statement"
+                | "do_statement"
+                | "switch_statement"
+                | "case_clause"
+                | "catch_clause"
+                | "for_in_statement"
+                | "for_of_statement"
+                | "conditional_expression"
         ) {
             complexity += 1 + nesting_level;
             // Recursively calculate nested complexity
@@ -132,7 +149,10 @@ fn calculate_function_complexity(node: &Node, source: &str, nesting_level: usize
         }
 
         // Jump statements (+1): break, continue, goto, throw
-        if matches!(kind, "break_statement" | "continue_statement" | "goto_statement" | "throw_statement") {
+        if matches!(
+            kind,
+            "break_statement" | "continue_statement" | "goto_statement" | "throw_statement"
+        ) {
             complexity += 1;
         }
 

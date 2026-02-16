@@ -3,9 +3,9 @@
 //! This module provides functions for aggregating metrics (LOC, complexity, etc.)
 //! from child nodes up to parent directories.
 
-use crate::models::TreeNode;
 use super::path_utils::get_parent_path;
 use super::tree_builder::calculate_complexity;
+use crate::models::TreeNode;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -18,10 +18,7 @@ use std::time::SystemTime;
 /// # Arguments
 /// * `dir_map` - Mutable HashMap of path to TreeNode
 /// * `root_path` - The root path of the tree
-pub fn aggregate_directory_metrics(
-    dir_map: &mut HashMap<PathBuf, TreeNode>,
-    root_path: &Path,
-) {
+pub fn aggregate_directory_metrics(dir_map: &mut HashMap<PathBuf, TreeNode>, root_path: &Path) {
     // Collect all paths and sort by depth (deepest first) for bottom-up aggregation
     let mut paths: Vec<PathBuf> = dir_map.keys().cloned().collect();
     paths.sort_by(|a, b| {
@@ -71,11 +68,7 @@ fn aggregate_child_metrics(node: &TreeNode) -> (usize, SystemTime, u32) {
 }
 
 /// Attaches a directory node to its parent
-fn attach_to_parent(
-    dir_map: &mut HashMap<PathBuf, TreeNode>,
-    path: &Path,
-    root_path: &Path,
-) {
+fn attach_to_parent(dir_map: &mut HashMap<PathBuf, TreeNode>, path: &Path, root_path: &Path) {
     let parent_path = get_parent_path(path, root_path);
     if parent_path == *path {
         return; // Don't attach to self

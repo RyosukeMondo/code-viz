@@ -2,6 +2,7 @@
 
 pub mod analyzer;
 pub mod cache;
+pub mod context;
 pub mod coupling;
 pub mod coverage;
 pub mod duplication;
@@ -10,12 +11,11 @@ pub mod error_ext;
 pub mod hotspot;
 pub mod language;
 pub mod metrics;
+pub mod mocks;
 pub mod models;
 pub mod parser;
 pub mod scanner;
 pub mod traits;
-pub mod mocks;
-pub mod context;
 pub mod transform;
 
 pub use analyzer::calculate_summary;

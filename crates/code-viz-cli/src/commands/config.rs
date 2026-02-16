@@ -1,6 +1,6 @@
+use code_viz_core::traits::FileSystem;
 use std::path::Path;
 use thiserror::Error;
-use code_viz_core::traits::FileSystem;
 
 #[derive(Error, Debug)]
 pub enum ConfigError {

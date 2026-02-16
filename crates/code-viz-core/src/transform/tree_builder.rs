@@ -3,8 +3,8 @@
 //! This module provides functions for creating tree nodes and managing the
 //! directory hierarchy during transformation.
 
-use crate::models::{FileMetrics, TreeNode};
 use super::path_utils::{get_parent_path, strip_prefix};
+use crate::models::{FileMetrics, TreeNode};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -56,7 +56,10 @@ pub fn create_root_node(project_name: &str, root_node_path: &Path) -> TreeNode {
 }
 
 /// Builds initial directory map with root node
-pub fn build_directory_map(project_name: &str, root_node_path: &Path) -> HashMap<PathBuf, TreeNode> {
+pub fn build_directory_map(
+    project_name: &str,
+    root_node_path: &Path,
+) -> HashMap<PathBuf, TreeNode> {
     let mut dir_map = HashMap::new();
     let root_node = create_root_node(project_name, root_node_path);
     dir_map.insert(root_node_path.to_path_buf(), root_node);

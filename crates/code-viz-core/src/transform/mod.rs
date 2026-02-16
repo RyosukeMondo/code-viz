@@ -4,16 +4,18 @@
 //! and Tauri layers to convert flat file metrics into hierarchical tree
 //! structures for visualization.
 
+mod metric_aggregator;
 mod path_utils;
 mod tree_builder;
-mod metric_aggregator;
 
 use crate::error::CodeVizError;
 use crate::models::{FileMetrics, TreeNode};
-use path_utils::find_common_root;
-use tree_builder::{build_directory_map, build_file_nodes, attach_file_nodes_to_parents, create_empty_root};
 use metric_aggregator::aggregate_directory_metrics;
+use path_utils::find_common_root;
 use std::path::PathBuf;
+use tree_builder::{
+    attach_file_nodes_to_parents, build_directory_map, build_file_nodes, create_empty_root,
+};
 
 /// Converts a flat list of file metrics into a hierarchical tree structure
 ///
@@ -73,14 +75,20 @@ pub fn flat_to_hierarchy(files: Vec<FileMetrics>) -> Result<TreeNode, CodeVizErr
     };
 
     let mut dir_map = build_directory_map(&project_name, &root_node_path);
-    let file_nodes = build_file_nodes(files, has_absolute_paths, &root_path, &mut dir_map, &root_node_path);
+    let file_nodes = build_file_nodes(
+        files,
+        has_absolute_paths,
+        &root_path,
+        &mut dir_map,
+        &root_node_path,
+    );
     attach_file_nodes_to_parents(file_nodes, &mut dir_map, &root_node_path);
     aggregate_directory_metrics(&mut dir_map, &root_node_path);
 
     dir_map.remove(&root_node_path).ok_or_else(|| {
         CodeVizError::analysis(
             "tree_transform",
-            "Root node missing from directory map after tree construction"
+            "Root node missing from directory map after tree construction",
         )
     })
 }

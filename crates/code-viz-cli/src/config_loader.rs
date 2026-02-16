@@ -40,14 +40,14 @@ pub struct CacheConfigSection {
 
 pub fn load_config(project_root: &Path) -> Result<ConfigFile, ConfigError> {
     let config_path = project_root.join(".code-viz.toml");
-    
+
     if !config_path.exists() {
         return Ok(ConfigFile::default());
     }
 
     let content = fs::read_to_string(&config_path)?;
     let config: ConfigFile = toml::from_str(&content)?;
-    
+
     Ok(config)
 }
 
@@ -61,17 +61,19 @@ mod tests {
     //! behavior in test contexts.
 
     use super::*;
-    use tempfile::TempDir;
-    use std::io::Write;
     use std::fs::File;
+    use std::io::Write;
+    use tempfile::TempDir;
 
     #[test]
     fn test_load_valid_config() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let mut f = File::create(root.join(".code-viz.toml")).unwrap();
-        writeln!(f, r#"
+        writeln!(
+            f,
+            r#"
             [analysis]
             exclude = ["node_modules/**", "dist/**"]
 
@@ -80,17 +82,19 @@ mod tests {
             
             [cache]
             enabled = true
-        "#).unwrap();
+        "#
+        )
+        .unwrap();
 
         let config = load_config(root).unwrap();
-        
+
         assert!(config.analysis.is_some());
         let analysis = config.analysis.unwrap();
         assert_eq!(analysis.exclude.unwrap().len(), 2);
-        
+
         assert!(config.output.is_some());
         assert_eq!(config.output.unwrap().format.unwrap(), "json");
-        
+
         assert!(config.cache.is_some());
         assert_eq!(config.cache.unwrap().enabled.unwrap(), true);
     }
@@ -106,7 +110,7 @@ mod tests {
     fn test_load_invalid_toml() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let mut f = File::create(root.join(".code-viz.toml")).unwrap();
         writeln!(f, "invalid toml [").unwrap();
 

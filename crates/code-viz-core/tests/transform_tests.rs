@@ -19,24 +19,22 @@ fn test_empty_file_list_returns_empty_root() {
 
 #[test]
 fn test_single_file_creates_tree() {
-    let files = vec![
-        FileMetrics {
-            path: PathBuf::from("src/main.rs"),
-            language: "rust".to_string(),
-            loc: 100,
-            size_bytes: 2048,
-            function_count: 5,
-            last_modified: SystemTime::now(),
-            dead_function_count: None,
-            dead_code_loc: None,
-            dead_code_ratio: None,
-            coupling: None,
-            code_churn: None,
-            ai_bloat_index: None,
-            cognitive_complexity: None,
-            test_coverage: None,
-        },
-    ];
+    let files = vec![FileMetrics {
+        path: PathBuf::from("src/main.rs"),
+        language: "rust".to_string(),
+        loc: 100,
+        size_bytes: 2048,
+        function_count: 5,
+        last_modified: SystemTime::now(),
+        dead_function_count: None,
+        dead_code_loc: None,
+        dead_code_ratio: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
+    }];
 
     let tree = flat_to_hierarchy(files).expect("Should transform single file");
 
@@ -136,24 +134,22 @@ fn test_nested_directories_create_proper_hierarchy() {
 
 #[test]
 fn test_complexity_calculation() {
-    let files = vec![
-        FileMetrics {
-            path: PathBuf::from("large.rs"),
-            language: "rust".to_string(),
-            loc: 1000, // Should result in complexity of 100
-            size_bytes: 20480,
-            function_count: 50,
-            last_modified: SystemTime::now(),
-            dead_function_count: None,
-            dead_code_loc: None,
-            dead_code_ratio: None,
-            coupling: None,
-            code_churn: None,
-            ai_bloat_index: None,
-            cognitive_complexity: None,
-            test_coverage: None,
-        },
-    ];
+    let files = vec![FileMetrics {
+        path: PathBuf::from("large.rs"),
+        language: "rust".to_string(),
+        loc: 1000, // Should result in complexity of 100
+        size_bytes: 20480,
+        function_count: 50,
+        last_modified: SystemTime::now(),
+        dead_function_count: None,
+        dead_code_loc: None,
+        dead_code_ratio: None,
+        coupling: None,
+        code_churn: None,
+        ai_bloat_index: None,
+        cognitive_complexity: None,
+        test_coverage: None,
+    }];
 
     let tree = flat_to_hierarchy(files).expect("Should transform file");
 

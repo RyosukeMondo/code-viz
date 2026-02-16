@@ -4,9 +4,9 @@
 //! Tauri and Web must use. This ensures compile-time consistency.
 
 use crate::error::ApiError;
-use crate::models::{TreeNode, AnalysisOptions};
+use crate::models::{AnalysisOptions, TreeNode};
 use crate::transform::flat_to_hierarchy;
-use code_viz_commands::analyze::{DuplicationConfig, HotspotConfig, CoverageConfig};
+use code_viz_commands::analyze::{CoverageConfig, DuplicationConfig, HotspotConfig};
 use code_viz_core::traits::{AppContext, FileSystem, GitProvider};
 use code_viz_dead_code::DeadCodeResult;
 use std::path::PathBuf;
@@ -96,10 +96,8 @@ where
             None
         };
 
-        let coverage_config = options.coverage_report_path.map(|path| {
-            CoverageConfig {
-                report_path: PathBuf::from(path),
-            }
+        let coverage_config = options.coverage_report_path.map(|path| CoverageConfig {
+            report_path: PathBuf::from(path),
         });
 
         // Call framework-agnostic command layer (clones because impl Trait consumes)
@@ -183,10 +181,8 @@ where
         None
     };
 
-    let coverage_config = options.coverage_report_path.map(|path| {
-        CoverageConfig {
-            report_path: PathBuf::from(path),
-        }
+    let coverage_config = options.coverage_report_path.map(|path| CoverageConfig {
+        report_path: PathBuf::from(path),
     });
 
     let analysis_result = code_viz_commands::analyze_repository(
@@ -234,8 +230,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use code_viz_core::mocks::{MockContext, MockGit};
     use crate::contracts::test_utils::RealFileSystem;
+    use code_viz_core::mocks::{MockContext, MockGit};
 
     #[tokio::test]
     async fn test_handler_analyze_repository() {
@@ -265,8 +261,8 @@ mod tests {
         let result = analyze_dead_code_handler(ctx, fs, git, current_dir, 70, None).await;
         // Dead code analysis may fail if no entry points found, which is acceptable
         match result {
-            Ok(_) => {}, // Success case
-            Err(ApiError::DeadCodeFailed(msg)) if msg.contains("No entry points") => {}, // Expected
+            Ok(_) => {} // Success case
+            Err(ApiError::DeadCodeFailed(msg)) if msg.contains("No entry points") => {} // Expected
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }

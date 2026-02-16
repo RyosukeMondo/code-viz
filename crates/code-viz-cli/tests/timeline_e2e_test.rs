@@ -21,7 +21,12 @@ fn setup_git_repo(path: &Path) -> Result<Repository> {
     Ok(repo)
 }
 
-fn commit_file<'a>(repo: &'a Repository, path: &Path, content: &str, msg: &str) -> Result<Commit<'a>> {
+fn commit_file<'a>(
+    repo: &'a Repository,
+    path: &Path,
+    content: &str,
+    msg: &str,
+) -> Result<Commit<'a>> {
     let sig = Signature::now("test", "test@test.com")?;
     let mut index = repo.index()?;
 
@@ -38,7 +43,6 @@ fn commit_file<'a>(repo: &'a Repository, path: &Path, content: &str, msg: &str) 
     Ok(commit)
 }
 
-
 #[test]
 fn test_timeline_command() -> Result<()> {
     let dir = tempdir()?;
@@ -47,12 +51,15 @@ fn test_timeline_command() -> Result<()> {
 
     let file_path = repo_path.join("test.rs");
     commit_file(&repo, &file_path, "fn main() {}", "First commit")?;
-    commit_file(&repo, &file_path, "fn main() {\n    println!(\"hello\");\n}", "Second commit")?;
+    commit_file(
+        &repo,
+        &file_path,
+        "fn main() {\n    println!(\"hello\");\n}",
+        "Second commit",
+    )?;
 
     let mut cmd = cargo_bin_cmd!("code-viz-cli");
-    cmd.arg("timeline")
-        .arg(&file_path)
-        .current_dir(repo_path);
+    cmd.arg("timeline").arg(&file_path).current_dir(repo_path);
 
     cmd.assert()
         .success()

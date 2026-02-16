@@ -18,7 +18,7 @@ mod api_error_responses {
             PathBuf::from("src/main.rs"),
             "rust",
             Some(42),
-            "unexpected token"
+            "unexpected token",
         );
 
         // Parse errors should map to 500 Internal Server Error
@@ -29,10 +29,7 @@ mod api_error_responses {
 
     #[test]
     fn test_analysis_failed_maps_to_500() {
-        let error = CodeVizError::analysis(
-            "coupling",
-            "failed to build dependency graph"
-        );
+        let error = CodeVizError::analysis("coupling", "failed to build dependency graph");
 
         // Analysis failures should map to 500 Internal Server Error
         let is_server_error = matches!(error, CodeVizError::Analysis { .. });
@@ -87,7 +84,7 @@ mod json_error_format {
             PathBuf::from("src/main.rs"),
             "rust",
             Some(42),
-            "unexpected token '}'"
+            "unexpected token '}'",
         );
 
         let msg = error.to_string();
@@ -102,10 +99,7 @@ mod json_error_format {
     #[test]
     fn test_error_does_not_leak_sensitive_info() {
         // Ensure errors don't leak system paths or internals
-        let error = CodeVizError::analysis(
-            "test",
-            "analysis failed"
-        );
+        let error = CodeVizError::analysis("test", "analysis failed");
 
         let msg = error.to_string();
 
@@ -122,13 +116,12 @@ mod transform_errors {
 
     #[test]
     fn test_transform_error_on_empty_input() {
-        let error = CodeVizError::analysis(
-            "transform",
-            "cannot build tree from empty file list"
-        );
+        let error = CodeVizError::analysis("transform", "cannot build tree from empty file list");
 
         match error {
-            CodeVizError::Analysis { operation, message, .. } => {
+            CodeVizError::Analysis {
+                operation, message, ..
+            } => {
                 assert_eq!(operation, "transform");
                 assert!(message.contains("empty"));
             }
@@ -138,10 +131,7 @@ mod transform_errors {
 
     #[test]
     fn test_transform_error_includes_operation() {
-        let error = CodeVizError::analysis(
-            "flat_to_hierarchy",
-            "missing root node"
-        );
+        let error = CodeVizError::analysis("flat_to_hierarchy", "missing root node");
 
         let msg = error.to_string();
         assert!(msg.contains("flat_to_hierarchy"));
@@ -169,7 +159,8 @@ mod request_validation {
 
     #[test]
     fn test_invalid_field_value_error() {
-        let error = CodeVizError::config("invalid value for 'threshold': must be between 0 and 100");
+        let error =
+            CodeVizError::config("invalid value for 'threshold': must be between 0 and 100");
 
         let msg = error.to_string();
         assert!(msg.contains("invalid value"));
@@ -197,10 +188,7 @@ mod concurrent_access_errors {
         use std::io;
 
         let io_err = io::Error::new(io::ErrorKind::WouldBlock, "resource busy");
-        let error = CodeVizError::cache_with_source(
-            "cache write failed",
-            io_err
-        );
+        let error = CodeVizError::cache_with_source("cache write failed", io_err);
 
         match error {
             CodeVizError::Cache { message, source } => {
@@ -219,12 +207,8 @@ mod error_propagation {
 
     #[test]
     fn test_error_chain_preserves_context() {
-        let original = CodeVizError::parse(
-            PathBuf::from("test.rs"),
-            "rust",
-            None,
-            "original error"
-        );
+        let original =
+            CodeVizError::parse(PathBuf::from("test.rs"), "rust", None, "original error");
 
         let with_context = original.context("additional context");
 
@@ -298,10 +282,7 @@ mod timeout_errors {
 
     #[test]
     fn test_analysis_timeout_maps_to_504() {
-        let error = CodeVizError::analysis(
-            "coupling",
-            "analysis timeout after 120 seconds"
-        );
+        let error = CodeVizError::analysis("coupling", "analysis timeout after 120 seconds");
 
         // Timeout should map to 504 Gateway Timeout
         let is_timeout = matches!(error, CodeVizError::Analysis { .. });
@@ -311,10 +292,7 @@ mod timeout_errors {
 
     #[test]
     fn test_git_timeout_error() {
-        let error = CodeVizError::git(
-            Some(PathBuf::from("/repo")),
-            "git operation timeout"
-        );
+        let error = CodeVizError::git(Some(PathBuf::from("/repo")), "git operation timeout");
 
         let msg = error.to_string();
         assert!(msg.contains("timeout"));
@@ -328,10 +306,8 @@ mod rate_limiting_scenarios {
 
     #[test]
     fn test_concurrent_request_limit() {
-        let error = CodeVizError::analysis(
-            "api_limit",
-            "too many concurrent requests, please retry"
-        );
+        let error =
+            CodeVizError::analysis("api_limit", "too many concurrent requests, please retry");
 
         // This should map to 429 Too Many Requests
         let msg = error.to_string();
@@ -341,10 +317,7 @@ mod rate_limiting_scenarios {
 
     #[test]
     fn test_analysis_queue_full() {
-        let error = CodeVizError::analysis(
-            "queue",
-            "analysis queue is full, try again later"
-        );
+        let error = CodeVizError::analysis("queue", "analysis queue is full, try again later");
 
         let msg = error.to_string();
         assert!(msg.contains("queue is full"));
@@ -402,9 +375,7 @@ mod coverage_data_errors {
 
     #[test]
     fn test_missing_coverage_for_file() {
-        let error = CodeVizError::coverage_missing(
-            "no coverage data for src/new_file.rs"
-        );
+        let error = CodeVizError::coverage_missing("no coverage data for src/new_file.rs");
 
         let msg = error.to_string();
         assert!(msg.contains("no coverage data"));

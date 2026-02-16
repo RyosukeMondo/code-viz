@@ -68,7 +68,11 @@ fn convert_core_to_api_tree(core_node: code_viz_core::models::TreeNode) -> code_
         loc: core_node.loc,
         complexity: core_node.complexity,
         node_type: core_node.node_type,
-        children: core_node.children.into_iter().map(convert_core_to_api_tree).collect(),
+        children: core_node
+            .children
+            .into_iter()
+            .map(convert_core_to_api_tree)
+            .collect(),
         last_modified: core_node.last_modified,
         dead_code_ratio: core_node.dead_code_ratio,
         language: core_node.language,
@@ -169,9 +173,7 @@ mod tests {
 
     #[test]
     fn test_deep_nesting() {
-        let files = vec![
-            create_test_file("a/b/c/d/e/file.rs", 100),
-        ];
+        let files = vec![create_test_file("a/b/c/d/e/file.rs", 100)];
         // Test-only unwrap: Test fixtures are valid by construction
         let tree = flat_to_hierarchy(files).unwrap();
 
@@ -237,7 +239,11 @@ mod tests {
 
         // Verify root level file
         // Test-only unwrap: Test fixtures guarantee these directories exist
-        let readme = tree.children.iter().find(|c| c.name == "README.md").unwrap();
+        let readme = tree
+            .children
+            .iter()
+            .find(|c| c.name == "README.md")
+            .unwrap();
         assert_eq!(readme.node_type, "file");
         assert_eq!(readme.loc, 10);
 
@@ -269,7 +275,10 @@ mod tests {
         assert_eq!(src.children.len(), 2);
 
         let file1 = src.children.iter().find(|c| c.name == "my-file.rs");
-        let file2 = src.children.iter().find(|c| c.name == "file_with_underscore.rs");
+        let file2 = src
+            .children
+            .iter()
+            .find(|c| c.name == "file_with_underscore.rs");
 
         assert!(file1.is_some());
         assert!(file2.is_some());
@@ -463,7 +472,11 @@ mod tests {
         assert_eq!(tree.loc, 1_000_000); // 10,000 files * 100 LOC
 
         // Performance check: should complete in reasonable time (< 1 second for 10K files)
-        assert!(duration.as_secs() < 1, "Performance test failed: took {:?} for 10K files", duration);
+        assert!(
+            duration.as_secs() < 1,
+            "Performance test failed: took {:?} for 10K files",
+            duration
+        );
 
         println!("Performance test: 10,000 files processed in {:?}", duration);
     }

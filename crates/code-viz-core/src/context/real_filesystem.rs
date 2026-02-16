@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
-use crate::traits::FileSystem;
 use crate::scanner::scan_directory;
+use crate::traits::FileSystem;
+use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -17,15 +17,13 @@ impl RealFileSystem {
 
 impl FileSystem for RealFileSystem {
     fn read_to_string(&self, path: &Path) -> Result<String> {
-        fs::read_to_string(path)
-            .with_context(|| format!("Failed to read file: {}", path.display()))
+        fs::read_to_string(path).with_context(|| format!("Failed to read file: {}", path.display()))
     }
 
     fn read_dir_recursive(&self, path: &Path) -> Result<Vec<PathBuf>> {
         // Use scan_directory which respects .gitignore files
         // No additional exclude patterns (empty array)
-        scan_directory(path, &[])
-            .map_err(|e| anyhow::anyhow!("Failed to scan directory: {}", e))
+        scan_directory(path, &[]).map_err(|e| anyhow::anyhow!("Failed to scan directory: {}", e))
     }
 
     fn write(&self, path: &Path, content: &str) -> Result<()> {

@@ -1,13 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 mod helpers;
-use helpers::{CliTest, assert_json_has_fields, assert_summary_stats, assert_has_duplicates};
+use helpers::{assert_has_duplicates, assert_json_has_fields, assert_summary_stats, CliTest};
 
 fn get_test_repo_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/test-repo")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test-repo")
 }
 
 fn get_temp_output_path(name: &str) -> PathBuf {
@@ -20,7 +19,8 @@ fn test_basic_analyze() {
     let cli = CliTest::new();
     let repo_path = get_test_repo_path();
 
-    let output = cli.analyze(&repo_path)
+    let output = cli
+        .analyze(&repo_path)
         .format("json")
         .expect_success()
         .expect("Failed to run analyze command");
@@ -37,9 +37,10 @@ fn test_analyze_with_duplicates() {
     let cli = CliTest::new();
     let repo_path = get_test_repo_path();
 
-    let output = cli.analyze(&repo_path)
+    let output = cli
+        .analyze(&repo_path)
         .format("json")
-        .duplicates_min_lines(2)  // Use low threshold for test
+        .duplicates_min_lines(2) // Use low threshold for test
         .expect_success()
         .expect("Failed to run analyze with duplicates");
 
@@ -52,7 +53,8 @@ fn test_analyze_with_hotspots() {
     let cli = CliTest::new();
     let repo_path = get_test_repo_path();
 
-    let output = cli.analyze(&repo_path)
+    let output = cli
+        .analyze(&repo_path)
         .format("json")
         .hotspots(5)
         .expect_success()
@@ -79,8 +81,7 @@ fn test_analyze_output_to_file() {
         .expect("Failed to write output to file");
 
     // Verify file was created and contains valid JSON
-    let content = fs::read_to_string(&output_path)
-        .expect("Failed to read output file");
+    let content = fs::read_to_string(&output_path).expect("Failed to read output file");
 
     assert_json_has_fields(&content, &["summary", "files"]);
 
@@ -93,7 +94,8 @@ fn test_analyze_all_features() {
     let cli = CliTest::new();
     let repo_path = get_test_repo_path();
 
-    let output = cli.analyze(&repo_path)
+    let output = cli
+        .analyze(&repo_path)
         .format("json")
         .duplicates()
         .hotspots(10)
@@ -102,14 +104,17 @@ fn test_analyze_all_features() {
         .expect("Failed to run analyze with all features");
 
     // Verify all analyses were included
-    assert_json_has_fields(&output, &[
-        "summary",
-        "files",
-        "timestamp",
-        "duplication",
-        "hotspot_analysis",
-        "ai_commit_analysis"
-    ]);
+    assert_json_has_fields(
+        &output,
+        &[
+            "summary",
+            "files",
+            "timestamp",
+            "duplication",
+            "hotspot_analysis",
+            "ai_commit_analysis",
+        ],
+    );
 }
 
 #[test]
@@ -118,7 +123,8 @@ fn test_analyze_with_dead_code() {
     let cli = CliTest::new();
     let repo_path = get_test_repo_path();
 
-    let output = cli.analyze(&repo_path)
+    let output = cli
+        .analyze(&repo_path)
         .format("json")
         .dead_code()
         .expect_success()
@@ -133,7 +139,8 @@ fn test_analyze_with_ai_commits() {
     let cli = CliTest::new();
     let repo_path = get_test_repo_path();
 
-    let output = cli.analyze(&repo_path)
+    let output = cli
+        .analyze(&repo_path)
         .format("json")
         .ai_commits()
         .expect_success()
@@ -148,17 +155,14 @@ fn test_analyze_validates_basic_metrics() {
     let cli = CliTest::new();
     let repo_path = get_test_repo_path();
 
-    let output = cli.analyze(&repo_path)
+    let output = cli
+        .analyze(&repo_path)
         .format("json")
         .expect_success()
         .expect("Failed to run basic analyze");
 
     // Verify all files have basic metrics
-    assert_json_has_fields(&output, &[
-        "summary",
-        "files",
-        "timestamp"
-    ]);
+    assert_json_has_fields(&output, &["summary", "files", "timestamp"]);
 
     // Verify we got expected file count and minimum LOC
     assert_summary_stats(&output, 5, 20);

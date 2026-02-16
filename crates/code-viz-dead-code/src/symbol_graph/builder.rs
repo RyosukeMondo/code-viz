@@ -200,8 +200,15 @@ impl SymbolGraphBuilder {
         let available_files: HashMap<PathBuf, bool> =
             files.iter().map(|(path, _)| (path.clone(), true)).collect();
 
-        let (all_symbols, exports) = Self::extract_all_symbols(&files, estimated_symbols, file_count)?;
-        let imports = Self::build_dependency_edges(&files, &all_symbols, &exports, &available_files, estimated_symbols)?;
+        let (all_symbols, exports) =
+            Self::extract_all_symbols(&files, estimated_symbols, file_count)?;
+        let imports = Self::build_dependency_edges(
+            &files,
+            &all_symbols,
+            &exports,
+            &available_files,
+            estimated_symbols,
+        )?;
 
         Ok(SymbolGraph {
             symbols: all_symbols,
@@ -298,14 +305,16 @@ impl SymbolGraphBuilder {
         for result in results {
             let (file_path, symbols, file_exports) = result?;
 
-            let mut all_symbols_guard = all_symbols.lock()
+            let mut all_symbols_guard = all_symbols
+                .lock()
                 .expect("BUG: Mutex poisoned - indicates panic in parallel processing");
             for symbol in symbols {
                 all_symbols_guard.insert(symbol.id.clone(), symbol);
             }
 
             if !file_exports.is_empty() {
-                let mut exports_guard = exports.lock()
+                let mut exports_guard = exports
+                    .lock()
                     .expect("BUG: Mutex poisoned - indicates panic in parallel processing");
                 exports_guard.insert(file_path, file_exports);
             }
@@ -313,7 +322,7 @@ impl SymbolGraphBuilder {
 
         Ok((
             all_symbols.into_inner().expect("BUG: Mutex poisoned"),
-            exports.into_inner().expect("BUG: Mutex poisoned")
+            exports.into_inner().expect("BUG: Mutex poisoned"),
         ))
     }
 
@@ -355,13 +364,11 @@ impl SymbolGraphBuilder {
     ) -> Result<ImportMap, GraphError> {
         for result in results {
             let file_imports = result?;
-            let mut imports_guard = imports.lock()
+            let mut imports_guard = imports
+                .lock()
                 .expect("BUG: Mutex poisoned - indicates panic in parallel processing");
             for (symbol_id, deps) in file_imports {
-                imports_guard
-                    .entry(symbol_id)
-                    .or_default()
-                    .extend(deps);
+                imports_guard.entry(symbol_id).or_default().extend(deps);
             }
         }
 

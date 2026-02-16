@@ -1,32 +1,34 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use crate::error::{CodeVizError, Result};
+use crate::language::LanguageRegistry;
 use crate::models::{CouplingMetrics, FileMetrics};
 use crate::parser::{get_parser, LanguageParser};
 use crate::traits::FileSystem;
-use crate::language::LanguageRegistry;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 fn extract_dependencies(
     source: &str,
     parser: &dyn LanguageParser,
     query_str: &str,
 ) -> Result<Vec<String>> {
-    let tree = parser.parse(source)
-        .map_err(|e| CodeVizError::parse(
+    let tree = parser.parse(source).map_err(|e| {
+        CodeVizError::parse(
             PathBuf::from("<inline>"),
             parser.language_key(),
             None,
             e.to_string(),
-        ))?;
+        )
+    })?;
 
     let mut cursor = tree_sitter::QueryCursor::new();
-    let query = tree_sitter::Query::new(parser.get_language(), query_str)
-        .map_err(|e| CodeVizError::parse(
+    let query = tree_sitter::Query::new(parser.get_language(), query_str).map_err(|e| {
+        CodeVizError::parse(
             PathBuf::from("<query>"),
             parser.language_key(),
             None,
             format!("Invalid tree-sitter query: {}", e),
-        ))?;
+        )
+    })?;
 
     let captures = cursor.matches(&query, tree.root_node(), source.as_bytes());
 
@@ -41,11 +43,7 @@ fn extract_dependencies(
     Ok(dependencies)
 }
 
-pub fn calculate_coupling(
-    files: &mut [FileMetrics],
-    fs: &impl FileSystem,
-    base_path: &Path,
-) {
+pub fn calculate_coupling(files: &mut [FileMetrics], fs: &impl FileSystem, base_path: &Path) {
     let mut dependency_graph: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
     let file_paths: Vec<PathBuf> = files.iter().map(|f| f.path.clone()).collect();
     let registry = LanguageRegistry::new();
@@ -92,7 +90,7 @@ pub fn calculate_coupling(
         let efferent_coupling = dependency_graph
             .get(&file.path)
             .map_or(0, |deps| deps.len());
-        
+
         let afferent_coupling = dependency_graph
             .values()
             .filter(|deps| deps.contains(&file.path))
@@ -366,12 +364,9 @@ mod tests {
 
     #[test]
     fn test_unsupported_language() {
-        let fs = MockFileSystem::new()
-            .with_file("file.unknown", "some code");
+        let fs = MockFileSystem::new().with_file("file.unknown", "some code");
 
-        let mut files = vec![
-            create_mock_file_metrics("file.unknown", "unknown"),
-        ];
+        let mut files = vec![create_mock_file_metrics("file.unknown", "unknown")];
 
         calculate_coupling(&mut files, &fs, Path::new(""));
 

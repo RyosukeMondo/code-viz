@@ -1,4 +1,3 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use code_viz_core::{
     analyzer::process_file_with_fs,
     context::RealFileSystem,
@@ -9,6 +8,7 @@ use code_viz_core::{
     parser::get_parser,
     scanner::scan_directory,
 };
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;

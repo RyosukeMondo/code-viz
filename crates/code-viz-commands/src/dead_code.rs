@@ -13,7 +13,7 @@ pub async fn calculate_dead_code(
     // Note: code_viz_dead_code currently uses std::fs internally.
     // In a full refactor, we would make it use the FileSystem trait too.
     // For now, we wrap it to satisfy the trait-based command layer.
-    
+
     let result = analyze_dead_code(path, None)
         .map_err(|e| anyhow::anyhow!("Dead code analysis failed: {}", e))?;
 

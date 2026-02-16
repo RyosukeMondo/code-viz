@@ -10,7 +10,10 @@ fn test_git_error_without_repository() {
     let error = CodeVizError::git(None, "not a git repository");
 
     match error {
-        CodeVizError::Git { repository, message } => {
+        CodeVizError::Git {
+            repository,
+            message,
+        } => {
             assert_eq!(repository, None);
             assert_eq!(message, "not a git repository");
         }
@@ -24,7 +27,10 @@ fn test_git_error_with_repository() {
     let error = CodeVizError::git(Some(repo_path.clone()), "invalid commit hash");
 
     match error {
-        CodeVizError::Git { repository, message } => {
+        CodeVizError::Git {
+            repository,
+            message,
+        } => {
             assert_eq!(repository, Some(repo_path));
             assert_eq!(message, "invalid commit hash");
         }
@@ -36,7 +42,7 @@ fn test_git_error_with_repository() {
 fn test_git_operation_timeout() {
     let error = CodeVizError::git(
         Some(PathBuf::from("/repo")),
-        "git log operation timeout after 60 seconds"
+        "git log operation timeout after 60 seconds",
     );
 
     let msg = error.to_string();
@@ -68,9 +74,8 @@ fn test_config_error_message() {
 
 #[test]
 fn test_conflicting_options_error() {
-    let error = CodeVizError::config(
-        "conflicting options: cannot use --exclude-tests with --only-tests"
-    );
+    let error =
+        CodeVizError::config("conflicting options: cannot use --exclude-tests with --only-tests");
 
     match error {
         CodeVizError::Config { message } => {
@@ -94,9 +99,8 @@ fn test_invalid_threshold_range() {
 
 #[test]
 fn test_invalid_output_format() {
-    let error = CodeVizError::config(
-        "unsupported output format 'pdf', supported formats: json, csv, text"
-    );
+    let error =
+        CodeVizError::config("unsupported output format 'pdf', supported formats: json, csv, text");
 
     let msg = error.to_string();
     assert!(msg.contains("unsupported output format"));
@@ -135,10 +139,8 @@ fn test_cache_error_with_source() {
 #[test]
 fn test_out_of_memory_error() {
     let io_err = io::Error::new(io::ErrorKind::OutOfMemory, "out of memory");
-    let error = CodeVizError::cache_with_source(
-        "failed to allocate memory for analysis cache",
-        io_err
-    );
+    let error =
+        CodeVizError::cache_with_source("failed to allocate memory for analysis cache", io_err);
 
     match error {
         CodeVizError::Cache { message, source } => {

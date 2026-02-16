@@ -1,5 +1,5 @@
-use code_viz_dead_code::DeadCodeResult;
 use code_viz_dead_code::models::SymbolKind;
+use code_viz_dead_code::DeadCodeResult;
 use colored::*;
 use serde_json;
 use std::fmt::Write;
@@ -67,11 +67,13 @@ pub fn format_text(result: &DeadCodeResult) -> Result<String, DeadCodeFormatterE
 fn format_header(output: &mut String) -> Result<(), DeadCodeFormatterError> {
     writeln!(output, "\n{}", "Dead Code Analysis Summary".bold())
         .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
-    writeln!(output, "{}", "=".repeat(50))
-        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)
+    writeln!(output, "{}", "=".repeat(50)).map_err(|_| DeadCodeFormatterError::TextFormattingFailed)
 }
 
-fn format_summary(output: &mut String, result: &DeadCodeResult) -> Result<(), DeadCodeFormatterError> {
+fn format_summary(
+    output: &mut String,
+    result: &DeadCodeResult,
+) -> Result<(), DeadCodeFormatterError> {
     let summary = &result.summary;
 
     writeln!(output, "Total files analyzed:     {}", summary.total_files)
@@ -82,28 +84,50 @@ fn format_summary(output: &mut String, result: &DeadCodeResult) -> Result<(), De
     } else {
         0.0
     };
-    writeln!(output, "Files with dead code:     {} ({:.1}%)", summary.files_with_dead_code, files_percentage)
-        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
+    writeln!(
+        output,
+        "Files with dead code:     {} ({:.1}%)",
+        summary.files_with_dead_code, files_percentage
+    )
+    .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
 
-    writeln!(output, "Total dead code:          {} LOC ({:.1}%)", summary.total_dead_loc, summary.dead_code_ratio * 100.0)
-        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
+    writeln!(
+        output,
+        "Total dead code:          {} LOC ({:.1}%)",
+        summary.total_dead_loc,
+        summary.dead_code_ratio * 100.0
+    )
+    .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
 
-    writeln!(output, "Dead functions:           {}", summary.dead_functions)
-        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
+    writeln!(
+        output,
+        "Dead functions:           {}",
+        summary.dead_functions
+    )
+    .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
 
     writeln!(output, "Dead classes:             {}", summary.dead_classes)
         .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
 
-    let high_confidence_count = result.files.iter()
+    let high_confidence_count = result
+        .files
+        .iter()
         .flat_map(|f| &f.dead_code)
         .filter(|s| s.confidence >= 90)
         .count();
 
-    writeln!(output, "{}", format!("High-confidence deletions: {}", high_confidence_count).green())
-        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)
+    writeln!(
+        output,
+        "{}",
+        format!("High-confidence deletions: {}", high_confidence_count).green()
+    )
+    .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)
 }
 
-fn format_top_files(output: &mut String, result: &DeadCodeResult) -> Result<(), DeadCodeFormatterError> {
+fn format_top_files(
+    output: &mut String,
+    result: &DeadCodeResult,
+) -> Result<(), DeadCodeFormatterError> {
     if result.files.is_empty() {
         return Ok(());
     }
@@ -121,31 +145,57 @@ fn format_top_files(output: &mut String, result: &DeadCodeResult) -> Result<(), 
     for (i, file) in files_sorted.iter().take(10).enumerate() {
         let total_dead_loc: usize = file.dead_code.iter().map(|s| s.loc).sum();
         let symbol_count = file.dead_code.len();
-        writeln!(output, "  {}. {} - {} LOC ({} symbols)", i + 1, file.path.display(), total_dead_loc, symbol_count)
-            .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
+        writeln!(
+            output,
+            "  {}. {} - {} LOC ({} symbols)",
+            i + 1,
+            file.path.display(),
+            total_dead_loc,
+            symbol_count
+        )
+        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
     }
 
     Ok(())
 }
 
-fn format_confidence_breakdown(output: &mut String, result: &DeadCodeResult) -> Result<(), DeadCodeFormatterError> {
+fn format_confidence_breakdown(
+    output: &mut String,
+    result: &DeadCodeResult,
+) -> Result<(), DeadCodeFormatterError> {
     writeln!(output, "\n{}", "Confidence Breakdown:".bold())
         .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
 
     let all_symbols: Vec<_> = result.files.iter().flat_map(|f| &f.dead_code).collect();
     let high_conf = all_symbols.iter().filter(|s| s.confidence >= 90).count();
-    let medium_conf = all_symbols.iter().filter(|s| s.confidence >= 70 && s.confidence < 90).count();
+    let medium_conf = all_symbols
+        .iter()
+        .filter(|s| s.confidence >= 70 && s.confidence < 90)
+        .count();
     let low_conf = all_symbols.iter().filter(|s| s.confidence < 70).count();
 
-    writeln!(output, "  {} High (≥90):   {} symbols", "●".green(), high_conf)
-        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
-    writeln!(output, "  {} Medium (70-89): {} symbols", "●".yellow(), medium_conf)
-        .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
+    writeln!(
+        output,
+        "  {} High (≥90):   {} symbols",
+        "●".green(),
+        high_conf
+    )
+    .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
+    writeln!(
+        output,
+        "  {} Medium (70-89): {} symbols",
+        "●".yellow(),
+        medium_conf
+    )
+    .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)?;
     writeln!(output, "  {} Low (<70):    {} symbols", "●".red(), low_conf)
         .map_err(|_| DeadCodeFormatterError::TextFormattingFailed)
 }
 
-fn format_detailed_files(output: &mut String, result: &DeadCodeResult) -> Result<(), DeadCodeFormatterError> {
+fn format_detailed_files(
+    output: &mut String,
+    result: &DeadCodeResult,
+) -> Result<(), DeadCodeFormatterError> {
     if result.files.is_empty() {
         return Ok(());
     }

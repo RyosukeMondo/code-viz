@@ -1,15 +1,21 @@
 use crate::{churn::calculate_code_churn, shared::scan_and_filter_files};
 use anyhow::{Context, Result};
 use code_viz_core::{
-    analyzer, calculate_summary, coupling, coverage, metrics, parser,
+    analyzer, calculate_summary, coupling, coverage,
     duplication::DuplicationDetector,
     hotspot::HotspotDetector,
+    metrics,
     models::{AICommitAnalysis, AnalysisResult, FileMetrics},
+    parser,
     parser::LanguageParser,
     traits::{AppContext, FileSystem, GitProvider},
 };
 use serde_json::json;
-use std::{collections::HashMap, path::{Path, PathBuf}, time::SystemTime};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
 
 #[derive(Clone, Copy)]
 pub struct DuplicationConfig {
@@ -40,8 +46,11 @@ pub async fn analyze_repository(
     ctx.report_progress(0.1, "Scanning directory...").await?;
     let supported_files = scan_and_filter_files(&fs, path)?;
 
-    ctx.report_progress(0.2, &format!("Found {} files to analyze", supported_files.len()))
-        .await?;
+    ctx.report_progress(
+        0.2,
+        &format!("Found {} files to analyze", supported_files.len()),
+    )
+    .await?;
 
     let churn_map = calculate_code_churn(path, &ctx, &fs, git).await?;
 
@@ -51,10 +60,12 @@ pub async fn analyze_repository(
         &churn_map,
         &ctx,
         duplication_config.is_some(),
-    ).await?;
+    )
+    .await?;
 
     let mut results = results;
-    ctx.report_progress(0.85, "Analyzing dependencies...").await?;
+    ctx.report_progress(0.85, "Analyzing dependencies...")
+        .await?;
     coupling::calculate_coupling(&mut results, &fs, path);
 
     let coverage_analysis = process_coverage(&ctx, &fs, coverage_config, &mut results).await?;
@@ -142,7 +153,8 @@ async fn process_coverage(
         return Ok(None);
     };
 
-    ctx.report_progress(0.87, "Loading coverage report...").await?;
+    ctx.report_progress(0.87, "Loading coverage report...")
+        .await?;
     let Ok(coverage_json) = fs.read_to_string(&coverage_cfg.report_path) else {
         return Ok(None);
     };
@@ -164,7 +176,8 @@ async fn process_duplication(
         return Ok(None);
     };
 
-    ctx.report_progress(0.9, "Running duplication analysis...").await?;
+    ctx.report_progress(0.9, "Running duplication analysis...")
+        .await?;
     let detector = DuplicationDetector::new(config.min_lines, config.similarity_threshold);
     let parsers = build_language_parsers();
     Ok(Some(detector.run(file_contents, &parsers)))
@@ -225,8 +238,7 @@ pub async fn analyze_ai_commits(
     ctx: impl AppContext,
     git: impl GitProvider,
 ) -> Result<AICommitAnalysis> {
-    ctx.report_progress(0.1, "Analyzing AI commits...")
-        .await?;
+    ctx.report_progress(0.1, "Analyzing AI commits...").await?;
     let result = analyzer::ai_commit_analyzer::analyze_ai_commits(&git, path).await?;
     ctx.report_progress(1.0, "AI commit analysis complete")
         .await?;

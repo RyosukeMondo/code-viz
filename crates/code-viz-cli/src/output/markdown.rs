@@ -21,8 +21,14 @@ fn render_summary(summary: &code_viz_core::Summary) -> String {
     s.push_str("## Summary\n\n");
     s.push_str("| Metric          | Value   |\n");
     s.push_str("|-----------------|---------|\n");
-    s.push_str(&format!("| Total Files     | {}      |\n", summary.total_files));
-    s.push_str(&format!("| Total LOC       | {}      |\n", summary.total_loc));
+    s.push_str(&format!(
+        "| Total Files     | {}      |\n",
+        summary.total_files
+    ));
+    s.push_str(&format!(
+        "| Total LOC       | {}      |\n",
+        summary.total_loc
+    ));
     s.push_str(&format!(
         "| Total Functions | {}      |\n",
         summary.total_functions
