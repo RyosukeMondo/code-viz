@@ -25,7 +25,9 @@ fn get_test_repo_path() -> PathBuf {
                 .expect("git init failed");
             assert!(
                 output.status.success(),
-                "Command failed. stderr: {}",
+                "Command failed (exit {:?}). stdout: {}\nstderr: {}",
+                output.status.code(),
+                String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
             let output = Command::new("git")
@@ -35,7 +37,9 @@ fn get_test_repo_path() -> PathBuf {
                 .expect("git add failed");
             assert!(
                 output.status.success(),
-                "Command failed. stderr: {}",
+                "Command failed (exit {:?}). stdout: {}\nstderr: {}",
+                output.status.code(),
+                String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
             let output = Command::new("git")
@@ -53,7 +57,9 @@ fn get_test_repo_path() -> PathBuf {
                 .expect("git commit failed");
             assert!(
                 output.status.success(),
-                "Command failed. stderr: {}",
+                "Command failed (exit {:?}). stdout: {}\nstderr: {}",
+                output.status.code(),
+                String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
             temp
