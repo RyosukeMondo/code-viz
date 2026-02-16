@@ -6,82 +6,47 @@ mod helpers;
 use helpers::{assert_has_duplicates, assert_json_has_fields, assert_summary_stats, CliTest};
 
 fn get_test_repo_path() -> PathBuf {
-    use std::sync::OnceLock;
-    static TEMP_REPO: OnceLock<PathBuf> = OnceLock::new();
-    TEMP_REPO
-        .get_or_init(|| {
-            let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test-repo");
-            let temp = std::env::temp_dir().join("code-viz-e2e-test-repo");
-            // Clean up any previous run
-            let _ = fs::remove_dir_all(&temp);
-            copy_dir_recursive(&source, &temp);
-
-            // Initialize git repo so the scanner can find files
-            use std::process::Command;
-            let output = Command::new("git")
-                .args(["init"])
-                .current_dir(&temp)
-                .output()
-                .expect("git init failed");
-            assert!(
-                output.status.success(),
-                "Command failed (exit {:?}). stdout: {}\nstderr: {}",
-                output.status.code(),
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
-            let output = Command::new("git")
-                .args(["add", "."])
-                .current_dir(&temp)
-                .output()
-                .expect("git add failed");
-            assert!(
-                output.status.success(),
-                "Command failed (exit {:?}). stdout: {}\nstderr: {}",
-                output.status.code(),
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
-            let output = Command::new("git")
-                .args([
-                    "-c",
-                    "user.email=test@test.com",
-                    "-c",
-                    "user.name=Test",
-                    "commit",
-                    "-m",
-                    "init",
-                ])
-                .current_dir(&temp)
-                .output()
-                .expect("git commit failed");
-            assert!(
-                output.status.success(),
-                "Command failed (exit {:?}). stdout: {}\nstderr: {}",
-                output.status.code(),
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
-            temp
-        })
-        .clone()
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test-repo");
+    ensure_git_repo(&path);
+    path
 }
 
-fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) {
-    fs::create_dir_all(dst).expect("Failed to create dir");
-    for entry in fs::read_dir(src).expect("Failed to read dir") {
-        let entry = entry.expect("Failed to read entry");
-        let path = entry.path();
-        let dest = dst.join(entry.file_name());
-        if path.is_dir() {
-            if entry.file_name() == ".git" {
-                continue; // Skip .git directories
-            }
-            copy_dir_recursive(&path, &dest);
-        } else {
-            fs::copy(&path, &dest).expect("Failed to copy file");
+/// Initialize a git repo in the test fixture if it doesn't exist (e.g., in CI).
+fn ensure_git_repo(path: &std::path::Path) {
+    use std::process::Command;
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    INIT.call_once(|| {
+        if !path.join(".git").exists() {
+            let run = |args: &[&str]| {
+                let output = Command::new("git")
+                    .args(args)
+                    .current_dir(path)
+                    .output()
+                    .expect("Failed to run git command");
+                assert!(
+                    output.status.success(),
+                    "git {:?} failed (exit {:?}). stdout: {}
+stderr: {}",
+                    args,
+                    output.status.code(),
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            };
+            run(&["init"]);
+            run(&["add", "."]);
+            run(&[
+                "-c",
+                "user.email=test@test.com",
+                "-c",
+                "user.name=Test",
+                "commit",
+                "-m",
+                "init",
+            ]);
         }
-    }
+    });
 }
 
 fn get_temp_output_path(name: &str) -> PathBuf {
