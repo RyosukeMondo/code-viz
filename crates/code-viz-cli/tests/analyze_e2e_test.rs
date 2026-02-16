@@ -6,7 +6,40 @@ mod helpers;
 use helpers::{assert_has_duplicates, assert_json_has_fields, assert_summary_stats, CliTest};
 
 fn get_test_repo_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test-repo")
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test-repo");
+    ensure_git_repo(&path);
+    path
+}
+
+/// Initialize a git repo in the test fixture if it doesn't exist (e.g., in CI).
+/// The .git directory inside test fixtures is not tracked by the parent git repo.
+fn ensure_git_repo(path: &std::path::Path) {
+    if !path.join(".git").exists() {
+        use std::process::Command;
+        Command::new("git")
+            .args(["init"])
+            .current_dir(path)
+            .output()
+            .expect("Failed to init git repo in test fixture");
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(path)
+            .output()
+            .expect("Failed to git add in test fixture");
+        Command::new("git")
+            .args([
+                "-c",
+                "user.email=test@test.com",
+                "-c",
+                "user.name=Test",
+                "commit",
+                "-m",
+                "init",
+            ])
+            .current_dir(path)
+            .output()
+            .expect("Failed to git commit in test fixture");
+    }
 }
 
 fn get_temp_output_path(name: &str) -> PathBuf {
