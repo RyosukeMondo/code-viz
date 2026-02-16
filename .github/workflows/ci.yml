@@ -14,6 +14,7 @@ jobs:
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
@@ -51,6 +52,7 @@ jobs:
       run: cargo check --all-targets --all-features
 
     - name: Validate Zero Deprecated Code
+      shell: bash
       run: |
         # Fail if any #[deprecated] attributes found in crates/
         if grep -r "#\[deprecated\]" crates/ --include="*.rs"; then
@@ -71,6 +73,7 @@ jobs:
       run: cargo clippy --all-targets --all-features -- -D warnings
 
     - name: Check for unwrap() in production code
+      shell: bash
       run: |
         # Install ripgrep if not available (usually pre-installed on GitHub runners)
         if ! command -v rg &> /dev/null; then
@@ -85,7 +88,6 @@ jobs:
         ./scripts/check-unwrap.sh
 
     - name: Test
-      # Skipping watch tests in CI due to flakiness
       run: cargo test --all-targets --all-features
 
     - name: Build Release
@@ -173,7 +175,7 @@ jobs:
       uses: taiki-e/install-action@cargo-llvm-cov
 
     - name: Generate coverage
-      run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      run: cargo llvm-cov --all-features --workspace --exclude code-viz-gui --exclude code-viz-cli --lcov --output-path lcov.info
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v4
@@ -185,4 +187,4 @@ jobs:
     - name: Generate coverage report
       run: |
         cargo llvm-cov report --summary-only
-        echo "📊 Coverage report generated"
+        echo "Coverage report generated"
