@@ -46,8 +46,8 @@ fn commit_file<'a>(
 #[test]
 fn test_timeline_command() -> Result<()> {
     let dir = tempdir()?;
-    let repo_path = dir.path();
-    let repo = setup_git_repo(repo_path)?;
+    let repo_path = dir.path().canonicalize()?;
+    let repo = setup_git_repo(&repo_path)?;
 
     let file_path = repo_path.join("test.rs");
     commit_file(&repo, &file_path, "fn main() {}", "First commit")?;
@@ -59,7 +59,7 @@ fn test_timeline_command() -> Result<()> {
     )?;
 
     let mut cmd = cargo_bin_cmd!("code-viz-cli");
-    cmd.arg("timeline").arg(&file_path).current_dir(repo_path);
+    cmd.arg("timeline").arg(&file_path).current_dir(&repo_path);
 
     cmd.assert()
         .success()
