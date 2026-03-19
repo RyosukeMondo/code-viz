@@ -26,8 +26,7 @@ type CommitInfo = (String, String, i64);
 /// if canonicalization fails (e.g., for bare repos where the file doesn't
 /// exist on disk).
 fn canonicalize_path(path: &Path) -> Result<PathBuf> {
-    path.canonicalize()
-        .or_else(|_| Ok(path.to_path_buf()))
+    path.canonicalize().or_else(|_| Ok(path.to_path_buf()))
 }
 
 fn process_blame_hunk(
