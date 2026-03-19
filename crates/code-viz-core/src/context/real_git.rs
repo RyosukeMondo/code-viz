@@ -22,6 +22,14 @@ impl RealGit {
 
 type CommitInfo = (String, String, i64);
 
+/// Canonicalize a path, resolving symlinks. Falls back to the original path
+/// if canonicalization fails (e.g., for bare repos where the file doesn't
+/// exist on disk).
+fn canonicalize_path(path: &Path) -> Result<PathBuf> {
+    path.canonicalize()
+        .or_else(|_| Ok(path.to_path_buf()))
+}
+
 fn process_blame_hunk(
     repo: &Repository,
     hunk: &git2::BlameHunk,
@@ -228,22 +236,27 @@ impl GitProvider for RealGit {
             })?;
 
             let repo_root = if repo.is_bare() {
-                // For a bare repo, its path is the root. We assume file_path is relative to this.
                 repo.path().to_path_buf()
             } else {
-                // For a non-bare repo, the workdir is the root.
                 repo.workdir()
                     .map(|p| p.to_path_buf())
                     .ok_or_else(|| anyhow!("Could not find repository workdir for non-bare repo"))?
             };
 
-            let relative_path = file_path_buf.strip_prefix(&repo_root).with_context(|| {
-                format!(
-                    "File '{}' is not inside the git repository root '{}'",
-                    file_path_buf.display(),
-                    repo_root.display()
-                )
-            })?;
+            // Canonicalize both paths to handle symlinks (e.g., macOS /var -> /private/var).
+            let canonical_file = canonicalize_path(&file_path_buf)?;
+            let canonical_root = canonicalize_path(&repo_root)?;
+
+            let relative_path =
+                canonical_file
+                    .strip_prefix(&canonical_root)
+                    .with_context(|| {
+                        format!(
+                            "File '{}' is not inside the git repository root '{}'",
+                            canonical_file.display(),
+                            canonical_root.display()
+                        )
+                    })?;
 
             let mut blame_opts = git2::BlameOptions::new();
             blame_opts.track_copies_same_file(true);
