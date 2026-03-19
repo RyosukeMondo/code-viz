@@ -49,7 +49,7 @@ check_file_size() {
     if [ "$line_count" -gt "$max_lines" ]; then
         echo "${RED}✗${NC} $file: $line_count lines (max $max_lines)"
         echo "  → Split this file into smaller modules"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
     fi
 }
 
@@ -78,10 +78,10 @@ check_function_size() {
                     if [ "$lines" -gt 100 ]; then
                         echo "${RED}✗${NC} $line (max 100)"
                         echo "  → Break this function into smaller helpers"
-                        ((ERRORS++))
+                        ERRORS=$((ERRORS + 1))
                     elif [ "$lines" -gt 50 ]; then
                         echo "${YELLOW}⚠${NC} $line (recommended max 50)"
-                        ((WARNINGS++))
+                        WARNINGS=$((WARNINGS + 1))
                     fi
                 fi
             done <<< "$output"
@@ -114,7 +114,7 @@ check_unwrap_usage() {
         local line_num=0
 
         while IFS= read -r line; do
-            ((line_num++))
+            line_num=$((line_num + 1))
 
             # Check for test module start
             if [[ $line =~ \#\[cfg\(test\)\] ]]; then
@@ -139,7 +139,7 @@ check_unwrap_usage() {
         done < "$file"
 
         if [ $has_unwrap -eq 1 ]; then
-            ((ERRORS++))
+            ERRORS=$((ERRORS + 1))
         fi
     fi
 }
@@ -166,7 +166,7 @@ check_typescript_any() {
         local any_count=$(grep -c -E ':\s*any\b|as\s+any\b' "$file" || true)
         echo "${YELLOW}⚠${NC} $file: found $any_count usage(s) of 'any'"
         echo "  → Consider using specific types or unknown/Record<string, unknown>"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
     fi
 }
 

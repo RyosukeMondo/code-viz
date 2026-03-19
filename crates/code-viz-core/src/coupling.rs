@@ -44,11 +44,19 @@ fn extract_dependencies(
 }
 
 pub fn calculate_coupling(files: &mut [FileMetrics], fs: &impl FileSystem, base_path: &Path) {
-    let mut dependency_graph: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
+    let dependency_graph = build_dependency_graph(files, fs, base_path);
+    apply_coupling_metrics(files, &dependency_graph);
+}
+
+fn build_dependency_graph(
+    files: &[FileMetrics],
+    fs: &impl FileSystem,
+    base_path: &Path,
+) -> HashMap<PathBuf, Vec<PathBuf>> {
+    let mut graph: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
     let file_paths: Vec<PathBuf> = files.iter().map(|f| f.path.clone()).collect();
     let registry = LanguageRegistry::new();
 
-    // First pass: build the dependency graph
     for file in files.iter() {
         let source = match fs.read_to_string(&file.path) {
             Ok(s) => s,
@@ -60,32 +68,32 @@ pub fn calculate_coupling(files: &mut [FileMetrics], fs: &impl FileSystem, base_
             Err(_) => continue,
         };
 
-        // Get language provider from registry
         let provider = match registry.get_by_name(&file.language) {
             Some(p) => p,
-            None => continue, // Skip unsupported languages
+            None => continue,
         };
 
-        let query_str = provider.coupling_query();
-
-        let dependencies = match extract_dependencies(&source, parser.as_ref(), query_str) {
-            Ok(deps) => deps,
-            Err(_) => {
-                // Skip files that fail to parse - log warning in production but continue analysis
-                continue;
-            }
-        };
-        let resolved_deps = resolve_dependencies(
+        let dependencies =
+            match extract_dependencies(&source, parser.as_ref(), provider.coupling_query()) {
+                Ok(deps) => deps,
+                Err(_) => continue,
+            };
+        let resolved = resolve_dependencies(
             base_path,
             &file.path,
             &dependencies,
             &file_paths,
             &file.language,
         );
-        dependency_graph.insert(file.path.clone(), resolved_deps);
+        graph.insert(file.path.clone(), resolved);
     }
+    graph
+}
 
-    // Second pass: calculate metrics
+fn apply_coupling_metrics(
+    files: &mut [FileMetrics],
+    dependency_graph: &HashMap<PathBuf, Vec<PathBuf>>,
+) {
     for file in files.iter_mut() {
         let efferent_coupling = dependency_graph
             .get(&file.path)
@@ -111,16 +119,11 @@ pub fn calculate_coupling(files: &mut [FileMetrics], fs: &impl FileSystem, base_
 }
 
 /// A simple path normalization function to handle `.` and `..`.
+/// Handles Windows prefix components (e.g., `C:\`) and root directories.
 fn normalize_path(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ std::path::Component::RootDir) = components.peek().cloned() {
-        components.next();
-        PathBuf::from(c.as_os_str())
-    } else {
-        PathBuf::new()
-    };
+    let mut ret = PathBuf::new();
 
-    for component in components {
+    for component in path.components() {
         match component {
             std::path::Component::Normal(c) => {
                 ret.push(c);
@@ -130,10 +133,10 @@ fn normalize_path(path: &Path) -> PathBuf {
                 ret.pop();
             }
             std::path::Component::RootDir => {
-                unreachable!();
+                ret.push(component.as_os_str());
             }
-            std::path::Component::Prefix(..) => {
-                unreachable!();
+            std::path::Component::Prefix(prefix) => {
+                ret.push(prefix.as_os_str());
             }
         }
     }

@@ -22,11 +22,21 @@ impl RealGit {
 
 type CommitInfo = (String, String, i64);
 
-/// Canonicalize a path, resolving symlinks. Falls back to the original path
-/// if canonicalization fails (e.g., for bare repos where the file doesn't
-/// exist on disk).
+/// Canonicalize a path, resolving symlinks (e.g., macOS /var -> /private/var).
+/// If the full path doesn't exist (e.g., a file reference inside a bare repo),
+/// canonicalize the parent directory and re-append the file name.
 fn canonicalize_path(path: &Path) -> Result<PathBuf> {
-    path.canonicalize().or_else(|_| Ok(path.to_path_buf()))
+    if let Ok(canonical) = path.canonicalize() {
+        return Ok(canonical);
+    }
+    // File doesn't exist on disk; try canonicalizing the parent directory
+    // and re-appending the remaining component.
+    if let (Some(parent), Some(file_name)) = (path.parent(), path.file_name()) {
+        if let Ok(canonical_parent) = parent.canonicalize() {
+            return Ok(canonical_parent.join(file_name));
+        }
+    }
+    Ok(path.to_path_buf())
 }
 
 fn process_blame_hunk(
