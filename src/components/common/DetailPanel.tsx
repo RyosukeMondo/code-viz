@@ -13,8 +13,13 @@
 
 import { useEffect } from 'react';
 import type { TreeNode } from '@/types/bindings';
-import { formatNumber, formatRelativeDate } from '@/utils/formatting';
-import { complexityToColor } from '@/utils/colors';
+import { formatRelativeDate } from '@/utils/formatting';
+import { BasicMetricsSection } from './BasicMetricsSection';
+import { CognitiveComplexitySection } from './CognitiveComplexitySection';
+import { CouplingMetricsSection } from './CouplingMetricsSection';
+import { CodeChurnSection } from './CodeChurnSection';
+import { AiBloatIndexSection } from './AiBloatIndexSection';
+import { TestCoverageSection } from './TestCoverageSection';
 
 export interface DetailPanelProps {
   /** Selected file/directory node to display details for */
@@ -51,9 +56,6 @@ export function DetailPanel({ node, onClose }: DetailPanelProps) {
   if (!node) {
     return null;
   }
-
-  // Get complexity color for visual indicator
-  const complexityColor = complexityToColor(node.complexity);
 
   return (
     <div data-testid="detail-panel" className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
@@ -108,206 +110,31 @@ export function DetailPanel({ node, onClose }: DetailPanelProps) {
         </section>
 
         {/* Basic Metrics Section */}
-        <section>
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            Basic Metrics
-          </h3>
-          <div className="space-y-3">
-            {/* Language (for files) */}
-            {node.type === 'file' && node.language && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Language</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">
-                  {node.language}
-                </span>
-              </div>
-            )}
-
-            {/* Lines of Code */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Lines of Code</span>
-              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {formatNumber(node.loc)}
-              </span>
-            </div>
-
-            {/* File Size (for files) */}
-            {node.type === 'file' && node.sizeBytes !== undefined && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">File Size</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {(node.sizeBytes / 1024).toFixed(2)} KB
-                </span>
-              </div>
-            )}
-
-            {/* Function Count (for files) */}
-            {node.type === 'file' && node.functionCount !== undefined && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Functions</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatNumber(node.functionCount)}
-                </span>
-              </div>
-            )}
-
-            {/* Complexity */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Complexity Score</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatNumber(node.complexity)}
-                </span>
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: complexityColor }}
-                  title={`Complexity: ${node.complexity}`}
-                  aria-label={`Complexity indicator: ${node.complexity}`}
-                />
-              </div>
-            </div>
-
-            {/* Children Count (for directories) */}
-            {node.type === 'directory' && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {node.children.length === 1 ? 'Child' : 'Children'}
-                </span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatNumber(node.children.length)}
-                </span>
-              </div>
-            )}
-          </div>
-        </section>
+        <BasicMetricsSection node={node} />
 
         {/* Cognitive Complexity Section */}
         {node.cognitiveComplexity && (
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Cognitive Complexity
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Total</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.cognitiveComplexity.totalComplexity}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Average</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.cognitiveComplexity.averageComplexity.toFixed(1)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Maximum</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.cognitiveComplexity.maxComplexity}
-                </span>
-              </div>
-            </div>
-          </section>
+          <CognitiveComplexitySection cognitiveComplexity={node.cognitiveComplexity} />
         )}
 
         {/* Coupling Metrics Section */}
         {node.coupling && (
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Coupling Metrics
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Afferent (Incoming)</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.coupling.afferentCoupling}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Efferent (Outgoing)</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.coupling.efferentCoupling}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Instability</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.coupling.instability.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </section>
+          <CouplingMetricsSection coupling={node.coupling} />
         )}
 
         {/* Code Churn Section */}
         {node.codeChurn && (
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Code Churn
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Lines Added</span>
-                <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                  +{formatNumber(node.codeChurn.addedLines)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Lines Deleted</span>
-                <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  -{formatNumber(node.codeChurn.deletedLines)}
-                </span>
-              </div>
-            </div>
-          </section>
+          <CodeChurnSection codeChurn={node.codeChurn} />
         )}
 
         {/* AI Bloat Index Section */}
         {node.aiBloatIndex !== undefined && (
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              AI Bloat Index
-            </h3>
-            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Bloat Score</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.aiBloatIndex.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </section>
+          <AiBloatIndexSection aiBloatIndex={node.aiBloatIndex} />
         )}
 
         {/* Test Coverage Section */}
         {node.testCoverage && (
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Test Coverage
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Line Coverage</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.testCoverage.lineCoverage.toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Lines Covered</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {node.testCoverage.linesCovered} / {node.testCoverage.totalLines}
-                </span>
-              </div>
-              {node.testCoverage.branchCoverage !== undefined && (
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Branch Coverage</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {node.testCoverage.branchCoverage.toFixed(1)}%
-                  </span>
-                </div>
-              )}
-            </div>
-          </section>
+          <TestCoverageSection testCoverage={node.testCoverage} />
         )}
 
         {/* Timestamp Section */}
